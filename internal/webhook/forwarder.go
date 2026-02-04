@@ -105,11 +105,23 @@ func (f *Forwarder) Forward(ctx context.Context, destinationURL string, headers 
 			"destination", destinationURL,
 			"duration", elapsed.String(),
 		)
-	} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
-		// Client error - permanent failure, don't retry
+	} else if isPermanentClientError(resp.StatusCode) {
+		// Permanent client error - don't retry
 		result.PermanentFailure = true
 		result.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
 		slog.Warn("webhook failed (permanent)",
+			"webhook_id", webhookID,
+			"status", resp.StatusCode,
+		)
+		slog.Debug("forward details",
+			"webhook_id", webhookID,
+			"destination", destinationURL,
+			"duration", elapsed.String(),
+		)
+	} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+		// Retryable client error (e.g., 404 - server might not be running yet)
+		result.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
+		slog.Warn("webhook failed (will retry)",
 			"webhook_id", webhookID,
 			"status", resp.StatusCode,
 		)
@@ -133,6 +145,25 @@ func (f *Forwarder) Forward(ctx context.Context, destinationURL string, headers 
 	}
 
 	return result
+}
+
+// isPermanentClientError returns true for 4xx errors that indicate a permanent
+// problem that won't be fixed by retrying (bad payload, auth failure, etc.).
+// Returns false for errors like 404 that may be transient (server not running).
+func isPermanentClientError(statusCode int) bool {
+	switch statusCode {
+	case http.StatusBadRequest,           // 400 - malformed request
+		http.StatusUnauthorized,          // 401 - auth required
+		http.StatusForbidden,             // 403 - access denied
+		http.StatusMethodNotAllowed,      // 405 - wrong HTTP method
+		http.StatusGone,                  // 410 - permanently removed
+		http.StatusUnsupportedMediaType,  // 415 - wrong content type
+		http.StatusUnprocessableEntity,   // 422 - validation failed
+		http.StatusTooManyRequests:       // 429 - rate limited (permanent in webhook context)
+		return true
+	default:
+		return false
+	}
 }
 
 // shouldForwardHeader returns true if the header should be forwarded.
