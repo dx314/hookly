@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
 	import { edgeClient, type Webhook, WebhookStatus } from '$lib/api/client';
 
 	let webhook = $state<Webhook | null>(null);
@@ -11,7 +10,8 @@
 	let showPayload = $state(true);
 
 	$effect(() => {
-		loadWebhook($page.params.id);
+		const id = $page.params.id;
+		if (id) loadWebhook(id);
 	});
 
 	async function loadWebhook(id: string) {
@@ -37,7 +37,7 @@
 		}
 	}
 
-	function formatDate(timestamp: { seconds?: bigint }): string {
+	function formatDate(timestamp: { seconds?: bigint } | undefined): string {
 		if (!timestamp?.seconds) return 'N/A';
 		return new Date(Number(timestamp.seconds) * 1000).toLocaleString();
 	}

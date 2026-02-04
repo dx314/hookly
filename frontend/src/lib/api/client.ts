@@ -27,15 +27,24 @@ const fetchWithCredentials: typeof globalThis.fetch = (input, init) => {
 	});
 };
 
-// Create transport with credentials (cookies)
+// Create transport with credentials (cookies) and auth redirect
 const transport = createConnectTransport({
 	baseUrl: '',  // Same origin
 	fetch: fetchWithCredentials,
 	interceptors: [authRedirectInterceptor],
 });
 
-// Create EdgeService client
+// Create transport without auth redirect (for checking login status without redirecting)
+const transportNoRedirect = createConnectTransport({
+	baseUrl: '',  // Same origin
+	fetch: fetchWithCredentials,
+});
+
+// Create EdgeService client (redirects to login on auth failure)
 export const edgeClient = createClient(EdgeService, transport);
+
+// Create EdgeService client without redirect (for optional auth checks)
+export const edgeClientNoRedirect = createClient(EdgeService, transportNoRedirect);
 
 // Re-export types
 export { type Endpoint, type Webhook, type SystemStatus, type UserSettings, type SystemSettings } from '$api/hookly/v1/common_pb';

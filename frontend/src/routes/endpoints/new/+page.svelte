@@ -72,7 +72,7 @@
 				bind:value={providerType}
 				class="w-full px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]"
 			>
-				{#each providerOptions as option}
+				{#each providerOptions as option (option.value)}
 					<option value={option.value}>{option.label}</option>
 				{/each}
 			</select>

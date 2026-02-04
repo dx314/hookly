@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { edgeClient, type UserSettings, type SystemSettings } from '$lib/api/client';
-	import { theme, stringToThemePreference, themePreferenceToString, type Theme } from '$lib/stores/theme';
-	import { ThemePreference } from '$api/hookly/v1/common_pb';
+	import { theme, stringToThemePreference, type Theme } from '$lib/stores/theme';
 
 	let userSettings = $state<UserSettings | null>(null);
 	let systemSettings = $state<SystemSettings | null>(null);
@@ -253,7 +252,7 @@
 			</div>
 			<div class="p-6">
 				<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-					{#each themes as t}
+					{#each themes as t (t.value)}
 						<button
 							onclick={() => selectTheme(t.value)}
 							class="p-4 rounded-lg border-2 text-left transition-all {$theme === t.value

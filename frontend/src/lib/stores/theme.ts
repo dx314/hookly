@@ -40,7 +40,7 @@ export function stringToThemePreference(theme: Theme): ThemePreference {
 }
 
 function createThemeStore() {
-	const { subscribe, set, update } = writable<Theme>('system');
+	const { subscribe, set } = writable<Theme>('system');
 
 	return {
 		subscribe,

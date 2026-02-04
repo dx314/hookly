@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
 	import { edgeClient, type Endpoint, ProviderType } from '$lib/api/client';
 
 	let endpoint = $state<Endpoint | null>(null);
@@ -13,7 +12,8 @@
 	let error = $state<string | null>(null);
 
 	$effect(() => {
-		loadEndpoint($page.params.id);
+		const id = $page.params.id;
+		if (id) loadEndpoint(id);
 	});
 
 	async function loadEndpoint(id: string) {

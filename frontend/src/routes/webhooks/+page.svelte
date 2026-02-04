@@ -69,7 +69,7 @@
 		}
 	}
 
-	function formatDate(timestamp: { seconds?: bigint }): string {
+	function formatDate(timestamp: { seconds?: bigint } | undefined): string {
 		if (!timestamp?.seconds) return 'N/A';
 		return new Date(Number(timestamp.seconds) * 1000).toLocaleString();
 	}
@@ -94,7 +94,7 @@
 			class="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]"
 		>
 			<option value={undefined}>All Endpoints</option>
-			{#each endpoints as endpoint}
+			{#each endpoints as endpoint (endpoint.id)}
 				<option value={endpoint.id}>{endpoint.name}</option>
 			{/each}
 		</select>
@@ -104,7 +104,7 @@
 			onchange={() => loadWebhooks()}
 			class="px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-foreground)] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]"
 		>
-			{#each statusOptions as option}
+			{#each statusOptions as option (option.label)}
 				<option value={option.value}>{option.label}</option>
 			{/each}
 		</select>
@@ -135,7 +135,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-[var(--color-border)]">
-					{#each webhooks as webhook}
+					{#each webhooks as webhook (webhook.id)}
 						{@const status = getStatusBadge(webhook.status)}
 						<tr class="hover:bg-[var(--color-muted)]/50">
 							<td class="px-4 py-3">

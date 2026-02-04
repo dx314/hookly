@@ -31,7 +31,7 @@
 			<h3 class="text-xs font-semibold text-[var(--color-muted-foreground)] uppercase tracking-wider mb-3">
 				On this page
 			</h3>
-			{#each sections as section}
+			{#each sections as section (section.title)}
 				<button
 					onclick={() => scrollToSection(section.id)}
 					class="w-full text-left px-3 py-2 text-sm rounded-md transition-colors {activeSection === section.id

@@ -121,7 +121,7 @@
 					</tr>
 				</thead>
 				<tbody class="divide-y divide-[var(--color-border)]">
-					{#each endpoints as endpoint}
+					{#each endpoints as endpoint (endpoint.id)}
 						<tr class="hover:bg-[var(--color-muted)]/50">
 							<td class="px-4 py-3">
 								<a href="/endpoints/{endpoint.id}" class="text-sm font-medium text-[var(--color-foreground)] hover:underline">

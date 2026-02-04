@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
 	import { edgeClient, type Endpoint, type Webhook, ProviderType, WebhookStatus } from '$lib/api/client';
 
 	let endpoint = $state<Endpoint | null>(null);
@@ -11,7 +10,8 @@
 	let copiedUrl = $state(false);
 
 	$effect(() => {
-		loadEndpoint($page.params.id);
+		const id = $page.params.id;
+		if (id) loadEndpoint(id);
 	});
 
 	async function loadEndpoint(id: string) {
@@ -52,7 +52,7 @@
 		}
 	}
 
-	function formatDate(timestamp: { seconds?: bigint }): string {
+	function formatDate(timestamp: { seconds?: bigint } | undefined): string {
 		if (!timestamp?.seconds) return 'N/A';
 		return new Date(Number(timestamp.seconds) * 1000).toLocaleString();
 	}
@@ -181,7 +181,7 @@
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-[var(--color-border)]">
-						{#each webhooks as webhook}
+						{#each webhooks as webhook (webhook.id)}
 							{@const status = getStatusBadge(webhook.status)}
 							<tr class="hover:bg-[var(--color-muted)]/50">
 								<td class="px-4 py-2">

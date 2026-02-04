@@ -62,7 +62,7 @@
 		<div
 			class="absolute right-0 mt-2 w-40 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] shadow-lg z-50"
 		>
-			{#each themes as t}
+			{#each themes as t (t.value)}
 				<button
 					onclick={() => selectTheme(t.value)}
 					class="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-[var(--color-muted)] transition-colors first:rounded-t-md last:rounded-b-md {$theme === t.value ? 'bg-[var(--color-muted)]' : ''}"
