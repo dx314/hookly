@@ -49,6 +49,10 @@ push() {
     log "Pushing to registry..."
     docker push "$IMAGE"
     log "Push complete"
+
+    # Clean up local dangling images
+    log "Pruning local dangling images..."
+    docker image prune -f --filter "dangling=true" >/dev/null 2>&1 || true
 }
 
 deploy() {
