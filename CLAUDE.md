@@ -9,16 +9,16 @@ buf generate          # proto → Go/TS
 sqlc generate         # SQL → Go
 make all              # build everything
 go run ./cmd/edge-gateway
-go run ./cmd/home-hub
+hookly login && hookly  # run CLI relay
 ```
 
 ## Architecture
 
 ```
-External → edge-gateway (public) ←gRPC stream← home-hub (private) → local services
+External → edge-gateway (public) ←gRPC stream← hookly CLI (private) → local services
 ```
 
-**Data flow**: POST `/h/{id}` → verify sig → store → push to home-hub → forward → ACK
+**Data flow**: POST `/h/{id}` → verify sig → store → push to CLI → forward → ACK
 
 ## Key Files
 
@@ -31,7 +31,8 @@ External → edge-gateway (public) ←gRPC stream← home-hub (private) → loca
 | **Relay** | `internal/relay/{handler,client,dispatcher,manager}.go` |
 | **Auth** | `internal/auth/{github,session,authorize,handlers}.go` |
 | **API** | `internal/service/edge/service.go` (ConnectRPC) |
-| **Config** | `internal/config/{config,home}.go` |
+| **Config** | `internal/config/{config,hookly}.go` |
+| **CLI** | `internal/cli/{credentials,login,wizard,client}.go` |
 | **MCP** | `internal/mcp/{server,tools}.go` |
 | **Frontend** | `frontend/src/routes/**/*.svelte` |
 
@@ -56,18 +57,17 @@ Migrations run automatically on startup. Files in `internal/db/migrations/`.
 - **Logging**: `log/slog` structured
 - **Router**: chi/v5
 - **API**: ConnectRPC + protobuf
-- **Auth**: GitHub OAuth, org/user allowlist
+- **Auth**: GitHub OAuth, bearer tokens, org/user allowlist
 - **Retry**: exponential backoff 1s→1h, dead-letter after 7d
+- **Verification**: Stripe, GitHub, Telegram built-in + custom schemes
 
 ## Env Vars
 
 **Edge**: `DATABASE_PATH`, `ENCRYPTION_KEY`, `PORT`, `BASE_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_ORG`, `GITHUB_ALLOWED_USERS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
 
-**Home**: `EDGE_URL`, `HOME_HUB_SECRET`, `HUB_ID`
+**MCP**: Uses CLI credentials from `hookly login`. Optional: `DATABASE_PATH`, `ENCRYPTION_KEY`, `BASE_URL`.
 
-**MCP**: `DATABASE_PATH`, `ENCRYPTION_KEY`, `BASE_URL` (optional). Uses CLI credentials from `hookly login`.
-
-**CLI**: Uses bearer token auth (from `hookly login`). Config: `hookly.yaml`, creds: `~/.config/hookly/`
+**CLI**: Uses bearer token auth (from `hookly login`). Config: `hookly.yaml`, creds: `~/.config/hookly/credentials.json`
 
 ## CLI
 
@@ -75,8 +75,10 @@ Migrations run automatically on startup. Files in `internal/db/migrations/`.
 go install hooks.dx314.com/hookly@latest
 ```
 
-Commands: `login`, `logout`, `whoami`, `status`, `init`, `version`, `help`
+Commands: `login`, `logout`, `whoami`, `status`, `init`, `service`
 Default (no args): run relay client. Config: `hookly.yaml`, creds: `~/.config/hookly/`
+
+Service subcommands: `install`, `uninstall`, `start`, `stop`, `restart`, `status`, `logs`
 
 ## References
 
