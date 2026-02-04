@@ -193,6 +193,65 @@ func (WebhookStatus) EnumDescriptor() ([]byte, []int) {
 	return file_hookly_v1_common_proto_rawDescGZIP(), []int{2}
 }
 
+// Theme preference for UI
+type ThemePreference int32
+
+const (
+	ThemePreference_THEME_PREFERENCE_UNSPECIFIED       ThemePreference = 0
+	ThemePreference_THEME_PREFERENCE_SYSTEM            ThemePreference = 1
+	ThemePreference_THEME_PREFERENCE_LIGHT             ThemePreference = 2
+	ThemePreference_THEME_PREFERENCE_DARK              ThemePreference = 3
+	ThemePreference_THEME_PREFERENCE_PLACID_BLUE_LIGHT ThemePreference = 4
+	ThemePreference_THEME_PREFERENCE_PLACID_BLUE_DARK  ThemePreference = 5
+)
+
+// Enum value maps for ThemePreference.
+var (
+	ThemePreference_name = map[int32]string{
+		0: "THEME_PREFERENCE_UNSPECIFIED",
+		1: "THEME_PREFERENCE_SYSTEM",
+		2: "THEME_PREFERENCE_LIGHT",
+		3: "THEME_PREFERENCE_DARK",
+		4: "THEME_PREFERENCE_PLACID_BLUE_LIGHT",
+		5: "THEME_PREFERENCE_PLACID_BLUE_DARK",
+	}
+	ThemePreference_value = map[string]int32{
+		"THEME_PREFERENCE_UNSPECIFIED":       0,
+		"THEME_PREFERENCE_SYSTEM":            1,
+		"THEME_PREFERENCE_LIGHT":             2,
+		"THEME_PREFERENCE_DARK":              3,
+		"THEME_PREFERENCE_PLACID_BLUE_LIGHT": 4,
+		"THEME_PREFERENCE_PLACID_BLUE_DARK":  5,
+	}
+)
+
+func (x ThemePreference) Enum() *ThemePreference {
+	p := new(ThemePreference)
+	*p = x
+	return p
+}
+
+func (x ThemePreference) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ThemePreference) Descriptor() protoreflect.EnumDescriptor {
+	return file_hookly_v1_common_proto_enumTypes[3].Descriptor()
+}
+
+func (ThemePreference) Type() protoreflect.EnumType {
+	return &file_hookly_v1_common_proto_enumTypes[3]
+}
+
+func (x ThemePreference) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ThemePreference.Descriptor instead.
+func (ThemePreference) EnumDescriptor() ([]byte, []int) {
+	return file_hookly_v1_common_proto_rawDescGZIP(), []int{3}
+}
+
 // Custom verification configuration for PROVIDER_TYPE_CUSTOM
 type VerificationConfig struct {
 	state              protoimpl.MessageState `protogen:"open.v1"`
@@ -749,6 +808,245 @@ func (x *SystemStatus) GetConnectedEndpoints() []*ConnectedEndpoint {
 	return nil
 }
 
+// User settings including profile and preferences
+type UserSettings struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	UserId   string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Username string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	// GitHub profile (from OAuth)
+	GithubName       string `protobuf:"bytes,3,opt,name=github_name,json=githubName,proto3" json:"github_name,omitempty"`
+	GithubEmail      string `protobuf:"bytes,4,opt,name=github_email,json=githubEmail,proto3" json:"github_email,omitempty"`
+	GithubProfileUrl string `protobuf:"bytes,5,opt,name=github_profile_url,json=githubProfileUrl,proto3" json:"github_profile_url,omitempty"`
+	AvatarUrl        string `protobuf:"bytes,6,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	// Telegram notifications (token is write-only, never returned)
+	TelegramConfigured bool   `protobuf:"varint,7,opt,name=telegram_configured,json=telegramConfigured,proto3" json:"telegram_configured,omitempty"` // True if bot token is set
+	TelegramChatId     string `protobuf:"bytes,8,opt,name=telegram_chat_id,json=telegramChatId,proto3" json:"telegram_chat_id,omitempty"`
+	TelegramEnabled    bool   `protobuf:"varint,9,opt,name=telegram_enabled,json=telegramEnabled,proto3" json:"telegram_enabled,omitempty"`
+	// UI preferences
+	ThemePreference ThemePreference `protobuf:"varint,10,opt,name=theme_preference,json=themePreference,proto3,enum=hookly.v1.ThemePreference" json:"theme_preference,omitempty"`
+	// Authorization
+	IsSuperuser bool `protobuf:"varint,11,opt,name=is_superuser,json=isSuperuser,proto3" json:"is_superuser,omitempty"`
+	// Timestamps
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	LastLoginAt   *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=last_login_at,json=lastLoginAt,proto3" json:"last_login_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserSettings) Reset() {
+	*x = UserSettings{}
+	mi := &file_hookly_v1_common_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserSettings) ProtoMessage() {}
+
+func (x *UserSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_common_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserSettings.ProtoReflect.Descriptor instead.
+func (*UserSettings) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_common_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *UserSettings) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *UserSettings) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *UserSettings) GetGithubName() string {
+	if x != nil {
+		return x.GithubName
+	}
+	return ""
+}
+
+func (x *UserSettings) GetGithubEmail() string {
+	if x != nil {
+		return x.GithubEmail
+	}
+	return ""
+}
+
+func (x *UserSettings) GetGithubProfileUrl() string {
+	if x != nil {
+		return x.GithubProfileUrl
+	}
+	return ""
+}
+
+func (x *UserSettings) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
+}
+
+func (x *UserSettings) GetTelegramConfigured() bool {
+	if x != nil {
+		return x.TelegramConfigured
+	}
+	return false
+}
+
+func (x *UserSettings) GetTelegramChatId() string {
+	if x != nil {
+		return x.TelegramChatId
+	}
+	return ""
+}
+
+func (x *UserSettings) GetTelegramEnabled() bool {
+	if x != nil {
+		return x.TelegramEnabled
+	}
+	return false
+}
+
+func (x *UserSettings) GetThemePreference() ThemePreference {
+	if x != nil {
+		return x.ThemePreference
+	}
+	return ThemePreference_THEME_PREFERENCE_UNSPECIFIED
+}
+
+func (x *UserSettings) GetIsSuperuser() bool {
+	if x != nil {
+		return x.IsSuperuser
+	}
+	return false
+}
+
+func (x *UserSettings) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *UserSettings) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *UserSettings) GetLastLoginAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastLoginAt
+	}
+	return nil
+}
+
+// System settings (superuser only)
+type SystemSettings struct {
+	state                 protoimpl.MessageState `protogen:"open.v1"`
+	BaseUrl               string                 `protobuf:"bytes,1,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
+	GithubOrg             string                 `protobuf:"bytes,2,opt,name=github_org,json=githubOrg,proto3" json:"github_org,omitempty"`
+	GithubAllowedUsers    []string               `protobuf:"bytes,3,rep,name=github_allowed_users,json=githubAllowedUsers,proto3" json:"github_allowed_users,omitempty"`
+	SystemTelegramEnabled bool                   `protobuf:"varint,4,opt,name=system_telegram_enabled,json=systemTelegramEnabled,proto3" json:"system_telegram_enabled,omitempty"`
+	TotalUsers            int32                  `protobuf:"varint,5,opt,name=total_users,json=totalUsers,proto3" json:"total_users,omitempty"`
+	TotalEndpoints        int32                  `protobuf:"varint,6,opt,name=total_endpoints,json=totalEndpoints,proto3" json:"total_endpoints,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
+}
+
+func (x *SystemSettings) Reset() {
+	*x = SystemSettings{}
+	mi := &file_hookly_v1_common_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SystemSettings) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SystemSettings) ProtoMessage() {}
+
+func (x *SystemSettings) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_common_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SystemSettings.ProtoReflect.Descriptor instead.
+func (*SystemSettings) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_common_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *SystemSettings) GetBaseUrl() string {
+	if x != nil {
+		return x.BaseUrl
+	}
+	return ""
+}
+
+func (x *SystemSettings) GetGithubOrg() string {
+	if x != nil {
+		return x.GithubOrg
+	}
+	return ""
+}
+
+func (x *SystemSettings) GetGithubAllowedUsers() []string {
+	if x != nil {
+		return x.GithubAllowedUsers
+	}
+	return nil
+}
+
+func (x *SystemSettings) GetSystemTelegramEnabled() bool {
+	if x != nil {
+		return x.SystemTelegramEnabled
+	}
+	return false
+}
+
+func (x *SystemSettings) GetTotalUsers() int32 {
+	if x != nil {
+		return x.TotalUsers
+	}
+	return 0
+}
+
+func (x *SystemSettings) GetTotalEndpoints() int32 {
+	if x != nil {
+		return x.TotalEndpoints
+	}
+	return 0
+}
+
 var File_hookly_v1_common_proto protoreflect.FileDescriptor
 
 const file_hookly_v1_common_proto_rawDesc = "" +
@@ -806,7 +1104,36 @@ const file_hookly_v1_common_proto_rawDesc = "" +
 	"\x11dead_letter_count\x18\x03 \x01(\x05R\x0fdeadLetterCount\x120\n" +
 	"\x12home_hub_connected\x18\x04 \x01(\bB\x02\x18\x01R\x10homeHubConnected\x12U\n" +
 	"\x17last_home_hub_heartbeat\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x02\x18\x01R\x14lastHomeHubHeartbeat\x12M\n" +
-	"\x13connected_endpoints\x18\x06 \x03(\v2\x1c.hookly.v1.ConnectedEndpointR\x12connectedEndpoints*\xb2\x01\n" +
+	"\x13connected_endpoints\x18\x06 \x03(\v2\x1c.hookly.v1.ConnectedEndpointR\x12connectedEndpoints\"\xfa\x04\n" +
+	"\fUserSettings\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x1f\n" +
+	"\vgithub_name\x18\x03 \x01(\tR\n" +
+	"githubName\x12!\n" +
+	"\fgithub_email\x18\x04 \x01(\tR\vgithubEmail\x12,\n" +
+	"\x12github_profile_url\x18\x05 \x01(\tR\x10githubProfileUrl\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\x06 \x01(\tR\tavatarUrl\x12/\n" +
+	"\x13telegram_configured\x18\a \x01(\bR\x12telegramConfigured\x12(\n" +
+	"\x10telegram_chat_id\x18\b \x01(\tR\x0etelegramChatId\x12)\n" +
+	"\x10telegram_enabled\x18\t \x01(\bR\x0ftelegramEnabled\x12E\n" +
+	"\x10theme_preference\x18\n" +
+	" \x01(\x0e2\x1a.hookly.v1.ThemePreferenceR\x0fthemePreference\x12!\n" +
+	"\fis_superuser\x18\v \x01(\bR\visSuperuser\x129\n" +
+	"\n" +
+	"created_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12>\n" +
+	"\rlast_login_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\vlastLoginAt\"\xfe\x01\n" +
+	"\x0eSystemSettings\x12\x19\n" +
+	"\bbase_url\x18\x01 \x01(\tR\abaseUrl\x12\x1d\n" +
+	"\n" +
+	"github_org\x18\x02 \x01(\tR\tgithubOrg\x120\n" +
+	"\x14github_allowed_users\x18\x03 \x03(\tR\x12githubAllowedUsers\x126\n" +
+	"\x17system_telegram_enabled\x18\x04 \x01(\bR\x15systemTelegramEnabled\x12\x1f\n" +
+	"\vtotal_users\x18\x05 \x01(\x05R\n" +
+	"totalUsers\x12'\n" +
+	"\x0ftotal_endpoints\x18\x06 \x01(\x05R\x0etotalEndpoints*\xb2\x01\n" +
 	"\fProviderType\x12\x1d\n" +
 	"\x19PROVIDER_TYPE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14PROVIDER_TYPE_STRIPE\x10\x01\x12\x18\n" +
@@ -825,7 +1152,14 @@ const file_hookly_v1_common_proto_rawDesc = "" +
 	"\x16WEBHOOK_STATUS_PENDING\x10\x01\x12\x1c\n" +
 	"\x18WEBHOOK_STATUS_DELIVERED\x10\x02\x12\x19\n" +
 	"\x15WEBHOOK_STATUS_FAILED\x10\x03\x12\x1e\n" +
-	"\x1aWEBHOOK_STATUS_DEAD_LETTER\x10\x04B\x92\x01\n" +
+	"\x1aWEBHOOK_STATUS_DEAD_LETTER\x10\x04*\xd6\x01\n" +
+	"\x0fThemePreference\x12 \n" +
+	"\x1cTHEME_PREFERENCE_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17THEME_PREFERENCE_SYSTEM\x10\x01\x12\x1a\n" +
+	"\x16THEME_PREFERENCE_LIGHT\x10\x02\x12\x19\n" +
+	"\x15THEME_PREFERENCE_DARK\x10\x03\x12&\n" +
+	"\"THEME_PREFERENCE_PLACID_BLUE_LIGHT\x10\x04\x12%\n" +
+	"!THEME_PREFERENCE_PLACID_BLUE_DARK\x10\x05B\x92\x01\n" +
 	"\rcom.hookly.v1B\vCommonProtoP\x01Z/hooks.dx314.com/internal/api/hookly/v1;hooklyv1\xa2\x02\x03HXX\xaa\x02\tHookly.V1\xca\x02\tHookly\\V1\xe2\x02\x15Hookly\\V1\\GPBMetadata\xea\x02\n" +
 	"Hookly::V1b\x06proto3"
 
@@ -841,40 +1175,47 @@ func file_hookly_v1_common_proto_rawDescGZIP() []byte {
 	return file_hookly_v1_common_proto_rawDescData
 }
 
-var file_hookly_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_hookly_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_hookly_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_hookly_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_hookly_v1_common_proto_goTypes = []any{
 	(ProviderType)(0),             // 0: hookly.v1.ProviderType
 	(VerificationMethod)(0),       // 1: hookly.v1.VerificationMethod
 	(WebhookStatus)(0),            // 2: hookly.v1.WebhookStatus
-	(*VerificationConfig)(nil),    // 3: hookly.v1.VerificationConfig
-	(*Endpoint)(nil),              // 4: hookly.v1.Endpoint
-	(*Webhook)(nil),               // 5: hookly.v1.Webhook
-	(*PaginationRequest)(nil),     // 6: hookly.v1.PaginationRequest
-	(*PaginationResponse)(nil),    // 7: hookly.v1.PaginationResponse
-	(*ConnectedEndpoint)(nil),     // 8: hookly.v1.ConnectedEndpoint
-	(*SystemStatus)(nil),          // 9: hookly.v1.SystemStatus
-	nil,                           // 10: hookly.v1.Webhook.HeadersEntry
-	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
+	(ThemePreference)(0),          // 3: hookly.v1.ThemePreference
+	(*VerificationConfig)(nil),    // 4: hookly.v1.VerificationConfig
+	(*Endpoint)(nil),              // 5: hookly.v1.Endpoint
+	(*Webhook)(nil),               // 6: hookly.v1.Webhook
+	(*PaginationRequest)(nil),     // 7: hookly.v1.PaginationRequest
+	(*PaginationResponse)(nil),    // 8: hookly.v1.PaginationResponse
+	(*ConnectedEndpoint)(nil),     // 9: hookly.v1.ConnectedEndpoint
+	(*SystemStatus)(nil),          // 10: hookly.v1.SystemStatus
+	(*UserSettings)(nil),          // 11: hookly.v1.UserSettings
+	(*SystemSettings)(nil),        // 12: hookly.v1.SystemSettings
+	nil,                           // 13: hookly.v1.Webhook.HeadersEntry
+	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
 }
 var file_hookly_v1_common_proto_depIdxs = []int32{
 	1,  // 0: hookly.v1.VerificationConfig.method:type_name -> hookly.v1.VerificationMethod
 	0,  // 1: hookly.v1.Endpoint.provider_type:type_name -> hookly.v1.ProviderType
-	11, // 2: hookly.v1.Endpoint.created_at:type_name -> google.protobuf.Timestamp
-	11, // 3: hookly.v1.Endpoint.updated_at:type_name -> google.protobuf.Timestamp
-	3,  // 4: hookly.v1.Endpoint.verification_config:type_name -> hookly.v1.VerificationConfig
-	11, // 5: hookly.v1.Webhook.received_at:type_name -> google.protobuf.Timestamp
-	10, // 6: hookly.v1.Webhook.headers:type_name -> hookly.v1.Webhook.HeadersEntry
+	14, // 2: hookly.v1.Endpoint.created_at:type_name -> google.protobuf.Timestamp
+	14, // 3: hookly.v1.Endpoint.updated_at:type_name -> google.protobuf.Timestamp
+	4,  // 4: hookly.v1.Endpoint.verification_config:type_name -> hookly.v1.VerificationConfig
+	14, // 5: hookly.v1.Webhook.received_at:type_name -> google.protobuf.Timestamp
+	13, // 6: hookly.v1.Webhook.headers:type_name -> hookly.v1.Webhook.HeadersEntry
 	2,  // 7: hookly.v1.Webhook.status:type_name -> hookly.v1.WebhookStatus
-	11, // 8: hookly.v1.Webhook.last_attempt_at:type_name -> google.protobuf.Timestamp
-	11, // 9: hookly.v1.Webhook.delivered_at:type_name -> google.protobuf.Timestamp
-	11, // 10: hookly.v1.SystemStatus.last_home_hub_heartbeat:type_name -> google.protobuf.Timestamp
-	8,  // 11: hookly.v1.SystemStatus.connected_endpoints:type_name -> hookly.v1.ConnectedEndpoint
-	12, // [12:12] is the sub-list for method output_type
-	12, // [12:12] is the sub-list for method input_type
-	12, // [12:12] is the sub-list for extension type_name
-	12, // [12:12] is the sub-list for extension extendee
-	0,  // [0:12] is the sub-list for field type_name
+	14, // 8: hookly.v1.Webhook.last_attempt_at:type_name -> google.protobuf.Timestamp
+	14, // 9: hookly.v1.Webhook.delivered_at:type_name -> google.protobuf.Timestamp
+	14, // 10: hookly.v1.SystemStatus.last_home_hub_heartbeat:type_name -> google.protobuf.Timestamp
+	9,  // 11: hookly.v1.SystemStatus.connected_endpoints:type_name -> hookly.v1.ConnectedEndpoint
+	3,  // 12: hookly.v1.UserSettings.theme_preference:type_name -> hookly.v1.ThemePreference
+	14, // 13: hookly.v1.UserSettings.created_at:type_name -> google.protobuf.Timestamp
+	14, // 14: hookly.v1.UserSettings.updated_at:type_name -> google.protobuf.Timestamp
+	14, // 15: hookly.v1.UserSettings.last_login_at:type_name -> google.protobuf.Timestamp
+	16, // [16:16] is the sub-list for method output_type
+	16, // [16:16] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_hookly_v1_common_proto_init() }
@@ -887,8 +1228,8 @@ func file_hookly_v1_common_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hookly_v1_common_proto_rawDesc), len(file_hookly_v1_common_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   8,
+			NumEnums:      4,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

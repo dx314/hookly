@@ -59,6 +59,15 @@ const (
 	EdgeServiceGetStatusProcedure = "/hookly.v1.EdgeService/GetStatus"
 	// EdgeServiceGetSettingsProcedure is the fully-qualified name of the EdgeService's GetSettings RPC.
 	EdgeServiceGetSettingsProcedure = "/hookly.v1.EdgeService/GetSettings"
+	// EdgeServiceGetUserSettingsProcedure is the fully-qualified name of the EdgeService's
+	// GetUserSettings RPC.
+	EdgeServiceGetUserSettingsProcedure = "/hookly.v1.EdgeService/GetUserSettings"
+	// EdgeServiceUpdateUserSettingsProcedure is the fully-qualified name of the EdgeService's
+	// UpdateUserSettings RPC.
+	EdgeServiceUpdateUserSettingsProcedure = "/hookly.v1.EdgeService/UpdateUserSettings"
+	// EdgeServiceGetSystemSettingsProcedure is the fully-qualified name of the EdgeService's
+	// GetSystemSettings RPC.
+	EdgeServiceGetSystemSettingsProcedure = "/hookly.v1.EdgeService/GetSystemSettings"
 )
 
 // EdgeServiceClient is a client for the hookly.v1.EdgeService service.
@@ -76,6 +85,11 @@ type EdgeServiceClient interface {
 	// System status
 	GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error)
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
+	// User settings
+	GetUserSettings(context.Context, *connect.Request[v1.GetUserSettingsRequest]) (*connect.Response[v1.GetUserSettingsResponse], error)
+	UpdateUserSettings(context.Context, *connect.Request[v1.UpdateUserSettingsRequest]) (*connect.Response[v1.UpdateUserSettingsResponse], error)
+	// System settings (superuser only)
+	GetSystemSettings(context.Context, *connect.Request[v1.GetSystemSettingsRequest]) (*connect.Response[v1.GetSystemSettingsResponse], error)
 }
 
 // NewEdgeServiceClient constructs a client for the hookly.v1.EdgeService service. By default, it
@@ -149,21 +163,42 @@ func NewEdgeServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(edgeServiceMethods.ByName("GetSettings")),
 			connect.WithClientOptions(opts...),
 		),
+		getUserSettings: connect.NewClient[v1.GetUserSettingsRequest, v1.GetUserSettingsResponse](
+			httpClient,
+			baseURL+EdgeServiceGetUserSettingsProcedure,
+			connect.WithSchema(edgeServiceMethods.ByName("GetUserSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		updateUserSettings: connect.NewClient[v1.UpdateUserSettingsRequest, v1.UpdateUserSettingsResponse](
+			httpClient,
+			baseURL+EdgeServiceUpdateUserSettingsProcedure,
+			connect.WithSchema(edgeServiceMethods.ByName("UpdateUserSettings")),
+			connect.WithClientOptions(opts...),
+		),
+		getSystemSettings: connect.NewClient[v1.GetSystemSettingsRequest, v1.GetSystemSettingsResponse](
+			httpClient,
+			baseURL+EdgeServiceGetSystemSettingsProcedure,
+			connect.WithSchema(edgeServiceMethods.ByName("GetSystemSettings")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // edgeServiceClient implements EdgeServiceClient.
 type edgeServiceClient struct {
-	createEndpoint *connect.Client[v1.CreateEndpointRequest, v1.CreateEndpointResponse]
-	getEndpoint    *connect.Client[v1.GetEndpointRequest, v1.GetEndpointResponse]
-	listEndpoints  *connect.Client[v1.ListEndpointsRequest, v1.ListEndpointsResponse]
-	updateEndpoint *connect.Client[v1.UpdateEndpointRequest, v1.UpdateEndpointResponse]
-	deleteEndpoint *connect.Client[v1.DeleteEndpointRequest, v1.DeleteEndpointResponse]
-	getWebhook     *connect.Client[v1.GetWebhookRequest, v1.GetWebhookResponse]
-	listWebhooks   *connect.Client[v1.ListWebhooksRequest, v1.ListWebhooksResponse]
-	replayWebhook  *connect.Client[v1.ReplayWebhookRequest, v1.ReplayWebhookResponse]
-	getStatus      *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
-	getSettings    *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
+	createEndpoint     *connect.Client[v1.CreateEndpointRequest, v1.CreateEndpointResponse]
+	getEndpoint        *connect.Client[v1.GetEndpointRequest, v1.GetEndpointResponse]
+	listEndpoints      *connect.Client[v1.ListEndpointsRequest, v1.ListEndpointsResponse]
+	updateEndpoint     *connect.Client[v1.UpdateEndpointRequest, v1.UpdateEndpointResponse]
+	deleteEndpoint     *connect.Client[v1.DeleteEndpointRequest, v1.DeleteEndpointResponse]
+	getWebhook         *connect.Client[v1.GetWebhookRequest, v1.GetWebhookResponse]
+	listWebhooks       *connect.Client[v1.ListWebhooksRequest, v1.ListWebhooksResponse]
+	replayWebhook      *connect.Client[v1.ReplayWebhookRequest, v1.ReplayWebhookResponse]
+	getStatus          *connect.Client[v1.GetStatusRequest, v1.GetStatusResponse]
+	getSettings        *connect.Client[v1.GetSettingsRequest, v1.GetSettingsResponse]
+	getUserSettings    *connect.Client[v1.GetUserSettingsRequest, v1.GetUserSettingsResponse]
+	updateUserSettings *connect.Client[v1.UpdateUserSettingsRequest, v1.UpdateUserSettingsResponse]
+	getSystemSettings  *connect.Client[v1.GetSystemSettingsRequest, v1.GetSystemSettingsResponse]
 }
 
 // CreateEndpoint calls hookly.v1.EdgeService.CreateEndpoint.
@@ -216,6 +251,21 @@ func (c *edgeServiceClient) GetSettings(ctx context.Context, req *connect.Reques
 	return c.getSettings.CallUnary(ctx, req)
 }
 
+// GetUserSettings calls hookly.v1.EdgeService.GetUserSettings.
+func (c *edgeServiceClient) GetUserSettings(ctx context.Context, req *connect.Request[v1.GetUserSettingsRequest]) (*connect.Response[v1.GetUserSettingsResponse], error) {
+	return c.getUserSettings.CallUnary(ctx, req)
+}
+
+// UpdateUserSettings calls hookly.v1.EdgeService.UpdateUserSettings.
+func (c *edgeServiceClient) UpdateUserSettings(ctx context.Context, req *connect.Request[v1.UpdateUserSettingsRequest]) (*connect.Response[v1.UpdateUserSettingsResponse], error) {
+	return c.updateUserSettings.CallUnary(ctx, req)
+}
+
+// GetSystemSettings calls hookly.v1.EdgeService.GetSystemSettings.
+func (c *edgeServiceClient) GetSystemSettings(ctx context.Context, req *connect.Request[v1.GetSystemSettingsRequest]) (*connect.Response[v1.GetSystemSettingsResponse], error) {
+	return c.getSystemSettings.CallUnary(ctx, req)
+}
+
 // EdgeServiceHandler is an implementation of the hookly.v1.EdgeService service.
 type EdgeServiceHandler interface {
 	// Endpoint management
@@ -231,6 +281,11 @@ type EdgeServiceHandler interface {
 	// System status
 	GetStatus(context.Context, *connect.Request[v1.GetStatusRequest]) (*connect.Response[v1.GetStatusResponse], error)
 	GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error)
+	// User settings
+	GetUserSettings(context.Context, *connect.Request[v1.GetUserSettingsRequest]) (*connect.Response[v1.GetUserSettingsResponse], error)
+	UpdateUserSettings(context.Context, *connect.Request[v1.UpdateUserSettingsRequest]) (*connect.Response[v1.UpdateUserSettingsResponse], error)
+	// System settings (superuser only)
+	GetSystemSettings(context.Context, *connect.Request[v1.GetSystemSettingsRequest]) (*connect.Response[v1.GetSystemSettingsResponse], error)
 }
 
 // NewEdgeServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -300,6 +355,24 @@ func NewEdgeServiceHandler(svc EdgeServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(edgeServiceMethods.ByName("GetSettings")),
 		connect.WithHandlerOptions(opts...),
 	)
+	edgeServiceGetUserSettingsHandler := connect.NewUnaryHandler(
+		EdgeServiceGetUserSettingsProcedure,
+		svc.GetUserSettings,
+		connect.WithSchema(edgeServiceMethods.ByName("GetUserSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	edgeServiceUpdateUserSettingsHandler := connect.NewUnaryHandler(
+		EdgeServiceUpdateUserSettingsProcedure,
+		svc.UpdateUserSettings,
+		connect.WithSchema(edgeServiceMethods.ByName("UpdateUserSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
+	edgeServiceGetSystemSettingsHandler := connect.NewUnaryHandler(
+		EdgeServiceGetSystemSettingsProcedure,
+		svc.GetSystemSettings,
+		connect.WithSchema(edgeServiceMethods.ByName("GetSystemSettings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/hookly.v1.EdgeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case EdgeServiceCreateEndpointProcedure:
@@ -322,6 +395,12 @@ func NewEdgeServiceHandler(svc EdgeServiceHandler, opts ...connect.HandlerOption
 			edgeServiceGetStatusHandler.ServeHTTP(w, r)
 		case EdgeServiceGetSettingsProcedure:
 			edgeServiceGetSettingsHandler.ServeHTTP(w, r)
+		case EdgeServiceGetUserSettingsProcedure:
+			edgeServiceGetUserSettingsHandler.ServeHTTP(w, r)
+		case EdgeServiceUpdateUserSettingsProcedure:
+			edgeServiceUpdateUserSettingsHandler.ServeHTTP(w, r)
+		case EdgeServiceGetSystemSettingsProcedure:
+			edgeServiceGetSystemSettingsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -369,4 +448,16 @@ func (UnimplementedEdgeServiceHandler) GetStatus(context.Context, *connect.Reque
 
 func (UnimplementedEdgeServiceHandler) GetSettings(context.Context, *connect.Request[v1.GetSettingsRequest]) (*connect.Response[v1.GetSettingsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hookly.v1.EdgeService.GetSettings is not implemented"))
+}
+
+func (UnimplementedEdgeServiceHandler) GetUserSettings(context.Context, *connect.Request[v1.GetUserSettingsRequest]) (*connect.Response[v1.GetUserSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hookly.v1.EdgeService.GetUserSettings is not implemented"))
+}
+
+func (UnimplementedEdgeServiceHandler) UpdateUserSettings(context.Context, *connect.Request[v1.UpdateUserSettingsRequest]) (*connect.Response[v1.UpdateUserSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hookly.v1.EdgeService.UpdateUserSettings is not implemented"))
+}
+
+func (UnimplementedEdgeServiceHandler) GetSystemSettings(context.Context, *connect.Request[v1.GetSystemSettingsRequest]) (*connect.Response[v1.GetSystemSettingsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hookly.v1.EdgeService.GetSystemSettings is not implemented"))
 }

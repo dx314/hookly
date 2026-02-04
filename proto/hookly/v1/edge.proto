@@ -22,6 +22,13 @@ service EdgeService {
   // System status
   rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
   rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse);
+
+  // User settings
+  rpc GetUserSettings(GetUserSettingsRequest) returns (GetUserSettingsResponse);
+  rpc UpdateUserSettings(UpdateUserSettingsRequest) returns (UpdateUserSettingsResponse);
+
+  // System settings (superuser only)
+  rpc GetSystemSettings(GetSystemSettingsRequest) returns (GetSystemSettingsResponse);
 }
 
 // Endpoint requests/responses
@@ -125,4 +132,36 @@ message GetSettingsResponse {
   string user_id = 4;
   string username = 5;
   string avatar_url = 6;
+  // User preferences
+  ThemePreference theme_preference = 7;
+  bool is_superuser = 8;
+}
+
+// User settings requests/responses
+
+message GetUserSettingsRequest {}
+
+message GetUserSettingsResponse {
+  UserSettings settings = 1;
+}
+
+message UpdateUserSettingsRequest {
+  // Telegram settings (all optional - only set fields are updated)
+  optional string telegram_bot_token = 1;  // Write-only, encrypted at rest
+  optional string telegram_chat_id = 2;
+  optional bool telegram_enabled = 3;
+  // UI preferences
+  optional ThemePreference theme_preference = 4;
+}
+
+message UpdateUserSettingsResponse {
+  UserSettings settings = 1;
+}
+
+// System settings requests/responses (superuser only)
+
+message GetSystemSettingsRequest {}
+
+message GetSystemSettingsResponse {
+  SystemSettings settings = 1;
 }

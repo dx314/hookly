@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Endpoint, PaginationRequest, PaginationResponse, ProviderType, SystemStatus, VerificationConfig, Webhook, WebhookStatus } from "./common_pb";
+import type { Endpoint, PaginationRequest, PaginationResponse, ProviderType, SystemSettings, SystemStatus, ThemePreference, UserSettings, VerificationConfig, Webhook, WebhookStatus } from "./common_pb";
 import { file_hookly_v1_common } from "./common_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hookly/v1/edge.proto.
  */
 export const file_hookly_v1_edge: GenFile = /*@__PURE__*/
-  fileDesc("ChRob29rbHkvdjEvZWRnZS5wcm90bxIJaG9va2x5LnYxIsQBChVDcmVhdGVFbmRwb2ludFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIuCg1wcm92aWRlcl90eXBlGAIgASgOMhcuaG9va2x5LnYxLlByb3ZpZGVyVHlwZRIYChBzaWduYXR1cmVfc2VjcmV0GAMgASgJEhcKD2Rlc3RpbmF0aW9uX3VybBgEIAEoCRI6ChN2ZXJpZmljYXRpb25fY29uZmlnGAUgASgLMh0uaG9va2x5LnYxLlZlcmlmaWNhdGlvbkNvbmZpZyJUChZDcmVhdGVFbmRwb2ludFJlc3BvbnNlEiUKCGVuZHBvaW50GAEgASgLMhMuaG9va2x5LnYxLkVuZHBvaW50EhMKC3dlYmhvb2tfdXJsGAIgASgJIiAKEkdldEVuZHBvaW50UmVxdWVzdBIKCgJpZBgBIAEoCSJRChNHZXRFbmRwb2ludFJlc3BvbnNlEiUKCGVuZHBvaW50GAEgASgLMhMuaG9va2x5LnYxLkVuZHBvaW50EhMKC3dlYmhvb2tfdXJsGAIgASgJIkgKFExpc3RFbmRwb2ludHNSZXF1ZXN0EjAKCnBhZ2luYXRpb24YASABKAsyHC5ob29rbHkudjEuUGFnaW5hdGlvblJlcXVlc3QicgoVTGlzdEVuZHBvaW50c1Jlc3BvbnNlEiYKCWVuZHBvaW50cxgBIAMoCzITLmhvb2tseS52MS5FbmRwb2ludBIxCgpwYWdpbmF0aW9uGAIgASgLMh0uaG9va2x5LnYxLlBhZ2luYXRpb25SZXNwb25zZSL/AQoVVXBkYXRlRW5kcG9pbnRSZXF1ZXN0EgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARIdChBzaWduYXR1cmVfc2VjcmV0GAMgASgJSAGIAQESHAoPZGVzdGluYXRpb25fdXJsGAQgASgJSAKIAQESEgoFbXV0ZWQYBSABKAhIA4gBARI6ChN2ZXJpZmljYXRpb25fY29uZmlnGAYgASgLMh0uaG9va2x5LnYxLlZlcmlmaWNhdGlvbkNvbmZpZ0IHCgVfbmFtZUITChFfc2lnbmF0dXJlX3NlY3JldEISChBfZGVzdGluYXRpb25fdXJsQggKBl9tdXRlZCI/ChZVcGRhdGVFbmRwb2ludFJlc3BvbnNlEiUKCGVuZHBvaW50GAEgASgLMhMuaG9va2x5LnYxLkVuZHBvaW50IiMKFURlbGV0ZUVuZHBvaW50UmVxdWVzdBIKCgJpZBgBIAEoCSIYChZEZWxldGVFbmRwb2ludFJlc3BvbnNlIh8KEUdldFdlYmhvb2tSZXF1ZXN0EgoKAmlkGAEgASgJIjkKEkdldFdlYmhvb2tSZXNwb25zZRIjCgd3ZWJob29rGAEgASgLMhIuaG9va2x5LnYxLldlYmhvb2siqwEKE0xpc3RXZWJob29rc1JlcXVlc3QSGAoLZW5kcG9pbnRfaWQYASABKAlIAIgBARItCgZzdGF0dXMYAiABKA4yGC5ob29rbHkudjEuV2ViaG9va1N0YXR1c0gBiAEBEjAKCnBhZ2luYXRpb24YAyABKAsyHC5ob29rbHkudjEuUGFnaW5hdGlvblJlcXVlc3RCDgoMX2VuZHBvaW50X2lkQgkKB19zdGF0dXMibwoUTGlzdFdlYmhvb2tzUmVzcG9uc2USJAoId2ViaG9va3MYASADKAsyEi5ob29rbHkudjEuV2ViaG9vaxIxCgpwYWdpbmF0aW9uGAIgASgLMh0uaG9va2x5LnYxLlBhZ2luYXRpb25SZXNwb25zZSIiChRSZXBsYXlXZWJob29rUmVxdWVzdBIKCgJpZBgBIAEoCSI8ChVSZXBsYXlXZWJob29rUmVzcG9uc2USIwoHd2ViaG9vaxgBIAEoCzISLmhvb2tseS52MS5XZWJob29rIhIKEEdldFN0YXR1c1JlcXVlc3QiPAoRR2V0U3RhdHVzUmVzcG9uc2USJwoGc3RhdHVzGAEgASgLMhcuaG9va2x5LnYxLlN5c3RlbVN0YXR1cyIUChJHZXRTZXR0aW5nc1JlcXVlc3QiowEKE0dldFNldHRpbmdzUmVzcG9uc2USEAoIYmFzZV91cmwYASABKAkSGwoTZ2l0aHViX2F1dGhfZW5hYmxlZBgCIAEoCBImCh50ZWxlZ3JhbV9ub3RpZmljYXRpb25zX2VuYWJsZWQYAyABKAgSDwoHdXNlcl9pZBgEIAEoCRIQCgh1c2VybmFtZRgFIAEoCRISCgphdmF0YXJfdXJsGAYgASgJMroGCgtFZGdlU2VydmljZRJVCg5DcmVhdGVFbmRwb2ludBIgLmhvb2tseS52MS5DcmVhdGVFbmRwb2ludFJlcXVlc3QaIS5ob29rbHkudjEuQ3JlYXRlRW5kcG9pbnRSZXNwb25zZRJMCgtHZXRFbmRwb2ludBIdLmhvb2tseS52MS5HZXRFbmRwb2ludFJlcXVlc3QaHi5ob29rbHkudjEuR2V0RW5kcG9pbnRSZXNwb25zZRJSCg1MaXN0RW5kcG9pbnRzEh8uaG9va2x5LnYxLkxpc3RFbmRwb2ludHNSZXF1ZXN0GiAuaG9va2x5LnYxLkxpc3RFbmRwb2ludHNSZXNwb25zZRJVCg5VcGRhdGVFbmRwb2ludBIgLmhvb2tseS52MS5VcGRhdGVFbmRwb2ludFJlcXVlc3QaIS5ob29rbHkudjEuVXBkYXRlRW5kcG9pbnRSZXNwb25zZRJVCg5EZWxldGVFbmRwb2ludBIgLmhvb2tseS52MS5EZWxldGVFbmRwb2ludFJlcXVlc3QaIS5ob29rbHkudjEuRGVsZXRlRW5kcG9pbnRSZXNwb25zZRJJCgpHZXRXZWJob29rEhwuaG9va2x5LnYxLkdldFdlYmhvb2tSZXF1ZXN0Gh0uaG9va2x5LnYxLkdldFdlYmhvb2tSZXNwb25zZRJPCgxMaXN0V2ViaG9va3MSHi5ob29rbHkudjEuTGlzdFdlYmhvb2tzUmVxdWVzdBofLmhvb2tseS52MS5MaXN0V2ViaG9va3NSZXNwb25zZRJSCg1SZXBsYXlXZWJob29rEh8uaG9va2x5LnYxLlJlcGxheVdlYmhvb2tSZXF1ZXN0GiAuaG9va2x5LnYxLlJlcGxheVdlYmhvb2tSZXNwb25zZRJGCglHZXRTdGF0dXMSGy5ob29rbHkudjEuR2V0U3RhdHVzUmVxdWVzdBocLmhvb2tseS52MS5HZXRTdGF0dXNSZXNwb25zZRJMCgtHZXRTZXR0aW5ncxIdLmhvb2tseS52MS5HZXRTZXR0aW5nc1JlcXVlc3QaHi5ob29rbHkudjEuR2V0U2V0dGluZ3NSZXNwb25zZUKQAQoNY29tLmhvb2tseS52MUIJRWRnZVByb3RvUAFaL2hvb2tzLmR4MzE0LmNvbS9pbnRlcm5hbC9hcGkvaG9va2x5L3YxO2hvb2tseXYxogIDSFhYqgIJSG9va2x5LlYxygIJSG9va2x5XFYx4gIVSG9va2x5XFYxXEdQQk1ldGFkYXRh6gIKSG9va2x5OjpWMWIGcHJvdG8z", [file_hookly_v1_common]);
+  fileDesc("ChRob29rbHkvdjEvZWRnZS5wcm90bxIJaG9va2x5LnYxIsQBChVDcmVhdGVFbmRwb2ludFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIuCg1wcm92aWRlcl90eXBlGAIgASgOMhcuaG9va2x5LnYxLlByb3ZpZGVyVHlwZRIYChBzaWduYXR1cmVfc2VjcmV0GAMgASgJEhcKD2Rlc3RpbmF0aW9uX3VybBgEIAEoCRI6ChN2ZXJpZmljYXRpb25fY29uZmlnGAUgASgLMh0uaG9va2x5LnYxLlZlcmlmaWNhdGlvbkNvbmZpZyJUChZDcmVhdGVFbmRwb2ludFJlc3BvbnNlEiUKCGVuZHBvaW50GAEgASgLMhMuaG9va2x5LnYxLkVuZHBvaW50EhMKC3dlYmhvb2tfdXJsGAIgASgJIiAKEkdldEVuZHBvaW50UmVxdWVzdBIKCgJpZBgBIAEoCSJRChNHZXRFbmRwb2ludFJlc3BvbnNlEiUKCGVuZHBvaW50GAEgASgLMhMuaG9va2x5LnYxLkVuZHBvaW50EhMKC3dlYmhvb2tfdXJsGAIgASgJIkgKFExpc3RFbmRwb2ludHNSZXF1ZXN0EjAKCnBhZ2luYXRpb24YASABKAsyHC5ob29rbHkudjEuUGFnaW5hdGlvblJlcXVlc3QicgoVTGlzdEVuZHBvaW50c1Jlc3BvbnNlEiYKCWVuZHBvaW50cxgBIAMoCzITLmhvb2tseS52MS5FbmRwb2ludBIxCgpwYWdpbmF0aW9uGAIgASgLMh0uaG9va2x5LnYxLlBhZ2luYXRpb25SZXNwb25zZSL/AQoVVXBkYXRlRW5kcG9pbnRSZXF1ZXN0EgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARIdChBzaWduYXR1cmVfc2VjcmV0GAMgASgJSAGIAQESHAoPZGVzdGluYXRpb25fdXJsGAQgASgJSAKIAQESEgoFbXV0ZWQYBSABKAhIA4gBARI6ChN2ZXJpZmljYXRpb25fY29uZmlnGAYgASgLMh0uaG9va2x5LnYxLlZlcmlmaWNhdGlvbkNvbmZpZ0IHCgVfbmFtZUITChFfc2lnbmF0dXJlX3NlY3JldEISChBfZGVzdGluYXRpb25fdXJsQggKBl9tdXRlZCI/ChZVcGRhdGVFbmRwb2ludFJlc3BvbnNlEiUKCGVuZHBvaW50GAEgASgLMhMuaG9va2x5LnYxLkVuZHBvaW50IiMKFURlbGV0ZUVuZHBvaW50UmVxdWVzdBIKCgJpZBgBIAEoCSIYChZEZWxldGVFbmRwb2ludFJlc3BvbnNlIh8KEUdldFdlYmhvb2tSZXF1ZXN0EgoKAmlkGAEgASgJIjkKEkdldFdlYmhvb2tSZXNwb25zZRIjCgd3ZWJob29rGAEgASgLMhIuaG9va2x5LnYxLldlYmhvb2siqwEKE0xpc3RXZWJob29rc1JlcXVlc3QSGAoLZW5kcG9pbnRfaWQYASABKAlIAIgBARItCgZzdGF0dXMYAiABKA4yGC5ob29rbHkudjEuV2ViaG9va1N0YXR1c0gBiAEBEjAKCnBhZ2luYXRpb24YAyABKAsyHC5ob29rbHkudjEuUGFnaW5hdGlvblJlcXVlc3RCDgoMX2VuZHBvaW50X2lkQgkKB19zdGF0dXMibwoUTGlzdFdlYmhvb2tzUmVzcG9uc2USJAoId2ViaG9va3MYASADKAsyEi5ob29rbHkudjEuV2ViaG9vaxIxCgpwYWdpbmF0aW9uGAIgASgLMh0uaG9va2x5LnYxLlBhZ2luYXRpb25SZXNwb25zZSIiChRSZXBsYXlXZWJob29rUmVxdWVzdBIKCgJpZBgBIAEoCSI8ChVSZXBsYXlXZWJob29rUmVzcG9uc2USIwoHd2ViaG9vaxgBIAEoCzISLmhvb2tseS52MS5XZWJob29rIhIKEEdldFN0YXR1c1JlcXVlc3QiPAoRR2V0U3RhdHVzUmVzcG9uc2USJwoGc3RhdHVzGAEgASgLMhcuaG9va2x5LnYxLlN5c3RlbVN0YXR1cyIUChJHZXRTZXR0aW5nc1JlcXVlc3Qi7wEKE0dldFNldHRpbmdzUmVzcG9uc2USEAoIYmFzZV91cmwYASABKAkSGwoTZ2l0aHViX2F1dGhfZW5hYmxlZBgCIAEoCBImCh50ZWxlZ3JhbV9ub3RpZmljYXRpb25zX2VuYWJsZWQYAyABKAgSDwoHdXNlcl9pZBgEIAEoCRIQCgh1c2VybmFtZRgFIAEoCRISCgphdmF0YXJfdXJsGAYgASgJEjQKEHRoZW1lX3ByZWZlcmVuY2UYByABKA4yGi5ob29rbHkudjEuVGhlbWVQcmVmZXJlbmNlEhQKDGlzX3N1cGVydXNlchgIIAEoCCIYChZHZXRVc2VyU2V0dGluZ3NSZXF1ZXN0IkQKF0dldFVzZXJTZXR0aW5nc1Jlc3BvbnNlEikKCHNldHRpbmdzGAEgASgLMhcuaG9va2x5LnYxLlVzZXJTZXR0aW5ncyKLAgoZVXBkYXRlVXNlclNldHRpbmdzUmVxdWVzdBIfChJ0ZWxlZ3JhbV9ib3RfdG9rZW4YASABKAlIAIgBARIdChB0ZWxlZ3JhbV9jaGF0X2lkGAIgASgJSAGIAQESHQoQdGVsZWdyYW1fZW5hYmxlZBgDIAEoCEgCiAEBEjkKEHRoZW1lX3ByZWZlcmVuY2UYBCABKA4yGi5ob29rbHkudjEuVGhlbWVQcmVmZXJlbmNlSAOIAQFCFQoTX3RlbGVncmFtX2JvdF90b2tlbkITChFfdGVsZWdyYW1fY2hhdF9pZEITChFfdGVsZWdyYW1fZW5hYmxlZEITChFfdGhlbWVfcHJlZmVyZW5jZSJHChpVcGRhdGVVc2VyU2V0dGluZ3NSZXNwb25zZRIpCghzZXR0aW5ncxgBIAEoCzIXLmhvb2tseS52MS5Vc2VyU2V0dGluZ3MiGgoYR2V0U3lzdGVtU2V0dGluZ3NSZXF1ZXN0IkgKGUdldFN5c3RlbVNldHRpbmdzUmVzcG9uc2USKwoIc2V0dGluZ3MYASABKAsyGS5ob29rbHkudjEuU3lzdGVtU2V0dGluZ3My1wgKC0VkZ2VTZXJ2aWNlElUKDkNyZWF0ZUVuZHBvaW50EiAuaG9va2x5LnYxLkNyZWF0ZUVuZHBvaW50UmVxdWVzdBohLmhvb2tseS52MS5DcmVhdGVFbmRwb2ludFJlc3BvbnNlEkwKC0dldEVuZHBvaW50Eh0uaG9va2x5LnYxLkdldEVuZHBvaW50UmVxdWVzdBoeLmhvb2tseS52MS5HZXRFbmRwb2ludFJlc3BvbnNlElIKDUxpc3RFbmRwb2ludHMSHy5ob29rbHkudjEuTGlzdEVuZHBvaW50c1JlcXVlc3QaIC5ob29rbHkudjEuTGlzdEVuZHBvaW50c1Jlc3BvbnNlElUKDlVwZGF0ZUVuZHBvaW50EiAuaG9va2x5LnYxLlVwZGF0ZUVuZHBvaW50UmVxdWVzdBohLmhvb2tseS52MS5VcGRhdGVFbmRwb2ludFJlc3BvbnNlElUKDkRlbGV0ZUVuZHBvaW50EiAuaG9va2x5LnYxLkRlbGV0ZUVuZHBvaW50UmVxdWVzdBohLmhvb2tseS52MS5EZWxldGVFbmRwb2ludFJlc3BvbnNlEkkKCkdldFdlYmhvb2sSHC5ob29rbHkudjEuR2V0V2ViaG9va1JlcXVlc3QaHS5ob29rbHkudjEuR2V0V2ViaG9va1Jlc3BvbnNlEk8KDExpc3RXZWJob29rcxIeLmhvb2tseS52MS5MaXN0V2ViaG9va3NSZXF1ZXN0Gh8uaG9va2x5LnYxLkxpc3RXZWJob29rc1Jlc3BvbnNlElIKDVJlcGxheVdlYmhvb2sSHy5ob29rbHkudjEuUmVwbGF5V2ViaG9va1JlcXVlc3QaIC5ob29rbHkudjEuUmVwbGF5V2ViaG9va1Jlc3BvbnNlEkYKCUdldFN0YXR1cxIbLmhvb2tseS52MS5HZXRTdGF0dXNSZXF1ZXN0GhwuaG9va2x5LnYxLkdldFN0YXR1c1Jlc3BvbnNlEkwKC0dldFNldHRpbmdzEh0uaG9va2x5LnYxLkdldFNldHRpbmdzUmVxdWVzdBoeLmhvb2tseS52MS5HZXRTZXR0aW5nc1Jlc3BvbnNlElgKD0dldFVzZXJTZXR0aW5ncxIhLmhvb2tseS52MS5HZXRVc2VyU2V0dGluZ3NSZXF1ZXN0GiIuaG9va2x5LnYxLkdldFVzZXJTZXR0aW5nc1Jlc3BvbnNlEmEKElVwZGF0ZVVzZXJTZXR0aW5ncxIkLmhvb2tseS52MS5VcGRhdGVVc2VyU2V0dGluZ3NSZXF1ZXN0GiUuaG9va2x5LnYxLlVwZGF0ZVVzZXJTZXR0aW5nc1Jlc3BvbnNlEl4KEUdldFN5c3RlbVNldHRpbmdzEiMuaG9va2x5LnYxLkdldFN5c3RlbVNldHRpbmdzUmVxdWVzdBokLmhvb2tseS52MS5HZXRTeXN0ZW1TZXR0aW5nc1Jlc3BvbnNlQpABCg1jb20uaG9va2x5LnYxQglFZGdlUHJvdG9QAVovaG9va3MuZHgzMTQuY29tL2ludGVybmFsL2FwaS9ob29rbHkvdjE7aG9va2x5djGiAgNIWFiqAglIb29rbHkuVjHKAglIb29rbHlcVjHiAhVIb29rbHlcVjFcR1BCTWV0YWRhdGHqAgpIb29rbHk6OlYxYgZwcm90bzM", [file_hookly_v1_common]);
 
 /**
  * @generated from message hookly.v1.CreateEndpointRequest
@@ -441,6 +441,18 @@ export type GetSettingsResponse = Message<"hookly.v1.GetSettingsResponse"> & {
    * @generated from field: string avatar_url = 6;
    */
   avatarUrl: string;
+
+  /**
+   * User preferences
+   *
+   * @generated from field: hookly.v1.ThemePreference theme_preference = 7;
+   */
+  themePreference: ThemePreference;
+
+  /**
+   * @generated from field: bool is_superuser = 8;
+   */
+  isSuperuser: boolean;
 };
 
 /**
@@ -449,6 +461,121 @@ export type GetSettingsResponse = Message<"hookly.v1.GetSettingsResponse"> & {
  */
 export const GetSettingsResponseSchema: GenMessage<GetSettingsResponse> = /*@__PURE__*/
   messageDesc(file_hookly_v1_edge, 19);
+
+/**
+ * @generated from message hookly.v1.GetUserSettingsRequest
+ */
+export type GetUserSettingsRequest = Message<"hookly.v1.GetUserSettingsRequest"> & {
+};
+
+/**
+ * Describes the message hookly.v1.GetUserSettingsRequest.
+ * Use `create(GetUserSettingsRequestSchema)` to create a new message.
+ */
+export const GetUserSettingsRequestSchema: GenMessage<GetUserSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 20);
+
+/**
+ * @generated from message hookly.v1.GetUserSettingsResponse
+ */
+export type GetUserSettingsResponse = Message<"hookly.v1.GetUserSettingsResponse"> & {
+  /**
+   * @generated from field: hookly.v1.UserSettings settings = 1;
+   */
+  settings?: UserSettings;
+};
+
+/**
+ * Describes the message hookly.v1.GetUserSettingsResponse.
+ * Use `create(GetUserSettingsResponseSchema)` to create a new message.
+ */
+export const GetUserSettingsResponseSchema: GenMessage<GetUserSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 21);
+
+/**
+ * @generated from message hookly.v1.UpdateUserSettingsRequest
+ */
+export type UpdateUserSettingsRequest = Message<"hookly.v1.UpdateUserSettingsRequest"> & {
+  /**
+   * Telegram settings (all optional - only set fields are updated)
+   *
+   * Write-only, encrypted at rest
+   *
+   * @generated from field: optional string telegram_bot_token = 1;
+   */
+  telegramBotToken?: string;
+
+  /**
+   * @generated from field: optional string telegram_chat_id = 2;
+   */
+  telegramChatId?: string;
+
+  /**
+   * @generated from field: optional bool telegram_enabled = 3;
+   */
+  telegramEnabled?: boolean;
+
+  /**
+   * UI preferences
+   *
+   * @generated from field: optional hookly.v1.ThemePreference theme_preference = 4;
+   */
+  themePreference?: ThemePreference;
+};
+
+/**
+ * Describes the message hookly.v1.UpdateUserSettingsRequest.
+ * Use `create(UpdateUserSettingsRequestSchema)` to create a new message.
+ */
+export const UpdateUserSettingsRequestSchema: GenMessage<UpdateUserSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 22);
+
+/**
+ * @generated from message hookly.v1.UpdateUserSettingsResponse
+ */
+export type UpdateUserSettingsResponse = Message<"hookly.v1.UpdateUserSettingsResponse"> & {
+  /**
+   * @generated from field: hookly.v1.UserSettings settings = 1;
+   */
+  settings?: UserSettings;
+};
+
+/**
+ * Describes the message hookly.v1.UpdateUserSettingsResponse.
+ * Use `create(UpdateUserSettingsResponseSchema)` to create a new message.
+ */
+export const UpdateUserSettingsResponseSchema: GenMessage<UpdateUserSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 23);
+
+/**
+ * @generated from message hookly.v1.GetSystemSettingsRequest
+ */
+export type GetSystemSettingsRequest = Message<"hookly.v1.GetSystemSettingsRequest"> & {
+};
+
+/**
+ * Describes the message hookly.v1.GetSystemSettingsRequest.
+ * Use `create(GetSystemSettingsRequestSchema)` to create a new message.
+ */
+export const GetSystemSettingsRequestSchema: GenMessage<GetSystemSettingsRequest> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 24);
+
+/**
+ * @generated from message hookly.v1.GetSystemSettingsResponse
+ */
+export type GetSystemSettingsResponse = Message<"hookly.v1.GetSystemSettingsResponse"> & {
+  /**
+   * @generated from field: hookly.v1.SystemSettings settings = 1;
+   */
+  settings?: SystemSettings;
+};
+
+/**
+ * Describes the message hookly.v1.GetSystemSettingsResponse.
+ * Use `create(GetSystemSettingsResponseSchema)` to create a new message.
+ */
+export const GetSystemSettingsResponseSchema: GenMessage<GetSystemSettingsResponse> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 25);
 
 /**
  * EdgeService provides the API for managing endpoints and webhooks.
@@ -542,6 +669,34 @@ export const EdgeService: GenService<{
     methodKind: "unary";
     input: typeof GetSettingsRequestSchema;
     output: typeof GetSettingsResponseSchema;
+  },
+  /**
+   * User settings
+   *
+   * @generated from rpc hookly.v1.EdgeService.GetUserSettings
+   */
+  getUserSettings: {
+    methodKind: "unary";
+    input: typeof GetUserSettingsRequestSchema;
+    output: typeof GetUserSettingsResponseSchema;
+  },
+  /**
+   * @generated from rpc hookly.v1.EdgeService.UpdateUserSettings
+   */
+  updateUserSettings: {
+    methodKind: "unary";
+    input: typeof UpdateUserSettingsRequestSchema;
+    output: typeof UpdateUserSettingsResponseSchema;
+  },
+  /**
+   * System settings (superuser only)
+   *
+   * @generated from rpc hookly.v1.EdgeService.GetSystemSettings
+   */
+  getSystemSettings: {
+    methodKind: "unary";
+    input: typeof GetSystemSettingsRequestSchema;
+    output: typeof GetSystemSettingsResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_hookly_v1_edge, 0);

@@ -41,6 +41,22 @@ type Session struct {
 	ExpiresAt string         `json:"expires_at"`
 }
 
+type UserSetting struct {
+	UserID                    string         `json:"user_id"`
+	Username                  string         `json:"username"`
+	GithubName                sql.NullString `json:"github_name"`
+	GithubEmail               sql.NullString `json:"github_email"`
+	GithubProfileUrl          sql.NullString `json:"github_profile_url"`
+	AvatarUrl                 sql.NullString `json:"avatar_url"`
+	TelegramBotTokenEncrypted []byte         `json:"telegram_bot_token_encrypted"`
+	TelegramChatID            sql.NullString `json:"telegram_chat_id"`
+	TelegramEnabled           int64          `json:"telegram_enabled"`
+	ThemePreference           string         `json:"theme_preference"`
+	CreatedAt                 string         `json:"created_at"`
+	UpdatedAt                 string         `json:"updated_at"`
+	LastLoginAt               string         `json:"last_login_at"`
+}
+
 type Webhook struct {
 	ID               string         `json:"id"`
 	EndpointID       string         `json:"endpoint_id"`

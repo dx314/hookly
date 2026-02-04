@@ -559,6 +559,13 @@ func (s *Service) GetSettings(ctx context.Context, _ *connect.Request[hooklyv1.G
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("authentication required"))
 	}
 
+	// Try to get user's theme preference from settings
+	themePreference := hooklyv1.ThemePreference_THEME_PREFERENCE_SYSTEM
+	userSettings, err := s.queries.GetUserSettings(ctx, session.UserID)
+	if err == nil {
+		themePreference = mapStringToThemePreference(userSettings.ThemePreference)
+	}
+
 	return connect.NewResponse(&hooklyv1.GetSettingsResponse{
 		BaseUrl:                      s.cfg.BaseURL,
 		GithubAuthEnabled:            s.cfg.GitHubAuthEnabled(),
@@ -566,6 +573,186 @@ func (s *Service) GetSettings(ctx context.Context, _ *connect.Request[hooklyv1.G
 		UserId:                       session.UserID,
 		Username:                     session.Username,
 		AvatarUrl:                    session.AvatarURL,
+		ThemePreference:              themePreference,
+		IsSuperuser:                  auth.IsSuperuser(session.Username),
+	}), nil
+}
+
+// GetUserSettings returns the current user's settings.
+func (s *Service) GetUserSettings(ctx context.Context, _ *connect.Request[hooklyv1.GetUserSettingsRequest]) (*connect.Response[hooklyv1.GetUserSettingsResponse], error) {
+	session := auth.GetSessionFromContext(ctx)
+	if session == nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("authentication required"))
+	}
+
+	settings, err := s.queries.GetUserSettings(ctx, session.UserID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			// Return default settings if none exist
+			return connect.NewResponse(&hooklyv1.GetUserSettingsResponse{
+				Settings: &hooklyv1.UserSettings{
+					UserId:          session.UserID,
+					Username:        session.Username,
+					AvatarUrl:       session.AvatarURL,
+					ThemePreference: hooklyv1.ThemePreference_THEME_PREFERENCE_SYSTEM,
+					IsSuperuser:     auth.IsSuperuser(session.Username),
+				},
+			}), nil
+		}
+		slog.Error("failed to get user settings", "error", err, "user_id", session.UserID)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get user settings"))
+	}
+
+	return connect.NewResponse(&hooklyv1.GetUserSettingsResponse{
+		Settings: dbUserSettingsToProto(&settings, auth.IsSuperuser(session.Username)),
+	}), nil
+}
+
+// UpdateUserSettings updates the current user's settings.
+func (s *Service) UpdateUserSettings(ctx context.Context, req *connect.Request[hooklyv1.UpdateUserSettingsRequest]) (*connect.Response[hooklyv1.UpdateUserSettingsResponse], error) {
+	session := auth.GetSessionFromContext(ctx)
+	if session == nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("authentication required"))
+	}
+
+	msg := req.Msg
+	var settings db.UserSetting
+	var err error
+
+	// Ensure user settings row exists (for users who logged in before migration)
+	_, err = s.queries.GetUserSettings(ctx, session.UserID)
+	if errors.Is(err, sql.ErrNoRows) {
+		// Create the settings row
+		avatarURL := sql.NullString{}
+		if session.AvatarURL != "" {
+			avatarURL = sql.NullString{String: session.AvatarURL, Valid: true}
+		}
+		_, err = s.queries.UpsertUserSettings(ctx, db.UpsertUserSettingsParams{
+			UserID:    session.UserID,
+			Username:  session.Username,
+			AvatarUrl: avatarURL,
+		})
+		if err != nil {
+			slog.Error("failed to create user settings", "error", err, "user_id", session.UserID)
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to create user settings"))
+		}
+	} else if err != nil {
+		slog.Error("failed to get user settings", "error", err, "user_id", session.UserID)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get user settings"))
+	}
+
+	// Handle Telegram settings update
+	if msg.TelegramBotToken != nil || msg.TelegramChatId != nil || msg.TelegramEnabled != nil {
+		// Get current settings to preserve existing values
+		current, err := s.queries.GetUserSettings(ctx, session.UserID)
+		if err != nil {
+			slog.Error("failed to get user settings for update", "error", err, "user_id", session.UserID)
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get user settings"))
+		}
+
+		// Build update params
+		params := db.UpdateUserTelegramSettingsParams{
+			UserID:                    session.UserID,
+			TelegramBotTokenEncrypted: current.TelegramBotTokenEncrypted,
+			TelegramChatID:            current.TelegramChatID,
+			TelegramEnabled:           current.TelegramEnabled,
+		}
+
+		// Update token if provided
+		if msg.TelegramBotToken != nil && *msg.TelegramBotToken != "" {
+			encryptedToken, err := s.secretManager.EncryptSecret(*msg.TelegramBotToken)
+			if err != nil {
+				slog.Error("failed to encrypt telegram token", "error", err)
+				return nil, connect.NewError(connect.CodeInternal, errors.New("failed to encrypt telegram token"))
+			}
+			params.TelegramBotTokenEncrypted = encryptedToken
+		}
+
+		// Update chat ID if provided
+		if msg.TelegramChatId != nil {
+			params.TelegramChatID = sql.NullString{String: *msg.TelegramChatId, Valid: *msg.TelegramChatId != ""}
+		}
+
+		// Update enabled flag if provided
+		if msg.TelegramEnabled != nil {
+			if *msg.TelegramEnabled {
+				params.TelegramEnabled = 1
+			} else {
+				params.TelegramEnabled = 0
+			}
+		}
+
+		settings, err = s.queries.UpdateUserTelegramSettings(ctx, params)
+		if err != nil {
+			slog.Error("failed to update telegram settings", "error", err, "user_id", session.UserID)
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to update telegram settings"))
+		}
+
+		slog.Info("user telegram settings updated", "user_id", session.UserID)
+	}
+
+	// Handle theme preference update
+	if msg.ThemePreference != nil && *msg.ThemePreference != hooklyv1.ThemePreference_THEME_PREFERENCE_UNSPECIFIED {
+		themeStr := mapThemePreferenceToString(*msg.ThemePreference)
+		settings, err = s.queries.UpdateUserTheme(ctx, db.UpdateUserThemeParams{
+			UserID:          session.UserID,
+			ThemePreference: themeStr,
+		})
+		if err != nil {
+			slog.Error("failed to update theme preference", "error", err, "user_id", session.UserID)
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to update theme preference"))
+		}
+
+		slog.Info("user theme updated", "user_id", session.UserID, "theme", themeStr)
+	}
+
+	// If no updates were made, fetch current settings
+	if settings.UserID == "" {
+		settings, err = s.queries.GetUserSettings(ctx, session.UserID)
+		if err != nil {
+			slog.Error("failed to get user settings", "error", err, "user_id", session.UserID)
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get user settings"))
+		}
+	}
+
+	return connect.NewResponse(&hooklyv1.UpdateUserSettingsResponse{
+		Settings: dbUserSettingsToProto(&settings, auth.IsSuperuser(session.Username)),
+	}), nil
+}
+
+// GetSystemSettings returns system-wide settings (superuser only).
+func (s *Service) GetSystemSettings(ctx context.Context, _ *connect.Request[hooklyv1.GetSystemSettingsRequest]) (*connect.Response[hooklyv1.GetSystemSettingsResponse], error) {
+	session := auth.GetSessionFromContext(ctx)
+	if session == nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("authentication required"))
+	}
+
+	if !auth.IsSuperuser(session.Username) {
+		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("superuser access required"))
+	}
+
+	// Get stats
+	totalUsers, err := s.queries.CountUsers(ctx)
+	if err != nil {
+		slog.Error("failed to count users", "error", err)
+		totalUsers = 0
+	}
+
+	totalEndpoints, err := s.queries.CountAllEndpoints(ctx)
+	if err != nil {
+		slog.Error("failed to count endpoints", "error", err)
+		totalEndpoints = 0
+	}
+
+	return connect.NewResponse(&hooklyv1.GetSystemSettingsResponse{
+		Settings: &hooklyv1.SystemSettings{
+			BaseUrl:               s.cfg.BaseURL,
+			GithubOrg:             s.cfg.GitHubOrg,
+			GithubAllowedUsers:    s.cfg.GitHubAllowedUsers,
+			SystemTelegramEnabled: s.cfg.TelegramEnabled(),
+			TotalUsers:            int32(totalUsers),
+			TotalEndpoints:        int32(totalEndpoints),
+		},
 	}), nil
 }
 
@@ -767,5 +954,62 @@ func mapStringToVerificationMethod(s string) hooklyv1.VerificationMethod {
 		return hooklyv1.VerificationMethod_VERIFICATION_METHOD_TIMESTAMPED_HMAC
 	default:
 		return hooklyv1.VerificationMethod_VERIFICATION_METHOD_UNSPECIFIED
+	}
+}
+
+func mapThemePreferenceToString(t hooklyv1.ThemePreference) string {
+	switch t {
+	case hooklyv1.ThemePreference_THEME_PREFERENCE_SYSTEM:
+		return "system"
+	case hooklyv1.ThemePreference_THEME_PREFERENCE_LIGHT:
+		return "light"
+	case hooklyv1.ThemePreference_THEME_PREFERENCE_DARK:
+		return "dark"
+	case hooklyv1.ThemePreference_THEME_PREFERENCE_PLACID_BLUE_LIGHT:
+		return "placid-blue-light"
+	case hooklyv1.ThemePreference_THEME_PREFERENCE_PLACID_BLUE_DARK:
+		return "placid-blue-dark"
+	default:
+		return "system"
+	}
+}
+
+func mapStringToThemePreference(s string) hooklyv1.ThemePreference {
+	switch s {
+	case "system":
+		return hooklyv1.ThemePreference_THEME_PREFERENCE_SYSTEM
+	case "light":
+		return hooklyv1.ThemePreference_THEME_PREFERENCE_LIGHT
+	case "dark":
+		return hooklyv1.ThemePreference_THEME_PREFERENCE_DARK
+	case "placid-blue-light":
+		return hooklyv1.ThemePreference_THEME_PREFERENCE_PLACID_BLUE_LIGHT
+	case "placid-blue-dark":
+		return hooklyv1.ThemePreference_THEME_PREFERENCE_PLACID_BLUE_DARK
+	default:
+		return hooklyv1.ThemePreference_THEME_PREFERENCE_SYSTEM
+	}
+}
+
+func dbUserSettingsToProto(s *db.UserSetting, isSuperuser bool) *hooklyv1.UserSettings {
+	createdAt, _ := time.Parse("2006-01-02 15:04:05", s.CreatedAt)
+	updatedAt, _ := time.Parse("2006-01-02 15:04:05", s.UpdatedAt)
+	lastLoginAt, _ := time.Parse("2006-01-02 15:04:05", s.LastLoginAt)
+
+	return &hooklyv1.UserSettings{
+		UserId:             s.UserID,
+		Username:           s.Username,
+		GithubName:         s.GithubName.String,
+		GithubEmail:        s.GithubEmail.String,
+		GithubProfileUrl:   s.GithubProfileUrl.String,
+		AvatarUrl:          s.AvatarUrl.String,
+		TelegramConfigured: len(s.TelegramBotTokenEncrypted) > 0,
+		TelegramChatId:     s.TelegramChatID.String,
+		TelegramEnabled:    s.TelegramEnabled != 0,
+		ThemePreference:    mapStringToThemePreference(s.ThemePreference),
+		IsSuperuser:        isSuperuser,
+		CreatedAt:          timestamppb.New(createdAt),
+		UpdatedAt:          timestamppb.New(updatedAt),
+		LastLoginAt:        timestamppb.New(lastLoginAt),
 	}
 }

@@ -32,6 +32,7 @@ type GitHubUser struct {
 	AvatarURL string `json:"avatar_url"`
 	Name      string `json:"name"`
 	Email     string `json:"email"`
+	HTMLURL   string `json:"html_url"`
 }
 
 // GitHubToken represents an OAuth access token response.

@@ -60,12 +60,14 @@ func run() error {
 	// Create relay connection manager
 	connMgr := relay.NewConnectionManager()
 
-	// Create notifier
-	var notifier notify.Notifier = notify.NopNotifier{}
+	// Create notifier with per-user config support
+	var globalNotifier notify.Notifier = notify.NopNotifier{}
 	if cfg.TelegramEnabled() {
-		notifier = notify.NewTelegramNotifier(cfg.TelegramBotToken, cfg.TelegramChatID, cfg.BaseURL)
-		slog.Info("telegram notifications enabled")
+		globalNotifier = notify.NewTelegramNotifier(cfg.TelegramBotToken, cfg.TelegramChatID, cfg.BaseURL)
+		slog.Info("system telegram notifications enabled")
 	}
+	// Wrap with UserNotifier to support per-user Telegram config
+	notifier := notify.NewUserNotifier(queries, secretManager, globalNotifier, cfg.BaseURL)
 
 	// Create server
 	srv := server.New(fmt.Sprintf(":%d", cfg.Port))

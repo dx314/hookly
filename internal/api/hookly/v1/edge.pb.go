@@ -961,11 +961,14 @@ type GetSettingsResponse struct {
 	GithubAuthEnabled            bool                   `protobuf:"varint,2,opt,name=github_auth_enabled,json=githubAuthEnabled,proto3" json:"github_auth_enabled,omitempty"`
 	TelegramNotificationsEnabled bool                   `protobuf:"varint,3,opt,name=telegram_notifications_enabled,json=telegramNotificationsEnabled,proto3" json:"telegram_notifications_enabled,omitempty"`
 	// User info (requires authentication)
-	UserId        string `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Username      string `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
-	AvatarUrl     string `protobuf:"bytes,6,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	UserId    string `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Username  string `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+	AvatarUrl string `protobuf:"bytes,6,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	// User preferences
+	ThemePreference ThemePreference `protobuf:"varint,7,opt,name=theme_preference,json=themePreference,proto3,enum=hookly.v1.ThemePreference" json:"theme_preference,omitempty"`
+	IsSuperuser     bool            `protobuf:"varint,8,opt,name=is_superuser,json=isSuperuser,proto3" json:"is_superuser,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *GetSettingsResponse) Reset() {
@@ -1040,6 +1043,294 @@ func (x *GetSettingsResponse) GetAvatarUrl() string {
 	return ""
 }
 
+func (x *GetSettingsResponse) GetThemePreference() ThemePreference {
+	if x != nil {
+		return x.ThemePreference
+	}
+	return ThemePreference_THEME_PREFERENCE_UNSPECIFIED
+}
+
+func (x *GetSettingsResponse) GetIsSuperuser() bool {
+	if x != nil {
+		return x.IsSuperuser
+	}
+	return false
+}
+
+type GetUserSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserSettingsRequest) Reset() {
+	*x = GetUserSettingsRequest{}
+	mi := &file_hookly_v1_edge_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserSettingsRequest) ProtoMessage() {}
+
+func (x *GetUserSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_edge_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetUserSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_edge_proto_rawDescGZIP(), []int{20}
+}
+
+type GetUserSettingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *UserSettings          `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserSettingsResponse) Reset() {
+	*x = GetUserSettingsResponse{}
+	mi := &file_hookly_v1_edge_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserSettingsResponse) ProtoMessage() {}
+
+func (x *GetUserSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_edge_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetUserSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_edge_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *GetUserSettingsResponse) GetSettings() *UserSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+type UpdateUserSettingsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Telegram settings (all optional - only set fields are updated)
+	TelegramBotToken *string `protobuf:"bytes,1,opt,name=telegram_bot_token,json=telegramBotToken,proto3,oneof" json:"telegram_bot_token,omitempty"` // Write-only, encrypted at rest
+	TelegramChatId   *string `protobuf:"bytes,2,opt,name=telegram_chat_id,json=telegramChatId,proto3,oneof" json:"telegram_chat_id,omitempty"`
+	TelegramEnabled  *bool   `protobuf:"varint,3,opt,name=telegram_enabled,json=telegramEnabled,proto3,oneof" json:"telegram_enabled,omitempty"`
+	// UI preferences
+	ThemePreference *ThemePreference `protobuf:"varint,4,opt,name=theme_preference,json=themePreference,proto3,enum=hookly.v1.ThemePreference,oneof" json:"theme_preference,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *UpdateUserSettingsRequest) Reset() {
+	*x = UpdateUserSettingsRequest{}
+	mi := &file_hookly_v1_edge_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateUserSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateUserSettingsRequest) ProtoMessage() {}
+
+func (x *UpdateUserSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_edge_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateUserSettingsRequest.ProtoReflect.Descriptor instead.
+func (*UpdateUserSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_edge_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *UpdateUserSettingsRequest) GetTelegramBotToken() string {
+	if x != nil && x.TelegramBotToken != nil {
+		return *x.TelegramBotToken
+	}
+	return ""
+}
+
+func (x *UpdateUserSettingsRequest) GetTelegramChatId() string {
+	if x != nil && x.TelegramChatId != nil {
+		return *x.TelegramChatId
+	}
+	return ""
+}
+
+func (x *UpdateUserSettingsRequest) GetTelegramEnabled() bool {
+	if x != nil && x.TelegramEnabled != nil {
+		return *x.TelegramEnabled
+	}
+	return false
+}
+
+func (x *UpdateUserSettingsRequest) GetThemePreference() ThemePreference {
+	if x != nil && x.ThemePreference != nil {
+		return *x.ThemePreference
+	}
+	return ThemePreference_THEME_PREFERENCE_UNSPECIFIED
+}
+
+type UpdateUserSettingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *UserSettings          `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateUserSettingsResponse) Reset() {
+	*x = UpdateUserSettingsResponse{}
+	mi := &file_hookly_v1_edge_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateUserSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateUserSettingsResponse) ProtoMessage() {}
+
+func (x *UpdateUserSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_edge_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateUserSettingsResponse.ProtoReflect.Descriptor instead.
+func (*UpdateUserSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_edge_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *UpdateUserSettingsResponse) GetSettings() *UserSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
+type GetSystemSettingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSystemSettingsRequest) Reset() {
+	*x = GetSystemSettingsRequest{}
+	mi := &file_hookly_v1_edge_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSystemSettingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSystemSettingsRequest) ProtoMessage() {}
+
+func (x *GetSystemSettingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_edge_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSystemSettingsRequest.ProtoReflect.Descriptor instead.
+func (*GetSystemSettingsRequest) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_edge_proto_rawDescGZIP(), []int{24}
+}
+
+type GetSystemSettingsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Settings      *SystemSettings        `protobuf:"bytes,1,opt,name=settings,proto3" json:"settings,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetSystemSettingsResponse) Reset() {
+	*x = GetSystemSettingsResponse{}
+	mi := &file_hookly_v1_edge_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetSystemSettingsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetSystemSettingsResponse) ProtoMessage() {}
+
+func (x *GetSystemSettingsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_edge_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetSystemSettingsResponse.ProtoReflect.Descriptor instead.
+func (*GetSystemSettingsResponse) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_edge_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *GetSystemSettingsResponse) GetSettings() *SystemSettings {
+	if x != nil {
+		return x.Settings
+	}
+	return nil
+}
+
 var File_hookly_v1_edge_proto protoreflect.FileDescriptor
 
 const file_hookly_v1_edge_proto_rawDesc = "" +
@@ -1111,7 +1402,7 @@ const file_hookly_v1_edge_proto_rawDesc = "" +
 	"\x10GetStatusRequest\"D\n" +
 	"\x11GetStatusResponse\x12/\n" +
 	"\x06status\x18\x01 \x01(\v2\x17.hookly.v1.SystemStatusR\x06status\"\x14\n" +
-	"\x12GetSettingsRequest\"\xfa\x01\n" +
+	"\x12GetSettingsRequest\"\xe4\x02\n" +
 	"\x13GetSettingsResponse\x12\x19\n" +
 	"\bbase_url\x18\x01 \x01(\tR\abaseUrl\x12.\n" +
 	"\x13github_auth_enabled\x18\x02 \x01(\bR\x11githubAuthEnabled\x12D\n" +
@@ -1119,7 +1410,26 @@ const file_hookly_v1_edge_proto_rawDesc = "" +
 	"\auser_id\x18\x04 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x05 \x01(\tR\busername\x12\x1d\n" +
 	"\n" +
-	"avatar_url\x18\x06 \x01(\tR\tavatarUrl2\xba\x06\n" +
+	"avatar_url\x18\x06 \x01(\tR\tavatarUrl\x12E\n" +
+	"\x10theme_preference\x18\a \x01(\x0e2\x1a.hookly.v1.ThemePreferenceR\x0fthemePreference\x12!\n" +
+	"\fis_superuser\x18\b \x01(\bR\visSuperuser\"\x18\n" +
+	"\x16GetUserSettingsRequest\"N\n" +
+	"\x17GetUserSettingsResponse\x123\n" +
+	"\bsettings\x18\x01 \x01(\v2\x17.hookly.v1.UserSettingsR\bsettings\"\xcf\x02\n" +
+	"\x19UpdateUserSettingsRequest\x121\n" +
+	"\x12telegram_bot_token\x18\x01 \x01(\tH\x00R\x10telegramBotToken\x88\x01\x01\x12-\n" +
+	"\x10telegram_chat_id\x18\x02 \x01(\tH\x01R\x0etelegramChatId\x88\x01\x01\x12.\n" +
+	"\x10telegram_enabled\x18\x03 \x01(\bH\x02R\x0ftelegramEnabled\x88\x01\x01\x12J\n" +
+	"\x10theme_preference\x18\x04 \x01(\x0e2\x1a.hookly.v1.ThemePreferenceH\x03R\x0fthemePreference\x88\x01\x01B\x15\n" +
+	"\x13_telegram_bot_tokenB\x13\n" +
+	"\x11_telegram_chat_idB\x13\n" +
+	"\x11_telegram_enabledB\x13\n" +
+	"\x11_theme_preference\"Q\n" +
+	"\x1aUpdateUserSettingsResponse\x123\n" +
+	"\bsettings\x18\x01 \x01(\v2\x17.hookly.v1.UserSettingsR\bsettings\"\x1a\n" +
+	"\x18GetSystemSettingsRequest\"R\n" +
+	"\x19GetSystemSettingsResponse\x125\n" +
+	"\bsettings\x18\x01 \x01(\v2\x19.hookly.v1.SystemSettingsR\bsettings2\xd7\b\n" +
 	"\vEdgeService\x12U\n" +
 	"\x0eCreateEndpoint\x12 .hookly.v1.CreateEndpointRequest\x1a!.hookly.v1.CreateEndpointResponse\x12L\n" +
 	"\vGetEndpoint\x12\x1d.hookly.v1.GetEndpointRequest\x1a\x1e.hookly.v1.GetEndpointResponse\x12R\n" +
@@ -1131,7 +1441,10 @@ const file_hookly_v1_edge_proto_rawDesc = "" +
 	"\fListWebhooks\x12\x1e.hookly.v1.ListWebhooksRequest\x1a\x1f.hookly.v1.ListWebhooksResponse\x12R\n" +
 	"\rReplayWebhook\x12\x1f.hookly.v1.ReplayWebhookRequest\x1a .hookly.v1.ReplayWebhookResponse\x12F\n" +
 	"\tGetStatus\x12\x1b.hookly.v1.GetStatusRequest\x1a\x1c.hookly.v1.GetStatusResponse\x12L\n" +
-	"\vGetSettings\x12\x1d.hookly.v1.GetSettingsRequest\x1a\x1e.hookly.v1.GetSettingsResponseB\x90\x01\n" +
+	"\vGetSettings\x12\x1d.hookly.v1.GetSettingsRequest\x1a\x1e.hookly.v1.GetSettingsResponse\x12X\n" +
+	"\x0fGetUserSettings\x12!.hookly.v1.GetUserSettingsRequest\x1a\".hookly.v1.GetUserSettingsResponse\x12a\n" +
+	"\x12UpdateUserSettings\x12$.hookly.v1.UpdateUserSettingsRequest\x1a%.hookly.v1.UpdateUserSettingsResponse\x12^\n" +
+	"\x11GetSystemSettings\x12#.hookly.v1.GetSystemSettingsRequest\x1a$.hookly.v1.GetSystemSettingsResponseB\x90\x01\n" +
 	"\rcom.hookly.v1B\tEdgeProtoP\x01Z/hooks.dx314.com/internal/api/hookly/v1;hooklyv1\xa2\x02\x03HXX\xaa\x02\tHookly.V1\xca\x02\tHookly\\V1\xe2\x02\x15Hookly\\V1\\GPBMetadata\xea\x02\n" +
 	"Hookly::V1b\x06proto3"
 
@@ -1147,79 +1460,99 @@ func file_hookly_v1_edge_proto_rawDescGZIP() []byte {
 	return file_hookly_v1_edge_proto_rawDescData
 }
 
-var file_hookly_v1_edge_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_hookly_v1_edge_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_hookly_v1_edge_proto_goTypes = []any{
-	(*CreateEndpointRequest)(nil),  // 0: hookly.v1.CreateEndpointRequest
-	(*CreateEndpointResponse)(nil), // 1: hookly.v1.CreateEndpointResponse
-	(*GetEndpointRequest)(nil),     // 2: hookly.v1.GetEndpointRequest
-	(*GetEndpointResponse)(nil),    // 3: hookly.v1.GetEndpointResponse
-	(*ListEndpointsRequest)(nil),   // 4: hookly.v1.ListEndpointsRequest
-	(*ListEndpointsResponse)(nil),  // 5: hookly.v1.ListEndpointsResponse
-	(*UpdateEndpointRequest)(nil),  // 6: hookly.v1.UpdateEndpointRequest
-	(*UpdateEndpointResponse)(nil), // 7: hookly.v1.UpdateEndpointResponse
-	(*DeleteEndpointRequest)(nil),  // 8: hookly.v1.DeleteEndpointRequest
-	(*DeleteEndpointResponse)(nil), // 9: hookly.v1.DeleteEndpointResponse
-	(*GetWebhookRequest)(nil),      // 10: hookly.v1.GetWebhookRequest
-	(*GetWebhookResponse)(nil),     // 11: hookly.v1.GetWebhookResponse
-	(*ListWebhooksRequest)(nil),    // 12: hookly.v1.ListWebhooksRequest
-	(*ListWebhooksResponse)(nil),   // 13: hookly.v1.ListWebhooksResponse
-	(*ReplayWebhookRequest)(nil),   // 14: hookly.v1.ReplayWebhookRequest
-	(*ReplayWebhookResponse)(nil),  // 15: hookly.v1.ReplayWebhookResponse
-	(*GetStatusRequest)(nil),       // 16: hookly.v1.GetStatusRequest
-	(*GetStatusResponse)(nil),      // 17: hookly.v1.GetStatusResponse
-	(*GetSettingsRequest)(nil),     // 18: hookly.v1.GetSettingsRequest
-	(*GetSettingsResponse)(nil),    // 19: hookly.v1.GetSettingsResponse
-	(ProviderType)(0),              // 20: hookly.v1.ProviderType
-	(*VerificationConfig)(nil),     // 21: hookly.v1.VerificationConfig
-	(*Endpoint)(nil),               // 22: hookly.v1.Endpoint
-	(*PaginationRequest)(nil),      // 23: hookly.v1.PaginationRequest
-	(*PaginationResponse)(nil),     // 24: hookly.v1.PaginationResponse
-	(*Webhook)(nil),                // 25: hookly.v1.Webhook
-	(WebhookStatus)(0),             // 26: hookly.v1.WebhookStatus
-	(*SystemStatus)(nil),           // 27: hookly.v1.SystemStatus
+	(*CreateEndpointRequest)(nil),      // 0: hookly.v1.CreateEndpointRequest
+	(*CreateEndpointResponse)(nil),     // 1: hookly.v1.CreateEndpointResponse
+	(*GetEndpointRequest)(nil),         // 2: hookly.v1.GetEndpointRequest
+	(*GetEndpointResponse)(nil),        // 3: hookly.v1.GetEndpointResponse
+	(*ListEndpointsRequest)(nil),       // 4: hookly.v1.ListEndpointsRequest
+	(*ListEndpointsResponse)(nil),      // 5: hookly.v1.ListEndpointsResponse
+	(*UpdateEndpointRequest)(nil),      // 6: hookly.v1.UpdateEndpointRequest
+	(*UpdateEndpointResponse)(nil),     // 7: hookly.v1.UpdateEndpointResponse
+	(*DeleteEndpointRequest)(nil),      // 8: hookly.v1.DeleteEndpointRequest
+	(*DeleteEndpointResponse)(nil),     // 9: hookly.v1.DeleteEndpointResponse
+	(*GetWebhookRequest)(nil),          // 10: hookly.v1.GetWebhookRequest
+	(*GetWebhookResponse)(nil),         // 11: hookly.v1.GetWebhookResponse
+	(*ListWebhooksRequest)(nil),        // 12: hookly.v1.ListWebhooksRequest
+	(*ListWebhooksResponse)(nil),       // 13: hookly.v1.ListWebhooksResponse
+	(*ReplayWebhookRequest)(nil),       // 14: hookly.v1.ReplayWebhookRequest
+	(*ReplayWebhookResponse)(nil),      // 15: hookly.v1.ReplayWebhookResponse
+	(*GetStatusRequest)(nil),           // 16: hookly.v1.GetStatusRequest
+	(*GetStatusResponse)(nil),          // 17: hookly.v1.GetStatusResponse
+	(*GetSettingsRequest)(nil),         // 18: hookly.v1.GetSettingsRequest
+	(*GetSettingsResponse)(nil),        // 19: hookly.v1.GetSettingsResponse
+	(*GetUserSettingsRequest)(nil),     // 20: hookly.v1.GetUserSettingsRequest
+	(*GetUserSettingsResponse)(nil),    // 21: hookly.v1.GetUserSettingsResponse
+	(*UpdateUserSettingsRequest)(nil),  // 22: hookly.v1.UpdateUserSettingsRequest
+	(*UpdateUserSettingsResponse)(nil), // 23: hookly.v1.UpdateUserSettingsResponse
+	(*GetSystemSettingsRequest)(nil),   // 24: hookly.v1.GetSystemSettingsRequest
+	(*GetSystemSettingsResponse)(nil),  // 25: hookly.v1.GetSystemSettingsResponse
+	(ProviderType)(0),                  // 26: hookly.v1.ProviderType
+	(*VerificationConfig)(nil),         // 27: hookly.v1.VerificationConfig
+	(*Endpoint)(nil),                   // 28: hookly.v1.Endpoint
+	(*PaginationRequest)(nil),          // 29: hookly.v1.PaginationRequest
+	(*PaginationResponse)(nil),         // 30: hookly.v1.PaginationResponse
+	(*Webhook)(nil),                    // 31: hookly.v1.Webhook
+	(WebhookStatus)(0),                 // 32: hookly.v1.WebhookStatus
+	(*SystemStatus)(nil),               // 33: hookly.v1.SystemStatus
+	(ThemePreference)(0),               // 34: hookly.v1.ThemePreference
+	(*UserSettings)(nil),               // 35: hookly.v1.UserSettings
+	(*SystemSettings)(nil),             // 36: hookly.v1.SystemSettings
 }
 var file_hookly_v1_edge_proto_depIdxs = []int32{
-	20, // 0: hookly.v1.CreateEndpointRequest.provider_type:type_name -> hookly.v1.ProviderType
-	21, // 1: hookly.v1.CreateEndpointRequest.verification_config:type_name -> hookly.v1.VerificationConfig
-	22, // 2: hookly.v1.CreateEndpointResponse.endpoint:type_name -> hookly.v1.Endpoint
-	22, // 3: hookly.v1.GetEndpointResponse.endpoint:type_name -> hookly.v1.Endpoint
-	23, // 4: hookly.v1.ListEndpointsRequest.pagination:type_name -> hookly.v1.PaginationRequest
-	22, // 5: hookly.v1.ListEndpointsResponse.endpoints:type_name -> hookly.v1.Endpoint
-	24, // 6: hookly.v1.ListEndpointsResponse.pagination:type_name -> hookly.v1.PaginationResponse
-	21, // 7: hookly.v1.UpdateEndpointRequest.verification_config:type_name -> hookly.v1.VerificationConfig
-	22, // 8: hookly.v1.UpdateEndpointResponse.endpoint:type_name -> hookly.v1.Endpoint
-	25, // 9: hookly.v1.GetWebhookResponse.webhook:type_name -> hookly.v1.Webhook
-	26, // 10: hookly.v1.ListWebhooksRequest.status:type_name -> hookly.v1.WebhookStatus
-	23, // 11: hookly.v1.ListWebhooksRequest.pagination:type_name -> hookly.v1.PaginationRequest
-	25, // 12: hookly.v1.ListWebhooksResponse.webhooks:type_name -> hookly.v1.Webhook
-	24, // 13: hookly.v1.ListWebhooksResponse.pagination:type_name -> hookly.v1.PaginationResponse
-	25, // 14: hookly.v1.ReplayWebhookResponse.webhook:type_name -> hookly.v1.Webhook
-	27, // 15: hookly.v1.GetStatusResponse.status:type_name -> hookly.v1.SystemStatus
-	0,  // 16: hookly.v1.EdgeService.CreateEndpoint:input_type -> hookly.v1.CreateEndpointRequest
-	2,  // 17: hookly.v1.EdgeService.GetEndpoint:input_type -> hookly.v1.GetEndpointRequest
-	4,  // 18: hookly.v1.EdgeService.ListEndpoints:input_type -> hookly.v1.ListEndpointsRequest
-	6,  // 19: hookly.v1.EdgeService.UpdateEndpoint:input_type -> hookly.v1.UpdateEndpointRequest
-	8,  // 20: hookly.v1.EdgeService.DeleteEndpoint:input_type -> hookly.v1.DeleteEndpointRequest
-	10, // 21: hookly.v1.EdgeService.GetWebhook:input_type -> hookly.v1.GetWebhookRequest
-	12, // 22: hookly.v1.EdgeService.ListWebhooks:input_type -> hookly.v1.ListWebhooksRequest
-	14, // 23: hookly.v1.EdgeService.ReplayWebhook:input_type -> hookly.v1.ReplayWebhookRequest
-	16, // 24: hookly.v1.EdgeService.GetStatus:input_type -> hookly.v1.GetStatusRequest
-	18, // 25: hookly.v1.EdgeService.GetSettings:input_type -> hookly.v1.GetSettingsRequest
-	1,  // 26: hookly.v1.EdgeService.CreateEndpoint:output_type -> hookly.v1.CreateEndpointResponse
-	3,  // 27: hookly.v1.EdgeService.GetEndpoint:output_type -> hookly.v1.GetEndpointResponse
-	5,  // 28: hookly.v1.EdgeService.ListEndpoints:output_type -> hookly.v1.ListEndpointsResponse
-	7,  // 29: hookly.v1.EdgeService.UpdateEndpoint:output_type -> hookly.v1.UpdateEndpointResponse
-	9,  // 30: hookly.v1.EdgeService.DeleteEndpoint:output_type -> hookly.v1.DeleteEndpointResponse
-	11, // 31: hookly.v1.EdgeService.GetWebhook:output_type -> hookly.v1.GetWebhookResponse
-	13, // 32: hookly.v1.EdgeService.ListWebhooks:output_type -> hookly.v1.ListWebhooksResponse
-	15, // 33: hookly.v1.EdgeService.ReplayWebhook:output_type -> hookly.v1.ReplayWebhookResponse
-	17, // 34: hookly.v1.EdgeService.GetStatus:output_type -> hookly.v1.GetStatusResponse
-	19, // 35: hookly.v1.EdgeService.GetSettings:output_type -> hookly.v1.GetSettingsResponse
-	26, // [26:36] is the sub-list for method output_type
-	16, // [16:26] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	26, // 0: hookly.v1.CreateEndpointRequest.provider_type:type_name -> hookly.v1.ProviderType
+	27, // 1: hookly.v1.CreateEndpointRequest.verification_config:type_name -> hookly.v1.VerificationConfig
+	28, // 2: hookly.v1.CreateEndpointResponse.endpoint:type_name -> hookly.v1.Endpoint
+	28, // 3: hookly.v1.GetEndpointResponse.endpoint:type_name -> hookly.v1.Endpoint
+	29, // 4: hookly.v1.ListEndpointsRequest.pagination:type_name -> hookly.v1.PaginationRequest
+	28, // 5: hookly.v1.ListEndpointsResponse.endpoints:type_name -> hookly.v1.Endpoint
+	30, // 6: hookly.v1.ListEndpointsResponse.pagination:type_name -> hookly.v1.PaginationResponse
+	27, // 7: hookly.v1.UpdateEndpointRequest.verification_config:type_name -> hookly.v1.VerificationConfig
+	28, // 8: hookly.v1.UpdateEndpointResponse.endpoint:type_name -> hookly.v1.Endpoint
+	31, // 9: hookly.v1.GetWebhookResponse.webhook:type_name -> hookly.v1.Webhook
+	32, // 10: hookly.v1.ListWebhooksRequest.status:type_name -> hookly.v1.WebhookStatus
+	29, // 11: hookly.v1.ListWebhooksRequest.pagination:type_name -> hookly.v1.PaginationRequest
+	31, // 12: hookly.v1.ListWebhooksResponse.webhooks:type_name -> hookly.v1.Webhook
+	30, // 13: hookly.v1.ListWebhooksResponse.pagination:type_name -> hookly.v1.PaginationResponse
+	31, // 14: hookly.v1.ReplayWebhookResponse.webhook:type_name -> hookly.v1.Webhook
+	33, // 15: hookly.v1.GetStatusResponse.status:type_name -> hookly.v1.SystemStatus
+	34, // 16: hookly.v1.GetSettingsResponse.theme_preference:type_name -> hookly.v1.ThemePreference
+	35, // 17: hookly.v1.GetUserSettingsResponse.settings:type_name -> hookly.v1.UserSettings
+	34, // 18: hookly.v1.UpdateUserSettingsRequest.theme_preference:type_name -> hookly.v1.ThemePreference
+	35, // 19: hookly.v1.UpdateUserSettingsResponse.settings:type_name -> hookly.v1.UserSettings
+	36, // 20: hookly.v1.GetSystemSettingsResponse.settings:type_name -> hookly.v1.SystemSettings
+	0,  // 21: hookly.v1.EdgeService.CreateEndpoint:input_type -> hookly.v1.CreateEndpointRequest
+	2,  // 22: hookly.v1.EdgeService.GetEndpoint:input_type -> hookly.v1.GetEndpointRequest
+	4,  // 23: hookly.v1.EdgeService.ListEndpoints:input_type -> hookly.v1.ListEndpointsRequest
+	6,  // 24: hookly.v1.EdgeService.UpdateEndpoint:input_type -> hookly.v1.UpdateEndpointRequest
+	8,  // 25: hookly.v1.EdgeService.DeleteEndpoint:input_type -> hookly.v1.DeleteEndpointRequest
+	10, // 26: hookly.v1.EdgeService.GetWebhook:input_type -> hookly.v1.GetWebhookRequest
+	12, // 27: hookly.v1.EdgeService.ListWebhooks:input_type -> hookly.v1.ListWebhooksRequest
+	14, // 28: hookly.v1.EdgeService.ReplayWebhook:input_type -> hookly.v1.ReplayWebhookRequest
+	16, // 29: hookly.v1.EdgeService.GetStatus:input_type -> hookly.v1.GetStatusRequest
+	18, // 30: hookly.v1.EdgeService.GetSettings:input_type -> hookly.v1.GetSettingsRequest
+	20, // 31: hookly.v1.EdgeService.GetUserSettings:input_type -> hookly.v1.GetUserSettingsRequest
+	22, // 32: hookly.v1.EdgeService.UpdateUserSettings:input_type -> hookly.v1.UpdateUserSettingsRequest
+	24, // 33: hookly.v1.EdgeService.GetSystemSettings:input_type -> hookly.v1.GetSystemSettingsRequest
+	1,  // 34: hookly.v1.EdgeService.CreateEndpoint:output_type -> hookly.v1.CreateEndpointResponse
+	3,  // 35: hookly.v1.EdgeService.GetEndpoint:output_type -> hookly.v1.GetEndpointResponse
+	5,  // 36: hookly.v1.EdgeService.ListEndpoints:output_type -> hookly.v1.ListEndpointsResponse
+	7,  // 37: hookly.v1.EdgeService.UpdateEndpoint:output_type -> hookly.v1.UpdateEndpointResponse
+	9,  // 38: hookly.v1.EdgeService.DeleteEndpoint:output_type -> hookly.v1.DeleteEndpointResponse
+	11, // 39: hookly.v1.EdgeService.GetWebhook:output_type -> hookly.v1.GetWebhookResponse
+	13, // 40: hookly.v1.EdgeService.ListWebhooks:output_type -> hookly.v1.ListWebhooksResponse
+	15, // 41: hookly.v1.EdgeService.ReplayWebhook:output_type -> hookly.v1.ReplayWebhookResponse
+	17, // 42: hookly.v1.EdgeService.GetStatus:output_type -> hookly.v1.GetStatusResponse
+	19, // 43: hookly.v1.EdgeService.GetSettings:output_type -> hookly.v1.GetSettingsResponse
+	21, // 44: hookly.v1.EdgeService.GetUserSettings:output_type -> hookly.v1.GetUserSettingsResponse
+	23, // 45: hookly.v1.EdgeService.UpdateUserSettings:output_type -> hookly.v1.UpdateUserSettingsResponse
+	25, // 46: hookly.v1.EdgeService.GetSystemSettings:output_type -> hookly.v1.GetSystemSettingsResponse
+	34, // [34:47] is the sub-list for method output_type
+	21, // [21:34] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_hookly_v1_edge_proto_init() }
@@ -1230,13 +1563,14 @@ func file_hookly_v1_edge_proto_init() {
 	file_hookly_v1_common_proto_init()
 	file_hookly_v1_edge_proto_msgTypes[6].OneofWrappers = []any{}
 	file_hookly_v1_edge_proto_msgTypes[12].OneofWrappers = []any{}
+	file_hookly_v1_edge_proto_msgTypes[22].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hookly_v1_edge_proto_rawDesc), len(file_hookly_v1_edge_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hookly/v1/common.proto.
  */
 export const file_hookly_v1_common: GenFile = /*@__PURE__*/
-  fileDesc("ChZob29rbHkvdjEvY29tbW9uLnByb3RvEglob29rbHkudjEirgEKElZlcmlmaWNhdGlvbkNvbmZpZxItCgZtZXRob2QYASABKA4yHS5ob29rbHkudjEuVmVyaWZpY2F0aW9uTWV0aG9kEhgKEHNpZ25hdHVyZV9oZWFkZXIYAiABKAkSGAoQc2lnbmF0dXJlX3ByZWZpeBgDIAEoCRIYChB0aW1lc3RhbXBfaGVhZGVyGAQgASgJEhsKE3RpbWVzdGFtcF90b2xlcmFuY2UYBSABKAMimAIKCEVuZHBvaW50EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSLgoNcHJvdmlkZXJfdHlwZRgDIAEoDjIXLmhvb2tseS52MS5Qcm92aWRlclR5cGUSFwoPZGVzdGluYXRpb25fdXJsGAQgASgJEg0KBW11dGVkGAUgASgIEi4KCmNyZWF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjoKE3ZlcmlmaWNhdGlvbl9jb25maWcYCCABKAsyHS5ob29rbHkudjEuVmVyaWZpY2F0aW9uQ29uZmlnIqEDCgdXZWJob29rEgoKAmlkGAEgASgJEhMKC2VuZHBvaW50X2lkGAIgASgJEi8KC3JlY2VpdmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgdoZWFkZXJzGAQgAygLMh8uaG9va2x5LnYxLldlYmhvb2suSGVhZGVyc0VudHJ5Eg8KB3BheWxvYWQYBSABKAwSFwoPc2lnbmF0dXJlX3ZhbGlkGAYgASgIEigKBnN0YXR1cxgHIAEoDjIYLmhvb2tseS52MS5XZWJob29rU3RhdHVzEhAKCGF0dGVtcHRzGAggASgFEjMKD2xhc3RfYXR0ZW1wdF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMZGVsaXZlcmVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCg1lcnJvcl9tZXNzYWdlGAsgASgJGi4KDEhlYWRlcnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIjoKEVBhZ2luYXRpb25SZXF1ZXN0EhEKCXBhZ2Vfc2l6ZRgBIAEoBRISCgpwYWdlX3Rva2VuGAIgASgJIkIKElBhZ2luYXRpb25SZXNwb25zZRIXCg9uZXh0X3BhZ2VfdG9rZW4YASABKAkSEwoLdG90YWxfY291bnQYAiABKAUiLQoRQ29ubmVjdGVkRW5kcG9pbnQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCSLyAQoMU3lzdGVtU3RhdHVzEhUKDXBlbmRpbmdfY291bnQYASABKAUSFAoMZmFpbGVkX2NvdW50GAIgASgFEhkKEWRlYWRfbGV0dGVyX2NvdW50GAMgASgFEh4KEmhvbWVfaHViX2Nvbm5lY3RlZBgEIAEoCEICGAESPwoXbGFzdF9ob21lX2h1Yl9oZWFydGJlYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgIYARI5ChNjb25uZWN0ZWRfZW5kcG9pbnRzGAYgAygLMhwuaG9va2x5LnYxLkNvbm5lY3RlZEVuZHBvaW50KrIBCgxQcm92aWRlclR5cGUSHQoZUFJPVklERVJfVFlQRV9VTlNQRUNJRklFRBAAEhgKFFBST1ZJREVSX1RZUEVfU1RSSVBFEAESGAoUUFJPVklERVJfVFlQRV9HSVRIVUIQAhIaChZQUk9WSURFUl9UWVBFX1RFTEVHUkFNEAMSGQoVUFJPVklERVJfVFlQRV9HRU5FUklDEAQSGAoUUFJPVklERVJfVFlQRV9DVVNUT00QBSrLAQoSVmVyaWZpY2F0aW9uTWV0aG9kEiMKH1ZFUklGSUNBVElPTl9NRVRIT0RfVU5TUEVDSUZJRUQQABIeChpWRVJJRklDQVRJT05fTUVUSE9EX1NUQVRJQxABEiMKH1ZFUklGSUNBVElPTl9NRVRIT0RfSE1BQ19TSEEyNTYQAhIhCh1WRVJJRklDQVRJT05fTUVUSE9EX0hNQUNfU0hBMRADEigKJFZFUklGSUNBVElPTl9NRVRIT0RfVElNRVNUQU1QRURfSE1BQxAEKqQBCg1XZWJob29rU3RhdHVzEh4KGldFQkhPT0tfU1RBVFVTX1VOU1BFQ0lGSUVEEAASGgoWV0VCSE9PS19TVEFUVVNfUEVORElORxABEhwKGFdFQkhPT0tfU1RBVFVTX0RFTElWRVJFRBACEhkKFVdFQkhPT0tfU1RBVFVTX0ZBSUxFRBADEh4KGldFQkhPT0tfU1RBVFVTX0RFQURfTEVUVEVSEARCkgEKDWNvbS5ob29rbHkudjFCC0NvbW1vblByb3RvUAFaL2hvb2tzLmR4MzE0LmNvbS9pbnRlcm5hbC9hcGkvaG9va2x5L3YxO2hvb2tseXYxogIDSFhYqgIJSG9va2x5LlYxygIJSG9va2x5XFYx4gIVSG9va2x5XFYxXEdQQk1ldGFkYXRh6gIKSG9va2x5OjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+  fileDesc("ChZob29rbHkvdjEvY29tbW9uLnByb3RvEglob29rbHkudjEirgEKElZlcmlmaWNhdGlvbkNvbmZpZxItCgZtZXRob2QYASABKA4yHS5ob29rbHkudjEuVmVyaWZpY2F0aW9uTWV0aG9kEhgKEHNpZ25hdHVyZV9oZWFkZXIYAiABKAkSGAoQc2lnbmF0dXJlX3ByZWZpeBgDIAEoCRIYChB0aW1lc3RhbXBfaGVhZGVyGAQgASgJEhsKE3RpbWVzdGFtcF90b2xlcmFuY2UYBSABKAMimAIKCEVuZHBvaW50EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSLgoNcHJvdmlkZXJfdHlwZRgDIAEoDjIXLmhvb2tseS52MS5Qcm92aWRlclR5cGUSFwoPZGVzdGluYXRpb25fdXJsGAQgASgJEg0KBW11dGVkGAUgASgIEi4KCmNyZWF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjoKE3ZlcmlmaWNhdGlvbl9jb25maWcYCCABKAsyHS5ob29rbHkudjEuVmVyaWZpY2F0aW9uQ29uZmlnIqEDCgdXZWJob29rEgoKAmlkGAEgASgJEhMKC2VuZHBvaW50X2lkGAIgASgJEi8KC3JlY2VpdmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgdoZWFkZXJzGAQgAygLMh8uaG9va2x5LnYxLldlYmhvb2suSGVhZGVyc0VudHJ5Eg8KB3BheWxvYWQYBSABKAwSFwoPc2lnbmF0dXJlX3ZhbGlkGAYgASgIEigKBnN0YXR1cxgHIAEoDjIYLmhvb2tseS52MS5XZWJob29rU3RhdHVzEhAKCGF0dGVtcHRzGAggASgFEjMKD2xhc3RfYXR0ZW1wdF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMZGVsaXZlcmVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCg1lcnJvcl9tZXNzYWdlGAsgASgJGi4KDEhlYWRlcnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIjoKEVBhZ2luYXRpb25SZXF1ZXN0EhEKCXBhZ2Vfc2l6ZRgBIAEoBRISCgpwYWdlX3Rva2VuGAIgASgJIkIKElBhZ2luYXRpb25SZXNwb25zZRIXCg9uZXh0X3BhZ2VfdG9rZW4YASABKAkSEwoLdG90YWxfY291bnQYAiABKAUiLQoRQ29ubmVjdGVkRW5kcG9pbnQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCSLyAQoMU3lzdGVtU3RhdHVzEhUKDXBlbmRpbmdfY291bnQYASABKAUSFAoMZmFpbGVkX2NvdW50GAIgASgFEhkKEWRlYWRfbGV0dGVyX2NvdW50GAMgASgFEh4KEmhvbWVfaHViX2Nvbm5lY3RlZBgEIAEoCEICGAESPwoXbGFzdF9ob21lX2h1Yl9oZWFydGJlYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgIYARI5ChNjb25uZWN0ZWRfZW5kcG9pbnRzGAYgAygLMhwuaG9va2x5LnYxLkNvbm5lY3RlZEVuZHBvaW50IrwDCgxVc2VyU2V0dGluZ3MSDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRITCgtnaXRodWJfbmFtZRgDIAEoCRIUCgxnaXRodWJfZW1haWwYBCABKAkSGgoSZ2l0aHViX3Byb2ZpbGVfdXJsGAUgASgJEhIKCmF2YXRhcl91cmwYBiABKAkSGwoTdGVsZWdyYW1fY29uZmlndXJlZBgHIAEoCBIYChB0ZWxlZ3JhbV9jaGF0X2lkGAggASgJEhgKEHRlbGVncmFtX2VuYWJsZWQYCSABKAgSNAoQdGhlbWVfcHJlZmVyZW5jZRgKIAEoDjIaLmhvb2tseS52MS5UaGVtZVByZWZlcmVuY2USFAoMaXNfc3VwZXJ1c2VyGAsgASgIEi4KCmNyZWF0ZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjEKDWxhc3RfbG9naW5fYXQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIqMBCg5TeXN0ZW1TZXR0aW5ncxIQCghiYXNlX3VybBgBIAEoCRISCgpnaXRodWJfb3JnGAIgASgJEhwKFGdpdGh1Yl9hbGxvd2VkX3VzZXJzGAMgAygJEh8KF3N5c3RlbV90ZWxlZ3JhbV9lbmFibGVkGAQgASgIEhMKC3RvdGFsX3VzZXJzGAUgASgFEhcKD3RvdGFsX2VuZHBvaW50cxgGIAEoBSqyAQoMUHJvdmlkZXJUeXBlEh0KGVBST1ZJREVSX1RZUEVfVU5TUEVDSUZJRUQQABIYChRQUk9WSURFUl9UWVBFX1NUUklQRRABEhgKFFBST1ZJREVSX1RZUEVfR0lUSFVCEAISGgoWUFJPVklERVJfVFlQRV9URUxFR1JBTRADEhkKFVBST1ZJREVSX1RZUEVfR0VORVJJQxAEEhgKFFBST1ZJREVSX1RZUEVfQ1VTVE9NEAUqywEKElZlcmlmaWNhdGlvbk1ldGhvZBIjCh9WRVJJRklDQVRJT05fTUVUSE9EX1VOU1BFQ0lGSUVEEAASHgoaVkVSSUZJQ0FUSU9OX01FVEhPRF9TVEFUSUMQARIjCh9WRVJJRklDQVRJT05fTUVUSE9EX0hNQUNfU0hBMjU2EAISIQodVkVSSUZJQ0FUSU9OX01FVEhPRF9ITUFDX1NIQTEQAxIoCiRWRVJJRklDQVRJT05fTUVUSE9EX1RJTUVTVEFNUEVEX0hNQUMQBCqkAQoNV2ViaG9va1N0YXR1cxIeChpXRUJIT09LX1NUQVRVU19VTlNQRUNJRklFRBAAEhoKFldFQkhPT0tfU1RBVFVTX1BFTkRJTkcQARIcChhXRUJIT09LX1NUQVRVU19ERUxJVkVSRUQQAhIZChVXRUJIT09LX1NUQVRVU19GQUlMRUQQAxIeChpXRUJIT09LX1NUQVRVU19ERUFEX0xFVFRFUhAEKtYBCg9UaGVtZVByZWZlcmVuY2USIAocVEhFTUVfUFJFRkVSRU5DRV9VTlNQRUNJRklFRBAAEhsKF1RIRU1FX1BSRUZFUkVOQ0VfU1lTVEVNEAESGgoWVEhFTUVfUFJFRkVSRU5DRV9MSUdIVBACEhkKFVRIRU1FX1BSRUZFUkVOQ0VfREFSSxADEiYKIlRIRU1FX1BSRUZFUkVOQ0VfUExBQ0lEX0JMVUVfTElHSFQQBBIlCiFUSEVNRV9QUkVGRVJFTkNFX1BMQUNJRF9CTFVFX0RBUksQBUKSAQoNY29tLmhvb2tseS52MUILQ29tbW9uUHJvdG9QAVovaG9va3MuZHgzMTQuY29tL2ludGVybmFsL2FwaS9ob29rbHkvdjE7aG9va2x5djGiAgNIWFiqAglIb29rbHkuVjHKAglIb29rbHlcVjHiAhVIb29rbHlcVjFcR1BCTWV0YWRhdGHqAgpIb29rbHk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * Custom verification configuration for PROVIDER_TYPE_CUSTOM
@@ -310,6 +310,146 @@ export const SystemStatusSchema: GenMessage<SystemStatus> = /*@__PURE__*/
   messageDesc(file_hookly_v1_common, 6);
 
 /**
+ * User settings including profile and preferences
+ *
+ * @generated from message hookly.v1.UserSettings
+ */
+export type UserSettings = Message<"hookly.v1.UserSettings"> & {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId: string;
+
+  /**
+   * @generated from field: string username = 2;
+   */
+  username: string;
+
+  /**
+   * GitHub profile (from OAuth)
+   *
+   * @generated from field: string github_name = 3;
+   */
+  githubName: string;
+
+  /**
+   * @generated from field: string github_email = 4;
+   */
+  githubEmail: string;
+
+  /**
+   * @generated from field: string github_profile_url = 5;
+   */
+  githubProfileUrl: string;
+
+  /**
+   * @generated from field: string avatar_url = 6;
+   */
+  avatarUrl: string;
+
+  /**
+   * Telegram notifications (token is write-only, never returned)
+   *
+   * True if bot token is set
+   *
+   * @generated from field: bool telegram_configured = 7;
+   */
+  telegramConfigured: boolean;
+
+  /**
+   * @generated from field: string telegram_chat_id = 8;
+   */
+  telegramChatId: string;
+
+  /**
+   * @generated from field: bool telegram_enabled = 9;
+   */
+  telegramEnabled: boolean;
+
+  /**
+   * UI preferences
+   *
+   * @generated from field: hookly.v1.ThemePreference theme_preference = 10;
+   */
+  themePreference: ThemePreference;
+
+  /**
+   * Authorization
+   *
+   * @generated from field: bool is_superuser = 11;
+   */
+  isSuperuser: boolean;
+
+  /**
+   * Timestamps
+   *
+   * @generated from field: google.protobuf.Timestamp created_at = 12;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 13;
+   */
+  updatedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_login_at = 14;
+   */
+  lastLoginAt?: Timestamp;
+};
+
+/**
+ * Describes the message hookly.v1.UserSettings.
+ * Use `create(UserSettingsSchema)` to create a new message.
+ */
+export const UserSettingsSchema: GenMessage<UserSettings> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_common, 7);
+
+/**
+ * System settings (superuser only)
+ *
+ * @generated from message hookly.v1.SystemSettings
+ */
+export type SystemSettings = Message<"hookly.v1.SystemSettings"> & {
+  /**
+   * @generated from field: string base_url = 1;
+   */
+  baseUrl: string;
+
+  /**
+   * @generated from field: string github_org = 2;
+   */
+  githubOrg: string;
+
+  /**
+   * @generated from field: repeated string github_allowed_users = 3;
+   */
+  githubAllowedUsers: string[];
+
+  /**
+   * @generated from field: bool system_telegram_enabled = 4;
+   */
+  systemTelegramEnabled: boolean;
+
+  /**
+   * @generated from field: int32 total_users = 5;
+   */
+  totalUsers: number;
+
+  /**
+   * @generated from field: int32 total_endpoints = 6;
+   */
+  totalEndpoints: number;
+};
+
+/**
+ * Describes the message hookly.v1.SystemSettings.
+ * Use `create(SystemSettingsSchema)` to create a new message.
+ */
+export const SystemSettingsSchema: GenMessage<SystemSettings> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_common, 8);
+
+/**
  * Provider type for webhook signature verification
  *
  * @generated from enum hookly.v1.ProviderType
@@ -435,4 +575,47 @@ export enum WebhookStatus {
  */
 export const WebhookStatusSchema: GenEnum<WebhookStatus> = /*@__PURE__*/
   enumDesc(file_hookly_v1_common, 2);
+
+/**
+ * Theme preference for UI
+ *
+ * @generated from enum hookly.v1.ThemePreference
+ */
+export enum ThemePreference {
+  /**
+   * @generated from enum value: THEME_PREFERENCE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: THEME_PREFERENCE_SYSTEM = 1;
+   */
+  SYSTEM = 1,
+
+  /**
+   * @generated from enum value: THEME_PREFERENCE_LIGHT = 2;
+   */
+  LIGHT = 2,
+
+  /**
+   * @generated from enum value: THEME_PREFERENCE_DARK = 3;
+   */
+  DARK = 3,
+
+  /**
+   * @generated from enum value: THEME_PREFERENCE_PLACID_BLUE_LIGHT = 4;
+   */
+  PLACID_BLUE_LIGHT = 4,
+
+  /**
+   * @generated from enum value: THEME_PREFERENCE_PLACID_BLUE_DARK = 5;
+   */
+  PLACID_BLUE_DARK = 5,
+}
+
+/**
+ * Describes the enum hookly.v1.ThemePreference.
+ */
+export const ThemePreferenceSchema: GenEnum<ThemePreference> = /*@__PURE__*/
+  enumDesc(file_hookly_v1_common, 3);
 

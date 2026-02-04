@@ -62,6 +62,7 @@ func generateToken(length int) (string, error) {
 }
 
 // CreateSession creates a new session for the user.
+// Also creates/updates user_settings with the GitHub profile data.
 func (m *SessionManager) CreateSession(ctx context.Context, user *GitHubUser) (*Session, error) {
 	sessionID, err := generateToken(32)
 	if err != nil {
@@ -73,14 +74,31 @@ func (m *SessionManager) CreateSession(ctx context.Context, user *GitHubUser) (*
 		avatarURL = sql.NullString{String: user.AvatarURL, Valid: true}
 	}
 
+	userID := fmt.Sprintf("%d", user.ID)
+
 	dbSession, err := m.queries.CreateSession(ctx, db.CreateSessionParams{
 		ID:        sessionID,
-		UserID:    fmt.Sprintf("%d", user.ID),
+		UserID:    userID,
 		Username:  user.Login,
 		AvatarUrl: avatarURL,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create session: %w", err)
+	}
+
+	// Upsert user settings with GitHub profile data
+	_, err = m.queries.UpsertUserSettings(ctx, db.UpsertUserSettingsParams{
+		UserID:           userID,
+		Username:         user.Login,
+		GithubName:       toNullString(user.Name),
+		GithubEmail:      toNullString(user.Email),
+		GithubProfileUrl: toNullString(user.HTMLURL),
+		AvatarUrl:        avatarURL,
+	})
+	if err != nil {
+		// Log but don't fail session creation
+		// User settings are not critical for authentication
+		fmt.Printf("warning: failed to upsert user settings: %v\n", err)
 	}
 
 	expiresAt, _ := time.Parse("2006-01-02 15:04:05", dbSession.ExpiresAt)
@@ -92,6 +110,14 @@ func (m *SessionManager) CreateSession(ctx context.Context, user *GitHubUser) (*
 		AvatarURL: avatarURL.String,
 		ExpiresAt: expiresAt,
 	}, nil
+}
+
+// toNullString converts a string to sql.NullString.
+func toNullString(s string) sql.NullString {
+	if s == "" {
+		return sql.NullString{}
+	}
+	return sql.NullString{String: s, Valid: true}
 }
 
 // GetSession retrieves a session by ID.

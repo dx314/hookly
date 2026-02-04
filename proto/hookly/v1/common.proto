@@ -99,3 +99,51 @@ message SystemStatus {
   // Endpoints with active relay connections
   repeated ConnectedEndpoint connected_endpoints = 6;
 }
+
+// Theme preference for UI
+enum ThemePreference {
+  THEME_PREFERENCE_UNSPECIFIED = 0;
+  THEME_PREFERENCE_SYSTEM = 1;
+  THEME_PREFERENCE_LIGHT = 2;
+  THEME_PREFERENCE_DARK = 3;
+  THEME_PREFERENCE_PLACID_BLUE_LIGHT = 4;
+  THEME_PREFERENCE_PLACID_BLUE_DARK = 5;
+}
+
+// User settings including profile and preferences
+message UserSettings {
+  string user_id = 1;
+  string username = 2;
+
+  // GitHub profile (from OAuth)
+  string github_name = 3;
+  string github_email = 4;
+  string github_profile_url = 5;
+  string avatar_url = 6;
+
+  // Telegram notifications (token is write-only, never returned)
+  bool telegram_configured = 7;  // True if bot token is set
+  string telegram_chat_id = 8;
+  bool telegram_enabled = 9;
+
+  // UI preferences
+  ThemePreference theme_preference = 10;
+
+  // Authorization
+  bool is_superuser = 11;
+
+  // Timestamps
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+  google.protobuf.Timestamp last_login_at = 14;
+}
+
+// System settings (superuser only)
+message SystemSettings {
+  string base_url = 1;
+  string github_org = 2;
+  repeated string github_allowed_users = 3;
+  bool system_telegram_enabled = 4;
+  int32 total_users = 5;
+  int32 total_endpoints = 6;
+}

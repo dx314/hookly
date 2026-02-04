@@ -38,5 +38,5 @@ const transport = createConnectTransport({
 export const edgeClient = createClient(EdgeService, transport);
 
 // Re-export types
-export { type Endpoint, type Webhook, type SystemStatus } from '$api/hookly/v1/common_pb';
-export { ProviderType, WebhookStatus } from '$api/hookly/v1/common_pb';
+export { type Endpoint, type Webhook, type SystemStatus, type UserSettings, type SystemSettings } from '$api/hookly/v1/common_pb';
+export { ProviderType, WebhookStatus, ThemePreference } from '$api/hookly/v1/common_pb';

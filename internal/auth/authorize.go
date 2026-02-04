@@ -26,7 +26,15 @@ type cacheEntry struct {
 
 const (
 	cacheTTL = time.Hour
+
+	// SuperuserUsername is the username that has system admin privileges.
+	SuperuserUsername = "dx314"
 )
+
+// IsSuperuser checks if the given username has superuser privileges.
+func IsSuperuser(username string) bool {
+	return strings.ToLower(username) == SuperuserUsername
+}
 
 // NewAuthorizer creates a new authorizer.
 // If org is set, users must be members of that organization.
