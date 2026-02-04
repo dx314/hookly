@@ -85,6 +85,7 @@ func run() error {
 
 	// Authentication
 	var sessionManager *auth.SessionManager
+	var tokenManager *auth.TokenManager
 	if cfg.GitHubAuthEnabled() {
 		// Determine if running securely
 		secure := strings.HasPrefix(cfg.BaseURL, "https://")
@@ -92,14 +93,20 @@ func run() error {
 
 		githubClient := auth.NewGitHubClient(cfg.GitHubClientID, cfg.GitHubClientSecret, redirectURI)
 		sessionManager = auth.NewSessionManager(queries, secure, "/")
+		tokenManager = auth.NewTokenManager(queries)
 		authorizer := auth.NewAuthorizer(githubClient, cfg.GitHubOrg, cfg.GitHubAllowedUsers)
-		authHandlers := auth.NewHandlers(githubClient, sessionManager, authorizer)
+		authHandlers := auth.NewHandlers(githubClient, sessionManager, authorizer, tokenManager)
 
 		// Auth routes (no auth required)
 		r.Get("/auth/login", authHandlers.Login)
 		r.Get("/auth/callback", authHandlers.Callback)
 		r.Post("/auth/logout", authHandlers.Logout)
 		r.Get("/auth/me", authHandlers.Me)
+
+		// CLI auth routes
+		r.Get("/auth/cli", authHandlers.CLILogin)
+		r.Get("/auth/cli/callback", authHandlers.CLICallback)
+		r.Post("/auth/token/revoke", authHandlers.RevokeToken)
 
 		slog.Info("github auth enabled",
 			"org_restriction", cfg.GitHubOrg != "",
@@ -122,8 +129,8 @@ func run() error {
 	// EdgeService (API for UI/MCP)
 	edgeSvc := edge.New(queries, secretManager, connMgr, cfg)
 	if sessionManager != nil {
-		// With auth interceptor
-		authInterceptor := server.NewAuthInterceptor(sessionManager)
+		// With auth interceptor (supports both cookies and Bearer tokens)
+		authInterceptor := server.NewAuthInterceptor(sessionManager, tokenManager)
 		edgePath, edgeHandler := hooklyv1connect.NewEdgeServiceHandler(edgeSvc, connect.WithInterceptors(authInterceptor))
 		r.Handle(edgePath+"*", edgeHandler)
 		slog.Info("edge service enabled with auth")

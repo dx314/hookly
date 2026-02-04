@@ -18,6 +18,8 @@ const (
 	SessionCookieName = "hookly_session"
 	// StateCookieName is the name of the OAuth state cookie.
 	StateCookieName = "hookly_oauth_state"
+	// CLIStateCookieName is the name of the CLI OAuth state cookie.
+	CLIStateCookieName = "hookly_cli_state"
 	// SessionDuration is how long sessions last.
 	SessionDuration = 7 * 24 * time.Hour
 	// StateDuration is how long OAuth state is valid.
@@ -195,6 +197,32 @@ func (m *SessionManager) ClearStateCookie(w http.ResponseWriter) {
 		Name:     StateCookieName,
 		Value:    "",
 		Path:     "/auth/callback",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   m.secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// SetCLIStateCookie sets the CLI OAuth state cookie.
+func (m *SessionManager) SetCLIStateCookie(w http.ResponseWriter, state string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     CLIStateCookieName,
+		Value:    state,
+		Path:     "/auth/cli/callback",
+		MaxAge:   int(StateDuration.Seconds()),
+		HttpOnly: true,
+		Secure:   m.secure,
+		SameSite: http.SameSiteLaxMode,
+	})
+}
+
+// ClearCLIStateCookie clears the CLI OAuth state cookie.
+func (m *SessionManager) ClearCLIStateCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     CLIStateCookieName,
+		Value:    "",
+		Path:     "/auth/cli/callback",
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   m.secure,

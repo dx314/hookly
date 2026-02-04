@@ -1,4 +1,4 @@
-import { createClient, Code, type Interceptor } from '@connectrpc/connect';
+import { createClient, Code, ConnectError, type Interceptor } from '@connectrpc/connect';
 import { createConnectTransport } from '@connectrpc/connect-web';
 import { EdgeService } from '$api/hookly/v1/edge_pb';
 
@@ -7,10 +7,12 @@ const authRedirectInterceptor: Interceptor = (next) => async (req) => {
 	try {
 		return await next(req);
 	} catch (err) {
-		if (err && typeof err === 'object' && 'code' in err && err.code === Code.Unauthenticated) {
-			// Redirect to login page
+		if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
+			// Redirect to login page - don't throw, just redirect and hang
 			if (typeof window !== 'undefined') {
-				window.location.href = '/auth/login';
+				window.location.href = '/login';
+				// Return a promise that never resolves to prevent error display during redirect
+				return new Promise(() => {});
 			}
 		}
 		throw err;

@@ -43,3 +43,17 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS api_tokens (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    username TEXT NOT NULL,
+    token_hash TEXT NOT NULL,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    last_used_at TEXT,
+    revoked INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_tokens_hash ON api_tokens(token_hash);
+CREATE INDEX IF NOT EXISTS idx_api_tokens_user ON api_tokens(user_id);

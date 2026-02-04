@@ -8,6 +8,17 @@ import (
 	"database/sql"
 )
 
+type ApiToken struct {
+	ID         string         `json:"id"`
+	UserID     string         `json:"user_id"`
+	Username   string         `json:"username"`
+	TokenHash  string         `json:"token_hash"`
+	Name       string         `json:"name"`
+	CreatedAt  string         `json:"created_at"`
+	LastUsedAt sql.NullString `json:"last_used_at"`
+	Revoked    int64          `json:"revoked"`
+}
+
 type Endpoint struct {
 	ID                       string `json:"id"`
 	Name                     string `json:"name"`

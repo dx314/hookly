@@ -13,6 +13,7 @@
 		{ href: '/', label: 'Dashboard' },
 		{ href: '/endpoints', label: 'Endpoints' },
 		{ href: '/webhooks', label: 'Webhooks' },
+		{ href: '/cli', label: 'CLI' },
 		{ href: '/settings', label: 'Settings' }
 	];
 </script>

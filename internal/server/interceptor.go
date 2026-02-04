@@ -5,20 +5,22 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"connectrpc.com/connect"
 
 	"hooks.dx314.com/internal/auth"
 )
 
-// AuthInterceptor validates session cookies for ConnectRPC handlers.
+// AuthInterceptor validates session cookies or Bearer tokens for ConnectRPC handlers.
 type AuthInterceptor struct {
 	sessions *auth.SessionManager
+	tokens   *auth.TokenManager
 }
 
 // NewAuthInterceptor creates a new auth interceptor.
-func NewAuthInterceptor(sessions *auth.SessionManager) *AuthInterceptor {
-	return &AuthInterceptor{sessions: sessions}
+func NewAuthInterceptor(sessions *auth.SessionManager, tokens *auth.TokenManager) *AuthInterceptor {
+	return &AuthInterceptor{sessions: sessions, tokens: tokens}
 }
 
 // WrapUnary implements connect.Interceptor.
@@ -48,8 +50,47 @@ func (i *AuthInterceptor) WrapStreamingHandler(next connect.StreamingHandlerFunc
 	}
 }
 
-// authenticate extracts and validates the session from the Cookie header.
+// authenticate extracts and validates credentials from headers.
+// It checks Bearer token first (for CLI), then falls back to session cookie (for web UI).
 func (i *AuthInterceptor) authenticate(ctx context.Context, headers http.Header) (context.Context, error) {
+	// Check for Bearer token first (CLI authentication)
+	authHeader := headers.Get("Authorization")
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		return i.authenticateWithToken(ctx, token)
+	}
+
+	// Fall back to cookie authentication (web UI)
+	return i.authenticateWithCookie(ctx, headers)
+}
+
+// authenticateWithToken validates an API token.
+func (i *AuthInterceptor) authenticateWithToken(ctx context.Context, token string) (context.Context, error) {
+	if i.tokens == nil {
+		return nil, errors.New("token authentication not configured")
+	}
+
+	apiToken, err := i.tokens.ValidateToken(ctx, token)
+	if err != nil {
+		if errors.Is(err, auth.ErrTokenNotFound) || errors.Is(err, auth.ErrTokenRevoked) || errors.Is(err, auth.ErrInvalidToken) {
+			return nil, errors.New("invalid or expired token")
+		}
+		slog.Error("auth interceptor: failed to validate token", "error", err)
+		return nil, errors.New("authentication failed")
+	}
+
+	// Convert token info to session for context compatibility
+	session := &auth.Session{
+		ID:       apiToken.ID,
+		UserID:   apiToken.UserID,
+		Username: apiToken.Username,
+	}
+
+	return auth.ContextWithSession(ctx, session), nil
+}
+
+// authenticateWithCookie validates a session cookie.
+func (i *AuthInterceptor) authenticateWithCookie(ctx context.Context, headers http.Header) (context.Context, error) {
 	// Parse cookie header
 	cookieHeader := headers.Get("Cookie")
 	if cookieHeader == "" {
