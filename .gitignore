@@ -32,3 +32,4 @@ gen/
 .env
 .env.local
 hookly.yaml
+/hookly-cli
