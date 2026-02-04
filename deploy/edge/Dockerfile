@@ -7,7 +7,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Build Go binary
-FROM golang:1.22-alpine AS builder
+FROM golang:1.24-alpine AS builder
 WORKDIR /app
 RUN apk add --no-cache gcc musl-dev
 COPY go.mod go.sum ./
@@ -18,7 +18,9 @@ RUN CGO_ENABLED=1 go build -o /edge-gateway ./cmd/edge-gateway
 
 # Runtime
 FROM alpine:3.19
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata && \
+    mkdir -p /data
 COPY --from=builder /edge-gateway /usr/local/bin/
 EXPOSE 8080
+VOLUME /data
 CMD ["edge-gateway"]
