@@ -14,10 +14,10 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	hooklyv1 "hookly/internal/api/hookly/v1"
-	"hookly/internal/config"
-	"hookly/internal/db"
-	"hookly/internal/relay"
+	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
+	"hooks.dx314.com/internal/config"
+	"hooks.dx314.com/internal/db"
+	"hooks.dx314.com/internal/relay"
 )
 
 // Service implements the EdgeService.
@@ -387,15 +387,10 @@ func (s *Service) GetStatus(ctx context.Context, _ *connect.Request[hooklyv1.Get
 	}
 
 	status := &hooklyv1.SystemStatus{
-		PendingCount:    pendingCount,
-		FailedCount:     failedCount,
-		DeadLetterCount: deadLetterCount,
-		HomeHubConnected: s.connMgr.IsConnected(),
-	}
-
-	if s.connMgr.IsConnected() {
-		lastHeartbeat := s.connMgr.LastHeartbeat()
-		status.LastHomeHubHeartbeat = timestamppb.New(lastHeartbeat)
+		PendingCount:     pendingCount,
+		FailedCount:      failedCount,
+		DeadLetterCount:  deadLetterCount,
+		HomeHubConnected: s.connMgr.IsAnyConnected(),
 	}
 
 	return connect.NewResponse(&hooklyv1.GetStatusResponse{

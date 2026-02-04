@@ -1,7 +1,7 @@
 package db
 
 import (
-	"hookly/internal/crypto"
+	"hooks.dx314.com/internal/crypto"
 )
 
 // SecretManager handles encryption and decryption of secrets stored in the database.

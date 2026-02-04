@@ -8,7 +8,7 @@ import (
 
 	"connectrpc.com/connect"
 
-	"hookly/internal/auth"
+	"hooks.dx314.com/internal/auth"
 )
 
 // AuthInterceptor validates session cookies for ConnectRPC handlers.

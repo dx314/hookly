@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"hookly/internal/crypto"
+	"hooks.dx314.com/internal/crypto"
 
 	"github.com/joho/godotenv"
 )

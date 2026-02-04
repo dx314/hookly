@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"hookly/internal/crypto"
-	"hookly/internal/db"
+	"hooks.dx314.com/internal/crypto"
+	"hooks.dx314.com/internal/db"
 )
 
 func TestDatabaseCreation(t *testing.T) {

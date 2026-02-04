@@ -5,91 +5,156 @@ import (
 	"sync"
 	"time"
 
-	hooklyv1 "hookly/internal/api/hookly/v1"
+	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
 )
 
-// ConnectionManager manages the active home-hub connection.
-// Currently supports a single connection (no multi-tenant).
+// ConnectionManager manages multiple home-hub connections with endpoint routing.
 type ConnectionManager struct {
-	mu            sync.RWMutex
-	connected     bool
+	mu          sync.RWMutex
+	connections map[string]*HubConnection  // hubID → connection
+	endpoints   map[string]string          // endpointID → hubID (routing table)
+}
+
+// HubConnection represents a single hub's connection state.
+type HubConnection struct {
+	hubID         string
+	endpointIDs   []string
 	lastHeartbeat time.Time
 	sendCh        chan *hooklyv1.WebhookEnvelope
-	hubID         string
 }
 
 // NewConnectionManager creates a new connection manager.
 func NewConnectionManager() *ConnectionManager {
 	return &ConnectionManager{
-		sendCh: make(chan *hooklyv1.WebhookEnvelope, 1000), // Buffer up to 1000 webhooks
+		connections: make(map[string]*HubConnection),
+		endpoints:   make(map[string]string),
 	}
 }
 
-// SetConnected marks the connection as active.
-func (m *ConnectionManager) SetConnected(hubID string) {
+// AddConnection registers a new hub connection with its endpoints.
+// Returns the HubConnection for sending webhooks.
+func (m *ConnectionManager) AddConnection(hubID string, endpointIDs []string) *HubConnection {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.connected = true
-	m.hubID = hubID
-	m.lastHeartbeat = time.Now()
-	slog.Info("home-hub connected", "hub_id", hubID)
-}
 
-// SetDisconnected marks the connection as inactive.
-func (m *ConnectionManager) SetDisconnected() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.connected {
-		slog.Info("home-hub disconnected", "hub_id", m.hubID)
+	// Remove old connection if exists
+	if old, exists := m.connections[hubID]; exists {
+		for _, epID := range old.endpointIDs {
+			delete(m.endpoints, epID)
+		}
+		close(old.sendCh)
 	}
-	m.connected = false
-	m.hubID = ""
+
+	conn := &HubConnection{
+		hubID:         hubID,
+		endpointIDs:   endpointIDs,
+		lastHeartbeat: time.Now(),
+		sendCh:        make(chan *hooklyv1.WebhookEnvelope, 1000),
+	}
+
+	m.connections[hubID] = conn
+
+	// Register endpoint routing
+	for _, epID := range endpointIDs {
+		m.endpoints[epID] = hubID
+	}
+
+	slog.Info("hub connected",
+		"hub_id", hubID,
+		"endpoints", endpointIDs,
+		"total_hubs", len(m.connections),
+	)
+
+	return conn
 }
 
-// IsConnected returns true if a home-hub is connected.
-func (m *ConnectionManager) IsConnected() bool {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-	return m.connected
-}
-
-// UpdateHeartbeat updates the last heartbeat time.
-func (m *ConnectionManager) UpdateHeartbeat() {
+// RemoveConnection removes a hub and its endpoint mappings.
+func (m *ConnectionManager) RemoveConnection(hubID string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.lastHeartbeat = time.Now()
+
+	conn, exists := m.connections[hubID]
+	if !exists {
+		return
+	}
+
+	// Remove endpoint mappings
+	for _, epID := range conn.endpointIDs {
+		delete(m.endpoints, epID)
+	}
+
+	delete(m.connections, hubID)
+
+	slog.Info("hub disconnected",
+		"hub_id", hubID,
+		"total_hubs", len(m.connections),
+	)
 }
 
-// LastHeartbeat returns the last heartbeat time.
-func (m *ConnectionManager) LastHeartbeat() time.Time {
+// GetHubForEndpoint returns the connection for the hub handling this endpoint.
+// Returns nil if no hub handles this endpoint.
+func (m *ConnectionManager) GetHubForEndpoint(endpointID string) *HubConnection {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	return m.lastHeartbeat
+
+	hubID, exists := m.endpoints[endpointID]
+	if !exists {
+		return nil
+	}
+
+	return m.connections[hubID]
 }
 
-// IsStale returns true if no heartbeat received in the given duration.
-func (m *ConnectionManager) IsStale(timeout time.Duration) bool {
+// IsAnyConnected returns true if at least one hub is connected.
+func (m *ConnectionManager) IsAnyConnected() bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	if !m.connected {
+	return len(m.connections) > 0
+}
+
+// UpdateHeartbeat updates the heartbeat time for a hub.
+func (m *ConnectionManager) UpdateHeartbeat(hubID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if conn, exists := m.connections[hubID]; exists {
+		conn.lastHeartbeat = time.Now()
+	}
+}
+
+// IsStale returns true if the hub hasn't sent a heartbeat within the timeout.
+func (m *ConnectionManager) IsStale(hubID string, timeout time.Duration) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	conn, exists := m.connections[hubID]
+	if !exists {
 		return false
 	}
-	return time.Since(m.lastHeartbeat) > timeout
+	return time.Since(conn.lastHeartbeat) > timeout
 }
 
-// SendCh returns the channel for sending webhooks to home-hub.
-func (m *ConnectionManager) SendCh() chan *hooklyv1.WebhookEnvelope {
-	return m.sendCh
-}
-
-// Send queues a webhook for delivery to home-hub.
+// Send queues a webhook for delivery to a specific hub.
 // Returns false if buffer is full.
-func (m *ConnectionManager) Send(webhook *hooklyv1.WebhookEnvelope) bool {
+func (c *HubConnection) Send(webhook *hooklyv1.WebhookEnvelope) bool {
 	select {
-	case m.sendCh <- webhook:
+	case c.sendCh <- webhook:
 		return true
 	default:
-		slog.Warn("webhook buffer full, dropping", "webhook_id", webhook.Id)
+		slog.Warn("webhook buffer full, dropping",
+			"hub_id", c.hubID,
+			"webhook_id", webhook.Id,
+		)
 		return false
 	}
+}
+
+// SendCh returns the channel for sending webhooks to this hub.
+func (c *HubConnection) SendCh() <-chan *hooklyv1.WebhookEnvelope {
+	return c.sendCh
+}
+
+// HubID returns the hub's identifier.
+func (c *HubConnection) HubID() string {
+	return c.hubID
 }

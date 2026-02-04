@@ -593,8 +593,8 @@ const file_hookly_v1_common_proto_rawDesc = "" +
 	"\x16WEBHOOK_STATUS_PENDING\x10\x01\x12\x1c\n" +
 	"\x18WEBHOOK_STATUS_DELIVERED\x10\x02\x12\x19\n" +
 	"\x15WEBHOOK_STATUS_FAILED\x10\x03\x12\x1e\n" +
-	"\x1aWEBHOOK_STATUS_DEAD_LETTER\x10\x04B\x89\x01\n" +
-	"\rcom.hookly.v1B\vCommonProtoP\x01Z&hookly/internal/api/hookly/v1;hooklyv1\xa2\x02\x03HXX\xaa\x02\tHookly.V1\xca\x02\tHookly\\V1\xe2\x02\x15Hookly\\V1\\GPBMetadata\xea\x02\n" +
+	"\x1aWEBHOOK_STATUS_DEAD_LETTER\x10\x04B\x92\x01\n" +
+	"\rcom.hookly.v1B\vCommonProtoP\x01Z/hooks.dx314.com/internal/api/hookly/v1;hooklyv1\xa2\x02\x03HXX\xaa\x02\tHookly.V1\xca\x02\tHookly\\V1\xe2\x02\x15Hookly\\V1\\GPBMetadata\xea\x02\n" +
 	"Hookly::V1b\x06proto3"
 
 var (

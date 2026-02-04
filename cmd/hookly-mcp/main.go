@@ -7,9 +7,9 @@ import (
 	"log/slog"
 	"os"
 
-	"hookly/internal/crypto"
-	"hookly/internal/db"
-	"hookly/internal/mcp"
+	"hooks.dx314.com/internal/crypto"
+	"hooks.dx314.com/internal/db"
+	"hooks.dx314.com/internal/mcp"
 
 	"github.com/joho/godotenv"
 )

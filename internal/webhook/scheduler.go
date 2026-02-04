@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"hookly/internal/db"
+	"hooks.dx314.com/internal/db"
 )
 
 const (

@@ -224,8 +224,9 @@ func (*StreamResponse_Heartbeat) isStreamResponse_Message() {}
 type ConnectRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	HubId         string                 `protobuf:"bytes,1,opt,name=hub_id,json=hubId,proto3" json:"hub_id,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"` // Unix timestamp
-	Signature     string                 `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`  // HMAC-SHA256(hub_id + timestamp, secret)
+	Timestamp     int64                  `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                       // Unix timestamp
+	Signature     string                 `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`                        // HMAC-SHA256(hub_id + timestamp, secret)
+	EndpointIds   []string               `protobuf:"bytes,4,rep,name=endpoint_ids,json=endpointIds,proto3" json:"endpoint_ids,omitempty"` // Endpoints this hub handles
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -279,6 +280,13 @@ func (x *ConnectRequest) GetSignature() string {
 		return x.Signature
 	}
 	return ""
+}
+
+func (x *ConnectRequest) GetEndpointIds() []string {
+	if x != nil {
+		return x.EndpointIds
+	}
+	return nil
 }
 
 // Connection response
@@ -563,11 +571,12 @@ const file_hookly_v1_relay_proto_rawDesc = "" +
 	"\x10connect_response\x18\x01 \x01(\v2\x1a.hookly.v1.ConnectResponseH\x00R\x0fconnectResponse\x126\n" +
 	"\awebhook\x18\x02 \x01(\v2\x1a.hookly.v1.WebhookEnvelopeH\x00R\awebhook\x124\n" +
 	"\theartbeat\x18\x03 \x01(\v2\x14.hookly.v1.HeartbeatH\x00R\theartbeatB\t\n" +
-	"\amessage\"c\n" +
+	"\amessage\"\x86\x01\n" +
 	"\x0eConnectRequest\x12\x15\n" +
 	"\x06hub_id\x18\x01 \x01(\tR\x05hubId\x12\x1c\n" +
 	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12\x1c\n" +
-	"\tsignature\x18\x03 \x01(\tR\tsignature\"A\n" +
+	"\tsignature\x18\x03 \x01(\tR\tsignature\x12!\n" +
+	"\fendpoint_ids\x18\x04 \x03(\tR\vendpointIds\"A\n" +
 	"\x0fConnectResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
 	"\x05error\x18\x02 \x01(\tR\x05error\")\n" +
@@ -595,9 +604,9 @@ const file_hookly_v1_relay_proto_rawDesc = "" +
 	"\rerror_message\x18\x04 \x01(\tR\ferrorMessage\x12+\n" +
 	"\x11permanent_failure\x18\x05 \x01(\bR\x10permanentFailure2Q\n" +
 	"\fRelayService\x12A\n" +
-	"\x06Stream\x12\x18.hookly.v1.StreamRequest\x1a\x19.hookly.v1.StreamResponse(\x010\x01B\x88\x01\n" +
+	"\x06Stream\x12\x18.hookly.v1.StreamRequest\x1a\x19.hookly.v1.StreamResponse(\x010\x01B\x91\x01\n" +
 	"\rcom.hookly.v1B\n" +
-	"RelayProtoP\x01Z&hookly/internal/api/hookly/v1;hooklyv1\xa2\x02\x03HXX\xaa\x02\tHookly.V1\xca\x02\tHookly\\V1\xe2\x02\x15Hookly\\V1\\GPBMetadata\xea\x02\n" +
+	"RelayProtoP\x01Z/hooks.dx314.com/internal/api/hookly/v1;hooklyv1\xa2\x02\x03HXX\xaa\x02\tHookly.V1\xca\x02\tHookly\\V1\xe2\x02\x15Hookly\\V1\\GPBMetadata\xea\x02\n" +
 	"Hookly::V1b\x06proto3"
 
 var (

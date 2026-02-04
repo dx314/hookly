@@ -8,7 +8,7 @@ import (
 	connect "connectrpc.com/connect"
 	context "context"
 	errors "errors"
-	v1 "hookly/internal/api/hookly/v1"
+	v1 "hooks.dx314.com/internal/api/hookly/v1"
 	http "net/http"
 	strings "strings"
 )

@@ -1082,8 +1082,8 @@ const file_hookly_v1_edge_proto_rawDesc = "" +
 	"\fListWebhooks\x12\x1e.hookly.v1.ListWebhooksRequest\x1a\x1f.hookly.v1.ListWebhooksResponse\x12R\n" +
 	"\rReplayWebhook\x12\x1f.hookly.v1.ReplayWebhookRequest\x1a .hookly.v1.ReplayWebhookResponse\x12F\n" +
 	"\tGetStatus\x12\x1b.hookly.v1.GetStatusRequest\x1a\x1c.hookly.v1.GetStatusResponse\x12L\n" +
-	"\vGetSettings\x12\x1d.hookly.v1.GetSettingsRequest\x1a\x1e.hookly.v1.GetSettingsResponseB\x87\x01\n" +
-	"\rcom.hookly.v1B\tEdgeProtoP\x01Z&hookly/internal/api/hookly/v1;hooklyv1\xa2\x02\x03HXX\xaa\x02\tHookly.V1\xca\x02\tHookly\\V1\xe2\x02\x15Hookly\\V1\\GPBMetadata\xea\x02\n" +
+	"\vGetSettings\x12\x1d.hookly.v1.GetSettingsRequest\x1a\x1e.hookly.v1.GetSettingsResponseB\x90\x01\n" +
+	"\rcom.hookly.v1B\tEdgeProtoP\x01Z/hooks.dx314.com/internal/api/hookly/v1;hooklyv1\xa2\x02\x03HXX\xaa\x02\tHookly.V1\xca\x02\tHookly\\V1\xe2\x02\x15Hookly\\V1\\GPBMetadata\xea\x02\n" +
 	"Hookly::V1b\x06proto3"
 
 var (

@@ -10,31 +10,28 @@ import (
 
 	"connectrpc.com/connect"
 
-	hooklyv1 "hookly/internal/api/hookly/v1"
-	"hookly/internal/api/hookly/v1/hooklyv1connect"
-	"hookly/internal/webhook"
+	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
+	"hooks.dx314.com/internal/api/hookly/v1/hooklyv1connect"
+	"hooks.dx314.com/internal/config"
+	"hooks.dx314.com/internal/webhook"
 )
 
 const (
-	initialBackoff = 1 * time.Second
-	maxBackoff     = 60 * time.Second
+	initialBackoff  = 1 * time.Second
+	maxBackoff      = 60 * time.Second
 	clientHeartbeat = 30 * time.Second
 )
 
 // Client connects to the edge relay service and handles webhooks.
 type Client struct {
-	edgeURL   string
-	secret    string
-	hubID     string
+	config    *config.HooklyConfig
 	forwarder *webhook.Forwarder
 }
 
-// NewClient creates a new relay client.
-func NewClient(edgeURL, secret, hubID string) *Client {
+// NewClient creates a new relay client from HooklyConfig.
+func NewClient(cfg *config.HooklyConfig) *Client {
 	return &Client{
-		edgeURL:   edgeURL,
-		secret:    secret,
-		hubID:     hubID,
+		config:    cfg,
 		forwarder: webhook.NewForwarder(),
 	}
 }
@@ -51,7 +48,7 @@ func (c *Client) Run(ctx context.Context) error {
 		default:
 		}
 
-		slog.Info("connecting to edge", "url", c.edgeURL)
+		slog.Info("connecting to edge", "url", c.config.EdgeURL, "hub_id", c.config.HubID)
 
 		err := c.connect(ctx)
 		if err != nil {
@@ -82,22 +79,23 @@ func (c *Client) connect(ctx context.Context) error {
 	// Create ConnectRPC client
 	client := hooklyv1connect.NewRelayServiceClient(
 		http.DefaultClient,
-		c.edgeURL,
+		c.config.EdgeURL,
 	)
 
 	// Open bidirectional stream
 	stream := client.Stream(ctx)
 
-	// Send authentication message
+	// Send authentication message with endpoint IDs
 	timestamp := time.Now().Unix()
-	signature := GenerateHMAC(c.hubID, timestamp, c.secret)
+	signature := GenerateHMAC(c.config.HubID, timestamp, c.config.Secret)
 
 	if err := stream.Send(&hooklyv1.StreamRequest{
 		Message: &hooklyv1.StreamRequest_Connect{
 			Connect: &hooklyv1.ConnectRequest{
-				HubId:     c.hubID,
-				Timestamp: timestamp,
-				Signature: signature,
+				HubId:       c.config.HubID,
+				Timestamp:   timestamp,
+				Signature:   signature,
+				EndpointIds: c.config.EndpointIDs(),
 			},
 		},
 	}); err != nil {
@@ -118,7 +116,7 @@ func (c *Client) connect(ctx context.Context) error {
 		return errors.New("authentication failed: " + authResp.Error)
 	}
 
-	slog.Info("connected to edge")
+	slog.Info("connected to edge", "endpoints", c.config.EndpointIDs())
 
 	// Start heartbeat sender
 	heartbeatDone := make(chan struct{})
@@ -169,17 +167,20 @@ func (c *Client) connect(ctx context.Context) error {
 }
 
 func (c *Client) handleWebhook(ctx context.Context, stream *connect.BidiStreamForClient[hooklyv1.StreamRequest, hooklyv1.StreamResponse], envelope *hooklyv1.WebhookEnvelope) {
+	// Get destination URL, allowing local override
+	destinationURL := c.config.GetDestination(envelope.EndpointId, envelope.DestinationUrl)
+
 	slog.Info("received webhook",
 		"webhook_id", envelope.Id,
 		"endpoint_id", envelope.EndpointId,
-		"destination", envelope.DestinationUrl,
+		"destination", destinationURL,
 		"attempt", envelope.Attempt,
 	)
 
 	// Forward webhook
 	result := c.forwarder.Forward(
 		ctx,
-		envelope.DestinationUrl,
+		destinationURL,
 		envelope.Headers,
 		envelope.Payload,
 		envelope.Id,

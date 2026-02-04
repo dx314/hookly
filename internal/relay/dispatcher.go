@@ -6,8 +6,8 @@ import (
 	"log/slog"
 	"time"
 
-	hooklyv1 "hookly/internal/api/hookly/v1"
-	"hookly/internal/db"
+	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
+	"hooks.dx314.com/internal/db"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -17,7 +17,7 @@ const (
 	batchSize        = 100
 )
 
-// Dispatcher watches for pending webhooks and sends them to the home-hub.
+// Dispatcher watches for pending webhooks and sends them to the appropriate home-hub.
 type Dispatcher struct {
 	queries *db.Queries
 	manager *ConnectionManager
@@ -41,7 +41,7 @@ func (d *Dispatcher) Run(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			if d.manager.IsConnected() {
+			if d.manager.IsAnyConnected() {
 				if err := d.dispatch(ctx); err != nil {
 					slog.Error("dispatch error", "error", err)
 				}
@@ -58,6 +58,13 @@ func (d *Dispatcher) dispatch(ctx context.Context) error {
 	}
 
 	for _, wh := range webhooks {
+		// Look up which hub handles this endpoint
+		conn := d.manager.GetHubForEndpoint(wh.EndpointID)
+		if conn == nil {
+			// No hub registered for this endpoint, skip
+			continue
+		}
+
 		// Parse headers JSON
 		var headers map[string]string
 		if err := json.Unmarshal([]byte(wh.Headers), &headers); err != nil {
@@ -81,14 +88,18 @@ func (d *Dispatcher) dispatch(ctx context.Context) error {
 			Attempt:        int32(wh.Attempts) + 1,
 		}
 
-		if !d.manager.Send(envelope) {
-			slog.Warn("failed to queue webhook for delivery", "webhook_id", wh.ID)
-			break // Buffer full, stop dispatching
+		if !conn.Send(envelope) {
+			slog.Warn("failed to queue webhook for delivery",
+				"webhook_id", wh.ID,
+				"hub_id", conn.HubID(),
+			)
+			continue
 		}
 
 		slog.Debug("queued webhook for delivery",
 			"webhook_id", wh.ID,
 			"endpoint_id", wh.EndpointID,
+			"hub_id", conn.HubID(),
 			"attempt", envelope.Attempt,
 		)
 	}

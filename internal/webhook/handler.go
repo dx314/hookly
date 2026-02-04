@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"hookly/internal/db"
+	"hooks.dx314.com/internal/db"
 
 	"github.com/go-chi/chi/v5"
 	gonanoid "github.com/matoous/go-nanoid/v2"

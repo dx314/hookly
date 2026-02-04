@@ -15,7 +15,7 @@ frontend:
 # Build Go binaries
 backend:
 	go build -o bin/edge-gateway ./cmd/edge-gateway
-	go build -o bin/home-hub ./cmd/home-hub
+	go build -o bin/hookly ./hookly
 	go build -o bin/hookly-mcp ./cmd/hookly-mcp
 
 # Run tests
@@ -49,10 +49,8 @@ dev-frontend:
 docker-edge:
 	docker build -f deploy/edge/Dockerfile -t hookly-edge .
 
-docker-home:
-	docker build -f deploy/home/Dockerfile -t hookly-home .
 
 docker-mcp:
 	docker build -f deploy/mcp/Dockerfile -t hookly-mcp .
 
-docker-all: docker-edge docker-home docker-mcp
+docker-all: docker-edge docker-mcp

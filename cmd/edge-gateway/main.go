@@ -13,16 +13,16 @@ import (
 
 	"connectrpc.com/connect"
 
-	"hookly/internal/api/hookly/v1/hooklyv1connect"
-	"hookly/internal/auth"
-	"hookly/internal/config"
-	"hookly/internal/db"
-	"hookly/internal/notify"
-	"hookly/internal/relay"
-	"hookly/internal/server"
-	"hookly/internal/service/edge"
-	"hookly/internal/ui"
-	"hookly/internal/webhook"
+	"hooks.dx314.com/internal/api/hookly/v1/hooklyv1connect"
+	"hooks.dx314.com/internal/auth"
+	"hooks.dx314.com/internal/config"
+	"hooks.dx314.com/internal/db"
+	"hooks.dx314.com/internal/notify"
+	"hooks.dx314.com/internal/relay"
+	"hooks.dx314.com/internal/server"
+	"hooks.dx314.com/internal/service/edge"
+	"hooks.dx314.com/internal/ui"
+	"hooks.dx314.com/internal/webhook"
 )
 
 func main() {
@@ -134,12 +134,28 @@ func run() error {
 		slog.Warn("edge service enabled WITHOUT auth (development mode)")
 	}
 
-	// UI handler (must be last - catch-all for SPA)
+	// UI handler
 	uiHandler, err := ui.NewHandler("frontend/build")
 	if err != nil {
 		return fmt.Errorf("create ui handler: %w", err)
 	}
-	r.Handle("/*", uiHandler)
+
+	// Catch-all: Go vanity imports + SPA fallback
+	r.Get("/*", func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Query().Get("go-get") == "1" {
+			w.Header().Set("Content-Type", "text/html")
+			fmt.Fprintf(w, `<!DOCTYPE html>
+<html>
+<head>
+<meta name="go-import" content="hooks.dx314.com git https://github.com/dx314/hookly">
+<meta name="go-source" content="hooks.dx314.com https://github.com/dx314/hookly https://github.com/dx314/hookly/tree/main{/dir} https://github.com/dx314/hookly/blob/main{/dir}/{file}#L{line}">
+</head>
+<body>go get hooks.dx314.com/hookly</body>
+</html>`)
+			return
+		}
+		uiHandler.ServeHTTP(w, req)
+	})
 	slog.Info("ui handler enabled")
 
 	// Start webhook dispatcher

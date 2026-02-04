@@ -13,7 +13,7 @@ import (
 
 	gonanoid "github.com/matoous/go-nanoid/v2"
 
-	"hookly/internal/db"
+	"hooks.dx314.com/internal/db"
 )
 
 // Server is the MCP server for Hookly.

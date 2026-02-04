@@ -10,9 +10,9 @@ import (
 
 	"connectrpc.com/connect"
 
-	hooklyv1 "hookly/internal/api/hookly/v1"
-	"hookly/internal/db"
-	"hookly/internal/notify"
+	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
+	"hooks.dx314.com/internal/db"
+	"hooks.dx314.com/internal/notify"
 )
 
 const (
@@ -81,9 +81,12 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 		return err
 	}
 
-	// Mark as connected
-	h.manager.SetConnected(connectReq.HubId)
-	defer h.manager.SetDisconnected()
+	hubID := connectReq.HubId
+	endpointIDs := connectReq.EndpointIds
+
+	// Register connection with endpoints
+	conn := h.manager.AddConnection(hubID, endpointIDs)
+	defer h.manager.RemoveConnection(hubID)
 
 	// Create channels for coordination
 	errCh := make(chan error, 2)
@@ -113,7 +116,7 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 			case *hooklyv1.StreamRequest_Ack:
 				h.handleAck(ctx, m.Ack)
 			case *hooklyv1.StreamRequest_Heartbeat:
-				h.manager.UpdateHeartbeat()
+				h.manager.UpdateHeartbeat(hubID)
 			}
 		}
 	}()
@@ -127,7 +130,7 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 	defer staleTicker.Stop()
 
 	// Main loop: send webhooks and heartbeats
-	sendCh := h.manager.SendCh()
+	sendCh := conn.SendCh()
 	for {
 		select {
 		case <-ctx.Done():
@@ -157,8 +160,8 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 			}
 
 		case <-staleTicker.C:
-			if h.manager.IsStale(staleTimeout) {
-				slog.Warn("connection stale, closing")
+			if h.manager.IsStale(hubID, staleTimeout) {
+				slog.Warn("connection stale, closing", "hub_id", hubID)
 				return connect.NewError(connect.CodeDeadlineExceeded, errors.New("connection stale"))
 			}
 		}

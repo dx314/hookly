@@ -47,25 +47,66 @@ func TestConnectionManager(t *testing.T) {
 	mgr := NewConnectionManager()
 
 	// Initially not connected
-	if mgr.IsConnected() {
-		t.Error("expected not connected initially")
+	if mgr.IsAnyConnected() {
+		t.Error("expected no connections initially")
 	}
 
-	// Connect
-	mgr.SetConnected("hub-1")
-	if !mgr.IsConnected() {
-		t.Error("expected connected after SetConnected")
+	// Add connection with endpoints
+	conn := mgr.AddConnection("hub-1", []string{"ep-1", "ep-2"})
+	if !mgr.IsAnyConnected() {
+		t.Error("expected connected after AddConnection")
+	}
+
+	// Check endpoint routing
+	if mgr.GetHubForEndpoint("ep-1") != conn {
+		t.Error("expected ep-1 to route to hub-1")
+	}
+	if mgr.GetHubForEndpoint("ep-2") != conn {
+		t.Error("expected ep-2 to route to hub-1")
+	}
+	if mgr.GetHubForEndpoint("ep-unknown") != nil {
+		t.Error("expected unknown endpoint to return nil")
 	}
 
 	// Heartbeat
-	mgr.UpdateHeartbeat()
-	if mgr.IsStale(1 * time.Second) {
+	mgr.UpdateHeartbeat("hub-1")
+	if mgr.IsStale("hub-1", 1*time.Second) {
 		t.Error("should not be stale right after heartbeat")
 	}
 
-	// Disconnect
-	mgr.SetDisconnected()
-	if mgr.IsConnected() {
-		t.Error("expected not connected after SetDisconnected")
+	// Remove connection
+	mgr.RemoveConnection("hub-1")
+	if mgr.IsAnyConnected() {
+		t.Error("expected not connected after RemoveConnection")
+	}
+	if mgr.GetHubForEndpoint("ep-1") != nil {
+		t.Error("expected ep-1 to return nil after hub removed")
+	}
+}
+
+func TestMultipleHubs(t *testing.T) {
+	mgr := NewConnectionManager()
+
+	// Add two hubs with different endpoints
+	conn1 := mgr.AddConnection("hub-1", []string{"ep-1", "ep-2"})
+	conn2 := mgr.AddConnection("hub-2", []string{"ep-3", "ep-4"})
+
+	// Check routing
+	if mgr.GetHubForEndpoint("ep-1") != conn1 {
+		t.Error("expected ep-1 to route to hub-1")
+	}
+	if mgr.GetHubForEndpoint("ep-3") != conn2 {
+		t.Error("expected ep-3 to route to hub-2")
+	}
+
+	// Remove one hub
+	mgr.RemoveConnection("hub-1")
+
+	// Hub 2 should still work
+	if mgr.GetHubForEndpoint("ep-3") != conn2 {
+		t.Error("expected ep-3 to still route to hub-2")
+	}
+	if mgr.GetHubForEndpoint("ep-1") != nil {
+		t.Error("expected ep-1 to return nil after hub-1 removed")
 	}
 }

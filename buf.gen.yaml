@@ -3,7 +3,7 @@ managed:
   enabled: true
   override:
     - file_option: go_package_prefix
-      value: hookly/internal/api
+      value: hooks.dx314.com/internal/api
 plugins:
   # Go backend
   - remote: buf.build/protocolbuffers/go
