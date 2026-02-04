@@ -12,7 +12,54 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hookly/v1/common.proto.
  */
 export const file_hookly_v1_common: GenFile = /*@__PURE__*/
-  fileDesc("ChZob29rbHkvdjEvY29tbW9uLnByb3RvEglob29rbHkudjEi3AEKCEVuZHBvaW50EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSLgoNcHJvdmlkZXJfdHlwZRgDIAEoDjIXLmhvb2tseS52MS5Qcm92aWRlclR5cGUSFwoPZGVzdGluYXRpb25fdXJsGAQgASgJEg0KBW11dGVkGAUgASgIEi4KCmNyZWF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIqEDCgdXZWJob29rEgoKAmlkGAEgASgJEhMKC2VuZHBvaW50X2lkGAIgASgJEi8KC3JlY2VpdmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgdoZWFkZXJzGAQgAygLMh8uaG9va2x5LnYxLldlYmhvb2suSGVhZGVyc0VudHJ5Eg8KB3BheWxvYWQYBSABKAwSFwoPc2lnbmF0dXJlX3ZhbGlkGAYgASgIEigKBnN0YXR1cxgHIAEoDjIYLmhvb2tseS52MS5XZWJob29rU3RhdHVzEhAKCGF0dGVtcHRzGAggASgFEjMKD2xhc3RfYXR0ZW1wdF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMZGVsaXZlcmVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCg1lcnJvcl9tZXNzYWdlGAsgASgJGi4KDEhlYWRlcnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIjoKEVBhZ2luYXRpb25SZXF1ZXN0EhEKCXBhZ2Vfc2l6ZRgBIAEoBRISCgpwYWdlX3Rva2VuGAIgASgJIkIKElBhZ2luYXRpb25SZXNwb25zZRIXCg9uZXh0X3BhZ2VfdG9rZW4YASABKAkSEwoLdG90YWxfY291bnQYAiABKAUirwEKDFN5c3RlbVN0YXR1cxIVCg1wZW5kaW5nX2NvdW50GAEgASgFEhQKDGZhaWxlZF9jb3VudBgCIAEoBRIZChFkZWFkX2xldHRlcl9jb3VudBgDIAEoBRIaChJob21lX2h1Yl9jb25uZWN0ZWQYBCABKAgSOwoXbGFzdF9ob21lX2h1Yl9oZWFydGJlYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wKpgBCgxQcm92aWRlclR5cGUSHQoZUFJPVklERVJfVFlQRV9VTlNQRUNJRklFRBAAEhgKFFBST1ZJREVSX1RZUEVfU1RSSVBFEAESGAoUUFJPVklERVJfVFlQRV9HSVRIVUIQAhIaChZQUk9WSURFUl9UWVBFX1RFTEVHUkFNEAMSGQoVUFJPVklERVJfVFlQRV9HRU5FUklDEAQqpAEKDVdlYmhvb2tTdGF0dXMSHgoaV0VCSE9PS19TVEFUVVNfVU5TUEVDSUZJRUQQABIaChZXRUJIT09LX1NUQVRVU19QRU5ESU5HEAESHAoYV0VCSE9PS19TVEFUVVNfREVMSVZFUkVEEAISGQoVV0VCSE9PS19TVEFUVVNfRkFJTEVEEAMSHgoaV0VCSE9PS19TVEFUVVNfREVBRF9MRVRURVIQBEKSAQoNY29tLmhvb2tseS52MUILQ29tbW9uUHJvdG9QAVovaG9va3MuZHgzMTQuY29tL2ludGVybmFsL2FwaS9ob29rbHkvdjE7aG9va2x5djGiAgNIWFiqAglIb29rbHkuVjHKAglIb29rbHlcVjHiAhVIb29rbHlcVjFcR1BCTWV0YWRhdGHqAgpIb29rbHk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("ChZob29rbHkvdjEvY29tbW9uLnByb3RvEglob29rbHkudjEirgEKElZlcmlmaWNhdGlvbkNvbmZpZxItCgZtZXRob2QYASABKA4yHS5ob29rbHkudjEuVmVyaWZpY2F0aW9uTWV0aG9kEhgKEHNpZ25hdHVyZV9oZWFkZXIYAiABKAkSGAoQc2lnbmF0dXJlX3ByZWZpeBgDIAEoCRIYChB0aW1lc3RhbXBfaGVhZGVyGAQgASgJEhsKE3RpbWVzdGFtcF90b2xlcmFuY2UYBSABKAMimAIKCEVuZHBvaW50EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSLgoNcHJvdmlkZXJfdHlwZRgDIAEoDjIXLmhvb2tseS52MS5Qcm92aWRlclR5cGUSFwoPZGVzdGluYXRpb25fdXJsGAQgASgJEg0KBW11dGVkGAUgASgIEi4KCmNyZWF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjoKE3ZlcmlmaWNhdGlvbl9jb25maWcYCCABKAsyHS5ob29rbHkudjEuVmVyaWZpY2F0aW9uQ29uZmlnIqEDCgdXZWJob29rEgoKAmlkGAEgASgJEhMKC2VuZHBvaW50X2lkGAIgASgJEi8KC3JlY2VpdmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgdoZWFkZXJzGAQgAygLMh8uaG9va2x5LnYxLldlYmhvb2suSGVhZGVyc0VudHJ5Eg8KB3BheWxvYWQYBSABKAwSFwoPc2lnbmF0dXJlX3ZhbGlkGAYgASgIEigKBnN0YXR1cxgHIAEoDjIYLmhvb2tseS52MS5XZWJob29rU3RhdHVzEhAKCGF0dGVtcHRzGAggASgFEjMKD2xhc3RfYXR0ZW1wdF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMZGVsaXZlcmVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCg1lcnJvcl9tZXNzYWdlGAsgASgJGi4KDEhlYWRlcnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIjoKEVBhZ2luYXRpb25SZXF1ZXN0EhEKCXBhZ2Vfc2l6ZRgBIAEoBRISCgpwYWdlX3Rva2VuGAIgASgJIkIKElBhZ2luYXRpb25SZXNwb25zZRIXCg9uZXh0X3BhZ2VfdG9rZW4YASABKAkSEwoLdG90YWxfY291bnQYAiABKAUiLQoRQ29ubmVjdGVkRW5kcG9pbnQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCSLyAQoMU3lzdGVtU3RhdHVzEhUKDXBlbmRpbmdfY291bnQYASABKAUSFAoMZmFpbGVkX2NvdW50GAIgASgFEhkKEWRlYWRfbGV0dGVyX2NvdW50GAMgASgFEh4KEmhvbWVfaHViX2Nvbm5lY3RlZBgEIAEoCEICGAESPwoXbGFzdF9ob21lX2h1Yl9oZWFydGJlYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgIYARI5ChNjb25uZWN0ZWRfZW5kcG9pbnRzGAYgAygLMhwuaG9va2x5LnYxLkNvbm5lY3RlZEVuZHBvaW50KrIBCgxQcm92aWRlclR5cGUSHQoZUFJPVklERVJfVFlQRV9VTlNQRUNJRklFRBAAEhgKFFBST1ZJREVSX1RZUEVfU1RSSVBFEAESGAoUUFJPVklERVJfVFlQRV9HSVRIVUIQAhIaChZQUk9WSURFUl9UWVBFX1RFTEVHUkFNEAMSGQoVUFJPVklERVJfVFlQRV9HRU5FUklDEAQSGAoUUFJPVklERVJfVFlQRV9DVVNUT00QBSrLAQoSVmVyaWZpY2F0aW9uTWV0aG9kEiMKH1ZFUklGSUNBVElPTl9NRVRIT0RfVU5TUEVDSUZJRUQQABIeChpWRVJJRklDQVRJT05fTUVUSE9EX1NUQVRJQxABEiMKH1ZFUklGSUNBVElPTl9NRVRIT0RfSE1BQ19TSEEyNTYQAhIhCh1WRVJJRklDQVRJT05fTUVUSE9EX0hNQUNfU0hBMRADEigKJFZFUklGSUNBVElPTl9NRVRIT0RfVElNRVNUQU1QRURfSE1BQxAEKqQBCg1XZWJob29rU3RhdHVzEh4KGldFQkhPT0tfU1RBVFVTX1VOU1BFQ0lGSUVEEAASGgoWV0VCSE9PS19TVEFUVVNfUEVORElORxABEhwKGFdFQkhPT0tfU1RBVFVTX0RFTElWRVJFRBACEhkKFVdFQkhPT0tfU1RBVFVTX0ZBSUxFRBADEh4KGldFQkhPT0tfU1RBVFVTX0RFQURfTEVUVEVSEARCkgEKDWNvbS5ob29rbHkudjFCC0NvbW1vblByb3RvUAFaL2hvb2tzLmR4MzE0LmNvbS9pbnRlcm5hbC9hcGkvaG9va2x5L3YxO2hvb2tseXYxogIDSFhYqgIJSG9va2x5LlYxygIJSG9va2x5XFYx4gIVSG9va2x5XFYxXEdQQk1ldGFkYXRh6gIKSG9va2x5OjpWMWIGcHJvdG8z", [file_google_protobuf_timestamp]);
+
+/**
+ * Custom verification configuration for PROVIDER_TYPE_CUSTOM
+ *
+ * @generated from message hookly.v1.VerificationConfig
+ */
+export type VerificationConfig = Message<"hookly.v1.VerificationConfig"> & {
+  /**
+   * @generated from field: hookly.v1.VerificationMethod method = 1;
+   */
+  method: VerificationMethod;
+
+  /**
+   * Header containing the signature
+   *
+   * @generated from field: string signature_header = 2;
+   */
+  signatureHeader: string;
+
+  /**
+   * Optional prefix to strip (e.g., "sha256=")
+   *
+   * @generated from field: string signature_prefix = 3;
+   */
+  signaturePrefix: string;
+
+  /**
+   * Header containing timestamp (for timestamped_hmac)
+   *
+   * @generated from field: string timestamp_header = 4;
+   */
+  timestampHeader: string;
+
+  /**
+   * Max age in seconds (default 300)
+   *
+   * @generated from field: int64 timestamp_tolerance = 5;
+   */
+  timestampTolerance: bigint;
+};
+
+/**
+ * Describes the message hookly.v1.VerificationConfig.
+ * Use `create(VerificationConfigSchema)` to create a new message.
+ */
+export const VerificationConfigSchema: GenMessage<VerificationConfig> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_common, 0);
 
 /**
  * Endpoint configuration
@@ -51,11 +98,17 @@ export type Endpoint = Message<"hookly.v1.Endpoint"> & {
   createdAt?: Timestamp;
 
   /**
-   * Note: signature_secret is not exposed in API responses
-   *
    * @generated from field: google.protobuf.Timestamp updated_at = 7;
    */
   updatedAt?: Timestamp;
+
+  /**
+   * Note: signature_secret is not exposed in API responses
+   * Custom verification config (only for PROVIDER_TYPE_CUSTOM)
+   *
+   * @generated from field: hookly.v1.VerificationConfig verification_config = 8;
+   */
+  verificationConfig?: VerificationConfig;
 };
 
 /**
@@ -63,7 +116,7 @@ export type Endpoint = Message<"hookly.v1.Endpoint"> & {
  * Use `create(EndpointSchema)` to create a new message.
  */
 export const EndpointSchema: GenMessage<Endpoint> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 0);
+  messageDesc(file_hookly_v1_common, 1);
 
 /**
  * Webhook record
@@ -132,7 +185,7 @@ export type Webhook = Message<"hookly.v1.Webhook"> & {
  * Use `create(WebhookSchema)` to create a new message.
  */
 export const WebhookSchema: GenMessage<Webhook> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 1);
+  messageDesc(file_hookly_v1_common, 2);
 
 /**
  * Pagination request parameters
@@ -156,7 +209,7 @@ export type PaginationRequest = Message<"hookly.v1.PaginationRequest"> & {
  * Use `create(PaginationRequestSchema)` to create a new message.
  */
 export const PaginationRequestSchema: GenMessage<PaginationRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 2);
+  messageDesc(file_hookly_v1_common, 3);
 
 /**
  * Pagination response metadata
@@ -180,7 +233,31 @@ export type PaginationResponse = Message<"hookly.v1.PaginationResponse"> & {
  * Use `create(PaginationResponseSchema)` to create a new message.
  */
 export const PaginationResponseSchema: GenMessage<PaginationResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 3);
+  messageDesc(file_hookly_v1_common, 4);
+
+/**
+ * Connected endpoint info for status display
+ *
+ * @generated from message hookly.v1.ConnectedEndpoint
+ */
+export type ConnectedEndpoint = Message<"hookly.v1.ConnectedEndpoint"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+};
+
+/**
+ * Describes the message hookly.v1.ConnectedEndpoint.
+ * Use `create(ConnectedEndpointSchema)` to create a new message.
+ */
+export const ConnectedEndpointSchema: GenMessage<ConnectedEndpoint> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_common, 5);
 
 /**
  * System status information
@@ -204,14 +281,25 @@ export type SystemStatus = Message<"hookly.v1.SystemStatus"> & {
   deadLetterCount: number;
 
   /**
-   * @generated from field: bool home_hub_connected = 4;
+   * Deprecated: use connected_endpoints instead
+   *
+   * @generated from field: bool home_hub_connected = 4 [deprecated = true];
+   * @deprecated
    */
   homeHubConnected: boolean;
 
   /**
-   * @generated from field: google.protobuf.Timestamp last_home_hub_heartbeat = 5;
+   * @generated from field: google.protobuf.Timestamp last_home_hub_heartbeat = 5 [deprecated = true];
+   * @deprecated
    */
   lastHomeHubHeartbeat?: Timestamp;
+
+  /**
+   * Endpoints with active relay connections
+   *
+   * @generated from field: repeated hookly.v1.ConnectedEndpoint connected_endpoints = 6;
+   */
+  connectedEndpoints: ConnectedEndpoint[];
 };
 
 /**
@@ -219,7 +307,7 @@ export type SystemStatus = Message<"hookly.v1.SystemStatus"> & {
  * Use `create(SystemStatusSchema)` to create a new message.
  */
 export const SystemStatusSchema: GenMessage<SystemStatus> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 4);
+  messageDesc(file_hookly_v1_common, 6);
 
 /**
  * Provider type for webhook signature verification
@@ -251,6 +339,11 @@ export enum ProviderType {
    * @generated from enum value: PROVIDER_TYPE_GENERIC = 4;
    */
   GENERIC = 4,
+
+  /**
+   * @generated from enum value: PROVIDER_TYPE_CUSTOM = 5;
+   */
+  CUSTOM = 5,
 }
 
 /**
@@ -258,6 +351,52 @@ export enum ProviderType {
  */
 export const ProviderTypeSchema: GenEnum<ProviderType> = /*@__PURE__*/
   enumDesc(file_hookly_v1_common, 0);
+
+/**
+ * Verification method for custom provider type
+ *
+ * @generated from enum hookly.v1.VerificationMethod
+ */
+export enum VerificationMethod {
+  /**
+   * @generated from enum value: VERIFICATION_METHOD_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * Direct comparison of header value
+   *
+   * @generated from enum value: VERIFICATION_METHOD_STATIC = 1;
+   */
+  STATIC = 1,
+
+  /**
+   * HMAC-SHA256 of payload
+   *
+   * @generated from enum value: VERIFICATION_METHOD_HMAC_SHA256 = 2;
+   */
+  HMAC_SHA256 = 2,
+
+  /**
+   * HMAC-SHA1 of payload
+   *
+   * @generated from enum value: VERIFICATION_METHOD_HMAC_SHA1 = 3;
+   */
+  HMAC_SHA1 = 3,
+
+  /**
+   * Timestamp + payload HMAC (like Stripe)
+   *
+   * @generated from enum value: VERIFICATION_METHOD_TIMESTAMPED_HMAC = 4;
+   */
+  TIMESTAMPED_HMAC = 4,
+}
+
+/**
+ * Describes the enum hookly.v1.VerificationMethod.
+ */
+export const VerificationMethodSchema: GenEnum<VerificationMethod> = /*@__PURE__*/
+  enumDesc(file_hookly_v1_common, 1);
 
 /**
  * Webhook delivery status
@@ -295,5 +434,5 @@ export enum WebhookStatus {
  * Describes the enum hookly.v1.WebhookStatus.
  */
 export const WebhookStatusSchema: GenEnum<WebhookStatus> = /*@__PURE__*/
-  enumDesc(file_hookly_v1_common, 1);
+  enumDesc(file_hookly_v1_common, 2);
 

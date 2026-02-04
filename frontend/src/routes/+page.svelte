@@ -1,12 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { edgeClient } from '$lib/api/client';
+	import type { ConnectedEndpoint } from '$api/hookly/v1/common_pb';
 
 	let status = $state<{
 		pendingCount: number;
 		failedCount: number;
 		deadLetterCount: number;
-		homeHubConnected: boolean;
+		connectedEndpoints: ConnectedEndpoint[];
 	} | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
@@ -18,7 +19,7 @@
 				pendingCount: response.status?.pendingCount ?? 0,
 				failedCount: response.status?.failedCount ?? 0,
 				deadLetterCount: response.status?.deadLetterCount ?? 0,
-				homeHubConnected: response.status?.homeHubConnected ?? false
+				connectedEndpoints: response.status?.connectedEndpoints ?? []
 			};
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to fetch status';
@@ -49,15 +50,29 @@
 		</div>
 	{:else if status}
 		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-			<!-- Connection Status -->
+			<!-- Connected Relays -->
 			<div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] p-6">
 				<div class="flex items-center justify-between">
-					<p class="text-sm font-medium text-[var(--color-muted-foreground)]">Home Hub</p>
-					<span class="flex h-3 w-3 rounded-full {status.homeHubConnected ? 'bg-green-500' : 'bg-red-500'}"></span>
+					<p class="text-sm font-medium text-[var(--color-muted-foreground)]">Relays</p>
+					<span class="flex h-3 w-3 rounded-full {status.connectedEndpoints.length > 0 ? 'bg-green-500' : 'bg-zinc-500'}"></span>
 				</div>
 				<p class="text-2xl font-bold text-[var(--color-foreground)] mt-2">
-					{status.homeHubConnected ? 'Connected' : 'Disconnected'}
+					{status.connectedEndpoints.length} online
 				</p>
+				{#if status.connectedEndpoints.length > 0}
+					<div class="mt-2 flex flex-wrap gap-1">
+						{#each status.connectedEndpoints as endpoint}
+							<a
+								href="/endpoints/{endpoint.id}"
+								class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-500/10 text-green-600 hover:bg-green-500/20 transition-colors"
+							>
+								{endpoint.name}
+							</a>
+						{/each}
+					</div>
+				{:else}
+					<p class="text-xs text-[var(--color-muted-foreground)] mt-1">no endpoints connected</p>
+				{/if}
 			</div>
 
 			<!-- Pending Webhooks -->

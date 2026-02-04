@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
+	"text/template"
 	"time"
 
 	"github.com/urfave/cli/v2"
@@ -20,6 +23,159 @@ import (
 
 const version = "0.1.0"
 const defaultEdgeURL = "https://hooks.dx314.com"
+
+// ANSI color codes
+const (
+	colorReset  = "\033[0m"
+	colorBold   = "\033[1m"
+	colorDim    = "\033[2m"
+	colorCyan   = "\033[36m"
+	colorGreen  = "\033[32m"
+	colorYellow = "\033[33m"
+)
+
+// Custom help templates with nice styling
+var appHelpTemplate = `{{ cyan .Name | bold }} {{ dim .Version }}
+{{ .Usage }}
+
+{{ bold "USAGE" }}
+    {{ .HelpName }}{{ if .Commands }} [command]{{ end }}{{ if .Flags }} [options]{{ end }}
+
+    Running {{ cyan "hookly" }} without a command starts the webhook relay.
+
+{{ bold "COMMANDS" }}
+  {{ bold "Authentication" }}
+    {{ green "login" }}     Authenticate via GitHub OAuth
+    {{ green "logout" }}    Clear stored credentials
+    {{ green "whoami" }}    Show current user
+    {{ green "status" }}    Show connection and config status
+
+  {{ bold "Setup" }}
+    {{ green "init" }}      Create hookly.yaml interactively
+
+  {{ bold "Service Management" }}
+    {{ green "service" }}   Install/manage as system service
+              └─ install, uninstall, start, stop, restart, status, logs
+
+{{ bold "QUICK START" }}
+    {{ dim "$" }} hookly login                    {{ dim "# authenticate with GitHub" }}
+    {{ dim "$" }} hookly init                     {{ dim "# create config interactively" }}
+    {{ dim "$" }} hookly                          {{ dim "# start the relay" }}
+
+{{ bold "EXAMPLES" }}
+    {{ dim "# Start relay in foreground" }}
+    {{ dim "$" }} hookly
+
+    {{ dim "# Run as a background service" }}
+    {{ dim "$" }} hookly service install --config ./hookly.yaml
+    {{ dim "$" }} hookly service start
+
+    {{ dim "# Connect to a custom edge server" }}
+    {{ dim "$" }} hookly login --edge-url https://hooks.example.com
+
+{{ bold "FILES" }}
+    {{ dim "~/.config/hookly/credentials.json" }}    Encrypted auth credentials
+    {{ dim "./hookly.yaml" }}                        Endpoint configuration
+
+{{ bold "GLOBAL OPTIONS" }}
+    {{ green "--debug" }}         Enable debug logging (JSON output)
+    {{ green "--help, -h" }}      Show help
+    {{ green "--version, -v" }}   Print version ({{ .Version }})
+
+{{ dim "Documentation:" }} https://github.com/alexdunmow/hookly
+`
+
+var commandHelpTemplate = `{{ cyan .FullName | bold }}
+{{ .Usage }}
+
+{{ bold "USAGE" }}
+    {{ .HelpName }}{{ if .VisibleCommands }} <command>{{ end }}{{ if .VisibleFlags }} [options]{{ end }}
+{{ if .Description }}
+{{ bold "DESCRIPTION" }}
+    {{ .Description }}
+{{ end }}{{ if .VisibleCommands }}
+{{ bold "COMMANDS" }}{{ range .VisibleCommands }}
+    {{ green .Name }}	{{ .Usage }}{{ end }}
+{{ end }}{{ if .VisibleFlags }}
+{{ bold "OPTIONS" }}{{ range .VisibleFlags }}
+    {{ green (flagNames .) }}	{{ .Usage }}{{ if (flagDefault .) }} {{ dim (flagDefault .) }}{{ end }}{{ end }}
+{{ end }}`
+
+var subcommandHelpTemplate = `{{ cyan .FullName | bold }}
+{{ .Usage }}
+
+{{ bold "USAGE" }}
+    {{ .HelpName }}{{ if .VisibleCommands }} <command>{{ end }}{{ if .VisibleFlags }} [options]{{ end }}
+{{ if .Description }}
+{{ bold "DESCRIPTION" }}
+    {{ .Description }}
+{{ end }}{{ if .VisibleCommands }}
+{{ bold "COMMANDS" }}{{ range .VisibleCommands }}
+    {{ green .Name }}	{{ .Usage }}{{ end }}
+{{ end }}{{ if .VisibleFlags }}
+{{ bold "OPTIONS" }}{{ range .VisibleFlags }}
+    {{ green (flagNames .) }}	{{ .Usage }}{{ if (flagDefault .) }} {{ dim (flagDefault .) }}{{ end }}{{ end }}
+{{ end }}`
+
+// Template functions for colorized output
+var templateFuncs = template.FuncMap{
+	"cyan":        func(s string) string { return colorCyan + s + colorReset },
+	"green":       func(s string) string { return colorGreen + s + colorReset },
+	"yellow":      func(s string) string { return colorYellow + s + colorReset },
+	"bold":        func(s string) string { return colorBold + s + colorReset },
+	"dim":         func(s string) string { return colorDim + s + colorReset },
+	"flagNames":   flagNames,
+	"flagDefault": flagDefault,
+}
+
+func init() {
+	cli.AppHelpTemplate = appHelpTemplate
+	cli.CommandHelpTemplate = commandHelpTemplate
+	cli.SubcommandHelpTemplate = subcommandHelpTemplate
+
+	// Custom help printer with our template functions
+	cli.HelpPrinter = func(out io.Writer, templ string, data interface{}) {
+		t := template.Must(template.New("help").Funcs(templateFuncs).Parse(templ))
+		_ = t.Execute(out, data)
+	}
+}
+
+// flagNames returns a formatted flag name string.
+func flagNames(f cli.Flag) string {
+	names := f.Names()
+	if len(names) == 0 {
+		return ""
+	}
+
+	var parts []string
+	for _, name := range names {
+		if len(name) == 1 {
+			parts = append(parts, "-"+name)
+		} else {
+			parts = append(parts, "--"+name)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// flagDefault returns a default value string for a flag.
+func flagDefault(f cli.Flag) string {
+	switch ff := f.(type) {
+	case *cli.StringFlag:
+		if ff.Value != "" {
+			return "(default: " + ff.Value + ")"
+		}
+	case *cli.IntFlag:
+		if ff.Value != 0 {
+			return fmt.Sprintf("(default: %d)", ff.Value)
+		}
+	case *cli.BoolFlag:
+		if ff.Value {
+			return "(default: true)"
+		}
+	}
+	return ""
+}
 
 func main() {
 	// Check if running in service mode (invoked by service manager)
@@ -38,15 +194,23 @@ func main() {
 	})))
 
 	app := &cli.App{
-		Name:    "hookly",
-		Usage:   "Webhook relay client",
-		Version: version,
-		Action:  runRelay,
+		Name:                 "hookly",
+		Usage:                "Relay webhooks from the public internet to your local network",
+		Version:              version,
+		Action:               runRelay,
+		EnableBashCompletion: true,
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "debug",
+				Usage: "Enable debug logging with full structured JSON output",
+			},
+		},
 		Commands: []*cli.Command{
 			{
-				Name:   "login",
-				Usage:  "Authenticate with the hookly edge server",
-				Action: runLogin,
+				Name:        "login",
+				Usage:       "Authenticate with the hookly edge server",
+				Description: "Opens a browser window to authenticate via GitHub OAuth.\nCredentials are encrypted and stored locally.",
+				Action:      runLogin,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "edge-url",
@@ -56,24 +220,28 @@ func main() {
 				},
 			},
 			{
-				Name:   "logout",
-				Usage:  "Clear stored credentials and revoke token",
-				Action: runLogout,
+				Name:        "logout",
+				Usage:       "Clear stored credentials and revoke token",
+				Description: "Removes locally stored credentials.\nYou will need to run 'hookly login' again to use the CLI.",
+				Action:      runLogout,
 			},
 			{
-				Name:   "whoami",
-				Usage:  "Show current authenticated user",
-				Action: runWhoami,
+				Name:        "whoami",
+				Usage:       "Show current authenticated user",
+				Description: "Displays your username and the edge server you're connected to.",
+				Action:      runWhoami,
 			},
 			{
-				Name:   "status",
-				Usage:  "Show current user, edge URL, and connection status",
-				Action: runStatus,
+				Name:        "status",
+				Usage:       "Show current user, edge URL, and connection status",
+				Description: "Displays authentication status, configuration details,\nand the number of configured endpoints.",
+				Action:      runStatus,
 			},
 			{
-				Name:   "init",
-				Usage:  "Create hookly.yaml configuration file",
-				Action: runInit,
+				Name:        "init",
+				Usage:       "Create hookly.yaml configuration file",
+				Description: "Interactively creates a hookly.yaml config file.\nIf logged in, lets you select from your existing endpoints\nor create a new one.",
+				Action:      runInit,
 			},
 			serviceCommand(),
 		},
@@ -87,10 +255,8 @@ func main() {
 
 // runRelay is the default action - starts the relay client.
 func runRelay(c *cli.Context) error {
-	// Enable info logging for relay mode
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	})))
+	// Setup logger based on debug flag
+	setupLogger(c.Bool("debug"))
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

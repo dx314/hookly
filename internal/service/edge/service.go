@@ -87,14 +87,46 @@ func (s *Service) CreateEndpoint(ctx context.Context, req *connect.Request[hookl
 	// Map provider type
 	providerType := mapProviderTypeToString(msg.ProviderType)
 
+	// Handle verification config for custom provider type
+	var encryptedVerificationConfig []byte
+	if providerType == "custom" {
+		if msg.VerificationConfig == nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("verification_config is required for custom provider type"))
+		}
+		if msg.VerificationConfig.SignatureHeader == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("signature_header is required in verification_config"))
+		}
+		if msg.VerificationConfig.Method == hooklyv1.VerificationMethod_VERIFICATION_METHOD_UNSPECIFIED {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("method is required in verification_config"))
+		}
+		if msg.VerificationConfig.Method == hooklyv1.VerificationMethod_VERIFICATION_METHOD_TIMESTAMPED_HMAC && msg.VerificationConfig.TimestampHeader == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("timestamp_header is required for timestamped_hmac method"))
+		}
+
+		// Serialize verification config to JSON
+		configJSON, err := json.Marshal(protoVerificationConfigToInternal(msg.VerificationConfig))
+		if err != nil {
+			slog.Error("failed to serialize verification config", "error", err)
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to serialize verification config"))
+		}
+
+		// Encrypt the config
+		encryptedVerificationConfig, err = s.secretManager.EncryptSecret(string(configJSON))
+		if err != nil {
+			slog.Error("failed to encrypt verification config", "error", err)
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to encrypt verification config"))
+		}
+	}
+
 	// Create in database
 	endpoint, err := s.queries.CreateEndpoint(ctx, db.CreateEndpointParams{
-		ID:                       id,
-		UserID:                   userID,
-		Name:                     msg.Name,
-		ProviderType:             providerType,
-		SignatureSecretEncrypted: encryptedSecret,
-		DestinationUrl:           msg.DestinationUrl,
+		ID:                            id,
+		UserID:                        userID,
+		Name:                          msg.Name,
+		ProviderType:                  providerType,
+		SignatureSecretEncrypted:      encryptedSecret,
+		VerificationConfigEncrypted:   encryptedVerificationConfig,
+		DestinationUrl:                msg.DestinationUrl,
 	})
 	if err != nil {
 		slog.Error("failed to create endpoint", "error", err)
@@ -104,7 +136,7 @@ func (s *Service) CreateEndpoint(ctx context.Context, req *connect.Request[hookl
 	slog.Info("endpoint created", "id", id, "name", msg.Name, "user_id", userID)
 
 	return connect.NewResponse(&hooklyv1.CreateEndpointResponse{
-		Endpoint:   dbEndpointToProto(&endpoint),
+		Endpoint:   s.dbEndpointToProto(&endpoint),
 		WebhookUrl: s.webhookURL(id),
 	}), nil
 }
@@ -133,7 +165,7 @@ func (s *Service) GetEndpoint(ctx context.Context, req *connect.Request[hooklyv1
 	}
 
 	return connect.NewResponse(&hooklyv1.GetEndpointResponse{
-		Endpoint:   dbEndpointToProto(&endpoint),
+		Endpoint:   s.dbEndpointToProto(&endpoint),
 		WebhookUrl: s.webhookURL(endpoint.ID),
 	}), nil
 }
@@ -187,7 +219,7 @@ func (s *Service) ListEndpoints(ctx context.Context, req *connect.Request[hookly
 
 	protoEndpoints := make([]*hooklyv1.Endpoint, len(endpoints))
 	for i, ep := range endpoints {
-		protoEndpoints[i] = dbEndpointToProto(&ep)
+		protoEndpoints[i] = s.dbEndpointToProto(&ep)
 	}
 
 	return connect.NewResponse(&hooklyv1.ListEndpointsResponse{
@@ -240,6 +272,32 @@ func (s *Service) UpdateEndpoint(ctx context.Context, req *connect.Request[hookl
 		params.SignatureSecretEncrypted = encryptedSecret
 	}
 
+	// Handle verification config update (for custom provider type)
+	if msg.VerificationConfig != nil {
+		if msg.VerificationConfig.SignatureHeader == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("signature_header is required in verification_config"))
+		}
+		if msg.VerificationConfig.Method == hooklyv1.VerificationMethod_VERIFICATION_METHOD_UNSPECIFIED {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("method is required in verification_config"))
+		}
+		if msg.VerificationConfig.Method == hooklyv1.VerificationMethod_VERIFICATION_METHOD_TIMESTAMPED_HMAC && msg.VerificationConfig.TimestampHeader == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("timestamp_header is required for timestamped_hmac method"))
+		}
+
+		configJSON, err := json.Marshal(protoVerificationConfigToInternal(msg.VerificationConfig))
+		if err != nil {
+			slog.Error("failed to serialize verification config", "error", err)
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to serialize verification config"))
+		}
+
+		encryptedConfig, err := s.secretManager.EncryptSecret(string(configJSON))
+		if err != nil {
+			slog.Error("failed to encrypt verification config", "error", err)
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to encrypt verification config"))
+		}
+		params.VerificationConfigEncrypted = encryptedConfig
+	}
+
 	endpoint, err := s.queries.UpdateEndpoint(ctx, params)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -252,7 +310,7 @@ func (s *Service) UpdateEndpoint(ctx context.Context, req *connect.Request[hookl
 	slog.Info("endpoint updated", "id", msg.Id)
 
 	return connect.NewResponse(&hooklyv1.UpdateEndpointResponse{
-		Endpoint: dbEndpointToProto(&endpoint),
+		Endpoint: s.dbEndpointToProto(&endpoint),
 	}), nil
 }
 
@@ -458,11 +516,35 @@ func (s *Service) GetStatus(ctx context.Context, _ *connect.Request[hooklyv1.Get
 		deadLetterCount = int32(stats.DeadLetterCount.Float64)
 	}
 
+	// Get connected endpoints for this user
+	connectedEndpointIDs := s.connMgr.ConnectedEndpointIDs()
+	var connectedEndpoints []*hooklyv1.ConnectedEndpoint
+
+	if len(connectedEndpointIDs) > 0 {
+		// Fetch endpoint names for connected endpoints belonging to this user
+		endpoints, err := s.queries.GetEndpointsByIDs(ctx, db.GetEndpointsByIDsParams{
+			UserID: userID,
+			Ids:    connectedEndpointIDs,
+		})
+		if err != nil {
+			slog.Error("failed to get connected endpoints", "error", err)
+			// Non-fatal, continue with empty list
+		} else {
+			connectedEndpoints = make([]*hooklyv1.ConnectedEndpoint, len(endpoints))
+			for i, ep := range endpoints {
+				connectedEndpoints[i] = &hooklyv1.ConnectedEndpoint{
+					Id:   ep.ID,
+					Name: ep.Name,
+				}
+			}
+		}
+	}
+
 	status := &hooklyv1.SystemStatus{
-		PendingCount:     pendingCount,
-		FailedCount:      failedCount,
-		DeadLetterCount:  deadLetterCount,
-		HomeHubConnected: s.connMgr.IsAnyConnected(),
+		PendingCount:       pendingCount,
+		FailedCount:        failedCount,
+		DeadLetterCount:    deadLetterCount,
+		ConnectedEndpoints: connectedEndpoints,
 	}
 
 	return connect.NewResponse(&hooklyv1.GetStatusResponse{
@@ -494,11 +576,11 @@ func (s *Service) webhookURL(endpointID string) string {
 
 // Helper functions
 
-func dbEndpointToProto(ep *db.Endpoint) *hooklyv1.Endpoint {
+func (s *Service) dbEndpointToProto(ep *db.Endpoint) *hooklyv1.Endpoint {
 	createdAt, _ := time.Parse("2006-01-02 15:04:05", ep.CreatedAt)
 	updatedAt, _ := time.Parse("2006-01-02 15:04:05", ep.UpdatedAt)
 
-	return &hooklyv1.Endpoint{
+	protoEp := &hooklyv1.Endpoint{
 		Id:             ep.ID,
 		Name:           ep.Name,
 		ProviderType:   mapStringToProviderType(ep.ProviderType),
@@ -507,6 +589,19 @@ func dbEndpointToProto(ep *db.Endpoint) *hooklyv1.Endpoint {
 		CreatedAt:      timestamppb.New(createdAt),
 		UpdatedAt:      timestamppb.New(updatedAt),
 	}
+
+	// Decrypt and include verification config for custom provider type
+	if ep.ProviderType == "custom" && len(ep.VerificationConfigEncrypted) > 0 {
+		decrypted, err := s.secretManager.DecryptSecret(ep.VerificationConfigEncrypted)
+		if err == nil {
+			var cfg internalVerificationConfig
+			if json.Unmarshal([]byte(decrypted), &cfg) == nil {
+				protoEp.VerificationConfig = internalVerificationConfigToProto(&cfg)
+			}
+		}
+	}
+
+	return protoEp
 }
 
 func dbWebhookToProto(wh *db.Webhook) *hooklyv1.Webhook {
@@ -556,6 +651,8 @@ func mapProviderTypeToString(pt hooklyv1.ProviderType) string {
 		return "telegram"
 	case hooklyv1.ProviderType_PROVIDER_TYPE_GENERIC:
 		return "generic"
+	case hooklyv1.ProviderType_PROVIDER_TYPE_CUSTOM:
+		return "custom"
 	default:
 		return "generic"
 	}
@@ -571,6 +668,8 @@ func mapStringToProviderType(s string) hooklyv1.ProviderType {
 		return hooklyv1.ProviderType_PROVIDER_TYPE_TELEGRAM
 	case "generic":
 		return hooklyv1.ProviderType_PROVIDER_TYPE_GENERIC
+	case "custom":
+		return hooklyv1.ProviderType_PROVIDER_TYPE_CUSTOM
 	default:
 		return hooklyv1.ProviderType_PROVIDER_TYPE_UNSPECIFIED
 	}
@@ -603,5 +702,70 @@ func mapStringToWebhookStatus(s string) hooklyv1.WebhookStatus {
 		return hooklyv1.WebhookStatus_WEBHOOK_STATUS_DEAD_LETTER
 	default:
 		return hooklyv1.WebhookStatus_WEBHOOK_STATUS_UNSPECIFIED
+	}
+}
+
+// internalVerificationConfig matches the webhook.VerificationConfig struct for JSON serialization.
+type internalVerificationConfig struct {
+	Method             string `json:"method"`
+	SignatureHeader    string `json:"signature_header"`
+	SignaturePrefix    string `json:"signature_prefix,omitempty"`
+	TimestampHeader    string `json:"timestamp_header,omitempty"`
+	TimestampTolerance int64  `json:"timestamp_tolerance,omitempty"`
+}
+
+func protoVerificationConfigToInternal(cfg *hooklyv1.VerificationConfig) *internalVerificationConfig {
+	if cfg == nil {
+		return nil
+	}
+	return &internalVerificationConfig{
+		Method:             mapVerificationMethodToString(cfg.Method),
+		SignatureHeader:    cfg.SignatureHeader,
+		SignaturePrefix:    cfg.SignaturePrefix,
+		TimestampHeader:    cfg.TimestampHeader,
+		TimestampTolerance: cfg.TimestampTolerance,
+	}
+}
+
+func internalVerificationConfigToProto(cfg *internalVerificationConfig) *hooklyv1.VerificationConfig {
+	if cfg == nil {
+		return nil
+	}
+	return &hooklyv1.VerificationConfig{
+		Method:             mapStringToVerificationMethod(cfg.Method),
+		SignatureHeader:    cfg.SignatureHeader,
+		SignaturePrefix:    cfg.SignaturePrefix,
+		TimestampHeader:    cfg.TimestampHeader,
+		TimestampTolerance: cfg.TimestampTolerance,
+	}
+}
+
+func mapVerificationMethodToString(m hooklyv1.VerificationMethod) string {
+	switch m {
+	case hooklyv1.VerificationMethod_VERIFICATION_METHOD_STATIC:
+		return "static"
+	case hooklyv1.VerificationMethod_VERIFICATION_METHOD_HMAC_SHA256:
+		return "hmac_sha256"
+	case hooklyv1.VerificationMethod_VERIFICATION_METHOD_HMAC_SHA1:
+		return "hmac_sha1"
+	case hooklyv1.VerificationMethod_VERIFICATION_METHOD_TIMESTAMPED_HMAC:
+		return "timestamped_hmac"
+	default:
+		return ""
+	}
+}
+
+func mapStringToVerificationMethod(s string) hooklyv1.VerificationMethod {
+	switch s {
+	case "static":
+		return hooklyv1.VerificationMethod_VERIFICATION_METHOD_STATIC
+	case "hmac_sha256":
+		return hooklyv1.VerificationMethod_VERIFICATION_METHOD_HMAC_SHA256
+	case "hmac_sha1":
+		return hooklyv1.VerificationMethod_VERIFICATION_METHOD_HMAC_SHA1
+	case "timestamped_hmac":
+		return hooklyv1.VerificationMethod_VERIFICATION_METHOD_TIMESTAMPED_HMAC
+	default:
+		return hooklyv1.VerificationMethod_VERIFICATION_METHOD_UNSPECIFIED
 	}
 }

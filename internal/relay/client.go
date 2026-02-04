@@ -2,15 +2,18 @@ package relay
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"strings"
 	"time"
 
 	"connectrpc.com/connect"
+	"golang.org/x/net/http2"
 
 	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
 	"hooks.dx314.com/internal/api/hookly/v1/hooklyv1connect"
@@ -21,7 +24,7 @@ import (
 const (
 	initialBackoff  = 1 * time.Second
 	maxBackoff      = 60 * time.Second
-	clientHeartbeat = 30 * time.Second
+	clientHeartbeat = 15 * time.Second
 )
 
 // Connection error types - permanent errors should not be retried
@@ -107,9 +110,38 @@ func isPermanentError(err error) bool {
 }
 
 func (c *Client) connect(ctx context.Context) error {
+	// Create HTTP client with HTTP/2 keepalive to prevent proxy timeouts
+	slog.Debug("creating HTTP/2 transport",
+		"keepalive", "15s",
+		"timeout", "30s",
+		"read_idle_timeout", "15s",
+		"ping_timeout", "5s",
+	)
+	httpClient := &http.Client{
+		Transport: &http2.Transport{
+			AllowHTTP: false,
+			DialTLSContext: func(ctx context.Context, network, addr string, cfg *tls.Config) (net.Conn, error) {
+				slog.Debug("TLS dial starting", "network", network, "addr", addr)
+				dialer := &net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 15 * time.Second,
+				}
+				conn, err := tls.DialWithDialer(dialer, network, addr, cfg)
+				if err != nil {
+					slog.Debug("TLS dial failed", "error", err)
+				} else {
+					slog.Debug("TLS dial succeeded", "remote", conn.RemoteAddr())
+				}
+				return conn, err
+			},
+			ReadIdleTimeout: 15 * time.Second,
+			PingTimeout:     5 * time.Second,
+		},
+	}
+
 	// Create ConnectRPC client
 	client := hooklyv1connect.NewRelayServiceClient(
-		http.DefaultClient,
+		httpClient,
 		c.config.EdgeURL,
 	)
 
@@ -118,6 +150,7 @@ func (c *Client) connect(ctx context.Context) error {
 
 	// Send authentication message with bearer token
 	hubID := c.config.GetHubID()
+	slog.Debug("sending auth message", "hub_id", hubID, "endpoints", len(c.config.EndpointIDs()))
 
 	if err := stream.Send(&hooklyv1.StreamRequest{
 		Message: &hooklyv1.StreamRequest_Connect{
@@ -132,6 +165,7 @@ func (c *Client) connect(ctx context.Context) error {
 	}
 
 	// Wait for auth response
+	slog.Debug("waiting for auth response")
 	resp, err := stream.Receive()
 	if err != nil {
 		return fmt.Errorf("connect to edge: %w", err)
@@ -142,9 +176,11 @@ func (c *Client) connect(ctx context.Context) error {
 		return errors.New("unexpected response from server")
 	}
 	if !authResp.Success {
+		slog.Debug("auth failed", "error", authResp.Error)
 		return parseConnectError(authResp.Error)
 	}
 
+	slog.Debug("auth succeeded")
 	slog.Info("connected to edge", "endpoints", c.config.EndpointIDs())
 
 	// Start heartbeat sender
@@ -159,6 +195,7 @@ func (c *Client) connect(ctx context.Context) error {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
+				slog.Debug("sending heartbeat")
 				if err := stream.Send(&hooklyv1.StreamRequest{
 					Message: &hooklyv1.StreamRequest_Heartbeat{
 						Heartbeat: &hooklyv1.Heartbeat{
@@ -169,12 +206,14 @@ func (c *Client) connect(ctx context.Context) error {
 					slog.Warn("failed to send heartbeat", "error", err)
 					return
 				}
+				slog.Debug("heartbeat sent")
 			}
 		}
 	}()
 	defer close(heartbeatDone)
 
 	// Process messages
+	slog.Debug("entering message loop")
 	for {
 		msg, err := stream.Receive()
 		if err != nil {
@@ -182,15 +221,18 @@ func (c *Client) connect(ctx context.Context) error {
 				slog.Info("connection closed by server")
 				return nil
 			}
+			slog.Debug("stream receive error", "error", err)
 			return err
 		}
 
 		switch m := msg.Message.(type) {
 		case *hooklyv1.StreamResponse_Webhook:
+			slog.Debug("received webhook message", "webhook_id", m.Webhook.Id)
 			c.handleWebhook(ctx, stream, m.Webhook)
 		case *hooklyv1.StreamResponse_Heartbeat:
-			// Edge heartbeat received, just log it
 			slog.Debug("heartbeat from edge", "timestamp", m.Heartbeat.Timestamp)
+		default:
+			slog.Debug("received unknown message type")
 		}
 	}
 }

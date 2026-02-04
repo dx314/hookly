@@ -154,9 +154,60 @@ func (s *Server) handleCreateEndpoint(ctx context.Context, req mcp.CallToolReque
 	}
 
 	// Validate provider type
-	validTypes := map[string]bool{"stripe": true, "github": true, "telegram": true, "generic": true}
+	validTypes := map[string]bool{"stripe": true, "github": true, "telegram": true, "generic": true, "custom": true}
 	if !validTypes[providerType] {
-		return mcp.NewToolResultError("provider_type must be one of: stripe, github, telegram, generic"), nil
+		return mcp.NewToolResultError("provider_type must be one of: stripe, github, telegram, generic, custom"), nil
+	}
+
+	// Handle custom verification config
+	var encryptedVerificationConfig []byte
+	if providerType == "custom" {
+		verificationMethod := mcp.ParseString(req, "verification_method", "")
+		signatureHeader := mcp.ParseString(req, "signature_header", "")
+		signaturePrefix := mcp.ParseString(req, "signature_prefix", "")
+		timestampHeader := mcp.ParseString(req, "timestamp_header", "")
+		timestampTolerance := mcp.ParseInt(req, "timestamp_tolerance", 300)
+
+		if verificationMethod == "" {
+			return mcp.NewToolResultError("verification_method is required for custom provider type"), nil
+		}
+		if signatureHeader == "" {
+			return mcp.NewToolResultError("signature_header is required for custom provider type"), nil
+		}
+
+		validMethods := map[string]bool{"static": true, "hmac_sha256": true, "hmac_sha1": true, "timestamped_hmac": true}
+		if !validMethods[verificationMethod] {
+			return mcp.NewToolResultError("verification_method must be one of: static, hmac_sha256, hmac_sha1, timestamped_hmac"), nil
+		}
+
+		if verificationMethod == "timestamped_hmac" && timestampHeader == "" {
+			return mcp.NewToolResultError("timestamp_header is required for timestamped_hmac method"), nil
+		}
+
+		// Build verification config
+		verificationConfig := map[string]any{
+			"method":           verificationMethod,
+			"signature_header": signatureHeader,
+		}
+		if signaturePrefix != "" {
+			verificationConfig["signature_prefix"] = signaturePrefix
+		}
+		if timestampHeader != "" {
+			verificationConfig["timestamp_header"] = timestampHeader
+		}
+		if verificationMethod == "timestamped_hmac" {
+			verificationConfig["timestamp_tolerance"] = timestampTolerance
+		}
+
+		configJSON, err := json.Marshal(verificationConfig)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to serialize verification config: %v", err)), nil
+		}
+
+		encryptedVerificationConfig, err = s.secretManager.EncryptSecret(string(configJSON))
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to encrypt verification config: %v", err)), nil
+		}
 	}
 
 	// Generate ID
@@ -170,12 +221,13 @@ func (s *Server) handleCreateEndpoint(ctx context.Context, req mcp.CallToolReque
 
 	// Create endpoint
 	endpoint, err := s.queries.CreateEndpoint(ctx, db.CreateEndpointParams{
-		ID:                       endpointID,
-		UserID:                   s.userID,
-		Name:                     name,
-		ProviderType:             providerType,
-		SignatureSecretEncrypted: encrypted,
-		DestinationUrl:           destinationURL,
+		ID:                          endpointID,
+		UserID:                      s.userID,
+		Name:                        name,
+		ProviderType:                providerType,
+		SignatureSecretEncrypted:    encrypted,
+		VerificationConfigEncrypted: encryptedVerificationConfig,
+		DestinationUrl:              destinationURL,
 	})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to create endpoint: %v", err)), nil

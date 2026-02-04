@@ -33,11 +33,11 @@ func New(addr string) *Server {
 
 	s := &Server{
 		server: &http.Server{
-			Addr:         addr,
-			Handler:      h2c.NewHandler(r, &http2.Server{}),
-			ReadTimeout:  30 * time.Second,
-			WriteTimeout: 30 * time.Second,
-			IdleTimeout:  60 * time.Second,
+			Addr:    addr,
+			Handler: h2c.NewHandler(r, &http2.Server{}),
+			// No read/write timeouts for streaming connections
+			// Timeouts are handled at the application level (heartbeats)
+			IdleTimeout: 120 * time.Second,
 		},
 		router: r,
 	}

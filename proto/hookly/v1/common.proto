@@ -11,6 +11,25 @@ enum ProviderType {
   PROVIDER_TYPE_GITHUB = 2;
   PROVIDER_TYPE_TELEGRAM = 3;
   PROVIDER_TYPE_GENERIC = 4;
+  PROVIDER_TYPE_CUSTOM = 5;
+}
+
+// Verification method for custom provider type
+enum VerificationMethod {
+  VERIFICATION_METHOD_UNSPECIFIED = 0;
+  VERIFICATION_METHOD_STATIC = 1;        // Direct comparison of header value
+  VERIFICATION_METHOD_HMAC_SHA256 = 2;   // HMAC-SHA256 of payload
+  VERIFICATION_METHOD_HMAC_SHA1 = 3;     // HMAC-SHA1 of payload
+  VERIFICATION_METHOD_TIMESTAMPED_HMAC = 4; // Timestamp + payload HMAC (like Stripe)
+}
+
+// Custom verification configuration for PROVIDER_TYPE_CUSTOM
+message VerificationConfig {
+  VerificationMethod method = 1;
+  string signature_header = 2;           // Header containing the signature
+  string signature_prefix = 3;           // Optional prefix to strip (e.g., "sha256=")
+  string timestamp_header = 4;           // Header containing timestamp (for timestamped_hmac)
+  int64 timestamp_tolerance = 5;         // Max age in seconds (default 300)
 }
 
 // Webhook delivery status
@@ -32,6 +51,8 @@ message Endpoint {
   google.protobuf.Timestamp created_at = 6;
   google.protobuf.Timestamp updated_at = 7;
   // Note: signature_secret is not exposed in API responses
+  // Custom verification config (only for PROVIDER_TYPE_CUSTOM)
+  VerificationConfig verification_config = 8;
 }
 
 // Webhook record
@@ -61,11 +82,20 @@ message PaginationResponse {
   int32 total_count = 2;
 }
 
+// Connected endpoint info for status display
+message ConnectedEndpoint {
+  string id = 1;
+  string name = 2;
+}
+
 // System status information
 message SystemStatus {
   int32 pending_count = 1;
   int32 failed_count = 2;
   int32 dead_letter_count = 3;
-  bool home_hub_connected = 4;
-  google.protobuf.Timestamp last_home_hub_heartbeat = 5;
+  // Deprecated: use connected_endpoints instead
+  bool home_hub_connected = 4 [deprecated = true];
+  google.protobuf.Timestamp last_home_hub_heartbeat = 5 [deprecated = true];
+  // Endpoints with active relay connections
+  repeated ConnectedEndpoint connected_endpoints = 6;
 }

@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
 
 const countEndpoints = `-- name: CountEndpoints :one
@@ -22,18 +23,19 @@ func (q *Queries) CountEndpoints(ctx context.Context, userID string) (int64, err
 }
 
 const createEndpoint = `-- name: CreateEndpoint :one
-INSERT INTO endpoints (id, user_id, name, provider_type, signature_secret_encrypted, destination_url, muted, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'), datetime('now'))
-RETURNING id, user_id, name, provider_type, signature_secret_encrypted, destination_url, muted, created_at, updated_at
+INSERT INTO endpoints (id, user_id, name, provider_type, signature_secret_encrypted, verification_config_encrypted, destination_url, muted, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, 0, datetime('now'), datetime('now'))
+RETURNING id, user_id, name, provider_type, signature_secret_encrypted, verification_config_encrypted, destination_url, muted, created_at, updated_at
 `
 
 type CreateEndpointParams struct {
-	ID                       string `json:"id"`
-	UserID                   string `json:"user_id"`
-	Name                     string `json:"name"`
-	ProviderType             string `json:"provider_type"`
-	SignatureSecretEncrypted []byte `json:"signature_secret_encrypted"`
-	DestinationUrl           string `json:"destination_url"`
+	ID                          string `json:"id"`
+	UserID                      string `json:"user_id"`
+	Name                        string `json:"name"`
+	ProviderType                string `json:"provider_type"`
+	SignatureSecretEncrypted    []byte `json:"signature_secret_encrypted"`
+	VerificationConfigEncrypted []byte `json:"verification_config_encrypted"`
+	DestinationUrl              string `json:"destination_url"`
 }
 
 func (q *Queries) CreateEndpoint(ctx context.Context, arg CreateEndpointParams) (Endpoint, error) {
@@ -43,6 +45,7 @@ func (q *Queries) CreateEndpoint(ctx context.Context, arg CreateEndpointParams) 
 		arg.Name,
 		arg.ProviderType,
 		arg.SignatureSecretEncrypted,
+		arg.VerificationConfigEncrypted,
 		arg.DestinationUrl,
 	)
 	var i Endpoint
@@ -52,6 +55,7 @@ func (q *Queries) CreateEndpoint(ctx context.Context, arg CreateEndpointParams) 
 		&i.Name,
 		&i.ProviderType,
 		&i.SignatureSecretEncrypted,
+		&i.VerificationConfigEncrypted,
 		&i.DestinationUrl,
 		&i.Muted,
 		&i.CreatedAt,
@@ -75,7 +79,7 @@ func (q *Queries) DeleteEndpoint(ctx context.Context, arg DeleteEndpointParams) 
 }
 
 const getEndpoint = `-- name: GetEndpoint :one
-SELECT id, user_id, name, provider_type, signature_secret_encrypted, destination_url, muted, created_at, updated_at FROM endpoints WHERE id = ? AND user_id = ?
+SELECT id, user_id, name, provider_type, signature_secret_encrypted, verification_config_encrypted, destination_url, muted, created_at, updated_at FROM endpoints WHERE id = ? AND user_id = ?
 `
 
 type GetEndpointParams struct {
@@ -92,6 +96,7 @@ func (q *Queries) GetEndpoint(ctx context.Context, arg GetEndpointParams) (Endpo
 		&i.Name,
 		&i.ProviderType,
 		&i.SignatureSecretEncrypted,
+		&i.VerificationConfigEncrypted,
 		&i.DestinationUrl,
 		&i.Muted,
 		&i.CreatedAt,
@@ -101,19 +106,20 @@ func (q *Queries) GetEndpoint(ctx context.Context, arg GetEndpointParams) (Endpo
 }
 
 const getEndpointByID = `-- name: GetEndpointByID :one
-SELECT id, user_id, name, provider_type, signature_secret_encrypted, destination_url, muted
+SELECT id, user_id, name, provider_type, signature_secret_encrypted, verification_config_encrypted, destination_url, muted
 FROM endpoints
 WHERE id = ?
 `
 
 type GetEndpointByIDRow struct {
-	ID                       string `json:"id"`
-	UserID                   string `json:"user_id"`
-	Name                     string `json:"name"`
-	ProviderType             string `json:"provider_type"`
-	SignatureSecretEncrypted []byte `json:"signature_secret_encrypted"`
-	DestinationUrl           string `json:"destination_url"`
-	Muted                    int64  `json:"muted"`
+	ID                          string `json:"id"`
+	UserID                      string `json:"user_id"`
+	Name                        string `json:"name"`
+	ProviderType                string `json:"provider_type"`
+	SignatureSecretEncrypted    []byte `json:"signature_secret_encrypted"`
+	VerificationConfigEncrypted []byte `json:"verification_config_encrypted"`
+	DestinationUrl              string `json:"destination_url"`
+	Muted                       int64  `json:"muted"`
 }
 
 // Public query for webhook ingestion and relay auth - no user_id filter
@@ -126,14 +132,64 @@ func (q *Queries) GetEndpointByID(ctx context.Context, id string) (GetEndpointBy
 		&i.Name,
 		&i.ProviderType,
 		&i.SignatureSecretEncrypted,
+		&i.VerificationConfigEncrypted,
 		&i.DestinationUrl,
 		&i.Muted,
 	)
 	return i, err
 }
 
+const getEndpointsByIDs = `-- name: GetEndpointsByIDs :many
+SELECT id, name FROM endpoints WHERE user_id = ? AND id IN (/*SLICE:ids*/?)
+`
+
+type GetEndpointsByIDsParams struct {
+	UserID string   `json:"user_id"`
+	Ids    []string `json:"ids"`
+}
+
+type GetEndpointsByIDsRow struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// Get endpoints by list of IDs for a specific user
+func (q *Queries) GetEndpointsByIDs(ctx context.Context, arg GetEndpointsByIDsParams) ([]GetEndpointsByIDsRow, error) {
+	query := getEndpointsByIDs
+	var queryParams []interface{}
+	queryParams = append(queryParams, arg.UserID)
+	if len(arg.Ids) > 0 {
+		for _, v := range arg.Ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(arg.Ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	rows, err := q.db.QueryContext(ctx, query, queryParams...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetEndpointsByIDsRow{}
+	for rows.Next() {
+		var i GetEndpointsByIDsRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listEndpoints = `-- name: ListEndpoints :many
-SELECT id, user_id, name, provider_type, signature_secret_encrypted, destination_url, muted, created_at, updated_at FROM endpoints WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?
+SELECT id, user_id, name, provider_type, signature_secret_encrypted, verification_config_encrypted, destination_url, muted, created_at, updated_at FROM endpoints WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?
 `
 
 type ListEndpointsParams struct {
@@ -157,6 +213,7 @@ func (q *Queries) ListEndpoints(ctx context.Context, arg ListEndpointsParams) ([
 			&i.Name,
 			&i.ProviderType,
 			&i.SignatureSecretEncrypted,
+			&i.VerificationConfigEncrypted,
 			&i.DestinationUrl,
 			&i.Muted,
 			&i.CreatedAt,
@@ -179,26 +236,29 @@ const updateEndpoint = `-- name: UpdateEndpoint :one
 UPDATE endpoints
 SET name = COALESCE(?3, name),
     signature_secret_encrypted = COALESCE(?4, signature_secret_encrypted),
-    destination_url = COALESCE(?5, destination_url),
-    muted = COALESCE(?6, muted),
+    verification_config_encrypted = COALESCE(?5, verification_config_encrypted),
+    destination_url = COALESCE(?6, destination_url),
+    muted = COALESCE(?7, muted),
     updated_at = datetime('now')
 WHERE id = ? AND user_id = ?
-RETURNING id, user_id, name, provider_type, signature_secret_encrypted, destination_url, muted, created_at, updated_at
+RETURNING id, user_id, name, provider_type, signature_secret_encrypted, verification_config_encrypted, destination_url, muted, created_at, updated_at
 `
 
 type UpdateEndpointParams struct {
-	Name                     sql.NullString `json:"name"`
-	SignatureSecretEncrypted []byte         `json:"signature_secret_encrypted"`
-	DestinationUrl           sql.NullString `json:"destination_url"`
-	Muted                    sql.NullInt64  `json:"muted"`
-	ID                       string         `json:"id"`
-	UserID                   string         `json:"user_id"`
+	Name                        sql.NullString `json:"name"`
+	SignatureSecretEncrypted    []byte         `json:"signature_secret_encrypted"`
+	VerificationConfigEncrypted []byte         `json:"verification_config_encrypted"`
+	DestinationUrl              sql.NullString `json:"destination_url"`
+	Muted                       sql.NullInt64  `json:"muted"`
+	ID                          string         `json:"id"`
+	UserID                      string         `json:"user_id"`
 }
 
 func (q *Queries) UpdateEndpoint(ctx context.Context, arg UpdateEndpointParams) (Endpoint, error) {
 	row := q.db.QueryRowContext(ctx, updateEndpoint,
 		arg.Name,
 		arg.SignatureSecretEncrypted,
+		arg.VerificationConfigEncrypted,
 		arg.DestinationUrl,
 		arg.Muted,
 		arg.ID,
@@ -211,6 +271,7 @@ func (q *Queries) UpdateEndpoint(ctx context.Context, arg UpdateEndpointParams) 
 		&i.Name,
 		&i.ProviderType,
 		&i.SignatureSecretEncrypted,
+		&i.VerificationConfigEncrypted,
 		&i.DestinationUrl,
 		&i.Muted,
 		&i.CreatedAt,

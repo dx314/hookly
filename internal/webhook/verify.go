@@ -3,9 +3,11 @@ package webhook
 
 import (
 	"crypto/hmac"
+	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -20,6 +22,7 @@ type Verifier interface {
 }
 
 // NewVerifier creates a verifier for the given provider type.
+// For "custom" provider type, use NewCustomVerifier instead.
 func NewVerifier(providerType string) Verifier {
 	switch providerType {
 	case "stripe":
@@ -30,6 +33,9 @@ func NewVerifier(providerType string) Verifier {
 		return &TelegramVerifier{}
 	case "generic":
 		return &GenericVerifier{}
+	case "custom":
+		// Custom requires config; return nil to signal caller should use NewCustomVerifier
+		return nil
 	default:
 		return &GenericVerifier{}
 	}
@@ -160,6 +166,145 @@ func (v *GenericVerifier) Verify(payload []byte, headers map[string]string, secr
 
 	expected := computeHMACSHA256(payload, []byte(secret))
 	return subtle.ConstantTimeCompare(expected, sigBytes) == 1
+}
+
+// VerificationMethod defines the type of signature verification.
+type VerificationMethod string
+
+const (
+	// MethodStatic compares header value directly against the secret.
+	MethodStatic VerificationMethod = "static"
+	// MethodHMACSHA256 computes HMAC-SHA256 of payload.
+	MethodHMACSHA256 VerificationMethod = "hmac_sha256"
+	// MethodHMACSHA1 computes HMAC-SHA1 of payload.
+	MethodHMACSHA1 VerificationMethod = "hmac_sha1"
+	// MethodTimestampedHMAC uses timestamp + payload for HMAC (like Stripe).
+	MethodTimestampedHMAC VerificationMethod = "timestamped_hmac"
+)
+
+// VerificationConfig defines custom verification settings.
+type VerificationConfig struct {
+	// Method is the verification method to use.
+	Method VerificationMethod `json:"method"`
+	// SignatureHeader is the header containing the signature.
+	SignatureHeader string `json:"signature_header"`
+	// SignaturePrefix is an optional prefix to strip (e.g., "sha256=").
+	SignaturePrefix string `json:"signature_prefix,omitempty"`
+	// TimestampHeader is the header containing the timestamp (for timestamped_hmac).
+	TimestampHeader string `json:"timestamp_header,omitempty"`
+	// TimestampTolerance is max age in seconds (default 300 for timestamped_hmac).
+	TimestampTolerance int64 `json:"timestamp_tolerance,omitempty"`
+}
+
+// ParseVerificationConfig parses JSON config into VerificationConfig.
+func ParseVerificationConfig(data []byte) (*VerificationConfig, error) {
+	if len(data) == 0 {
+		return nil, fmt.Errorf("empty verification config")
+	}
+	var cfg VerificationConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("invalid verification config: %w", err)
+	}
+	if cfg.SignatureHeader == "" {
+		return nil, fmt.Errorf("signature_header is required")
+	}
+	if cfg.Method == "" {
+		return nil, fmt.Errorf("method is required")
+	}
+	switch cfg.Method {
+	case MethodStatic, MethodHMACSHA256, MethodHMACSHA1, MethodTimestampedHMAC:
+		// valid
+	default:
+		return nil, fmt.Errorf("invalid method: %s", cfg.Method)
+	}
+	if cfg.Method == MethodTimestampedHMAC && cfg.TimestampHeader == "" {
+		return nil, fmt.Errorf("timestamp_header is required for timestamped_hmac method")
+	}
+	return &cfg, nil
+}
+
+// CustomVerifier verifies webhooks using custom configuration.
+type CustomVerifier struct {
+	Config *VerificationConfig
+}
+
+// NewCustomVerifier creates a verifier with the given config.
+func NewCustomVerifier(cfg *VerificationConfig) *CustomVerifier {
+	return &CustomVerifier{Config: cfg}
+}
+
+func (v *CustomVerifier) Verify(payload []byte, headers map[string]string, secret string) bool {
+	if v.Config == nil {
+		return false
+	}
+
+	sig := getHeader(headers, v.Config.SignatureHeader)
+	if sig == "" {
+		return false
+	}
+
+	// Strip prefix if configured
+	if v.Config.SignaturePrefix != "" {
+		if !strings.HasPrefix(sig, v.Config.SignaturePrefix) {
+			return false
+		}
+		sig = strings.TrimPrefix(sig, v.Config.SignaturePrefix)
+	}
+
+	switch v.Config.Method {
+	case MethodStatic:
+		return subtle.ConstantTimeCompare([]byte(sig), []byte(secret)) == 1
+
+	case MethodHMACSHA256:
+		sigBytes, err := hex.DecodeString(sig)
+		if err != nil {
+			return false
+		}
+		expected := computeHMACSHA256(payload, []byte(secret))
+		return subtle.ConstantTimeCompare(expected, sigBytes) == 1
+
+	case MethodHMACSHA1:
+		sigBytes, err := hex.DecodeString(sig)
+		if err != nil {
+			return false
+		}
+		expected := computeHMACSHA1(payload, []byte(secret))
+		return subtle.ConstantTimeCompare(expected, sigBytes) == 1
+
+	case MethodTimestampedHMAC:
+		timestamp := getHeader(headers, v.Config.TimestampHeader)
+		if timestamp == "" {
+			return false
+		}
+		ts, err := strconv.ParseInt(timestamp, 10, 64)
+		if err != nil {
+			return false
+		}
+		tolerance := v.Config.TimestampTolerance
+		if tolerance == 0 {
+			tolerance = 300 // default 5 minutes
+		}
+		if time.Now().Unix()-ts > tolerance {
+			return false
+		}
+		signedPayload := timestamp + "." + string(payload)
+		sigBytes, err := hex.DecodeString(sig)
+		if err != nil {
+			return false
+		}
+		expected := computeHMACSHA256([]byte(signedPayload), []byte(secret))
+		return subtle.ConstantTimeCompare(expected, sigBytes) == 1
+
+	default:
+		return false
+	}
+}
+
+// computeHMACSHA1 computes HMAC-SHA1.
+func computeHMACSHA1(message, key []byte) []byte {
+	mac := hmac.New(sha1.New, key)
+	mac.Write(message)
+	return mac.Sum(nil)
 }
 
 // computeHMACSHA256 computes HMAC-SHA256.

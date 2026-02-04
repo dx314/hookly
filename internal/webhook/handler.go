@@ -88,7 +88,33 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		verifier := NewVerifier(endpoint.ProviderType)
+		var verifier Verifier
+		if endpoint.ProviderType == "custom" {
+			// Custom provider requires verification config
+			if len(endpoint.VerificationConfigEncrypted) == 0 {
+				slog.Error("custom endpoint missing verification config", "endpoint_id", endpointID)
+				h.storeWebhook(ctx, endpointID, headers, payload, false)
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			configJSON, err := h.secretManager.DecryptSecret(endpoint.VerificationConfigEncrypted)
+			if err != nil {
+				slog.Error("failed to decrypt verification config", "endpoint_id", endpointID, "error", err)
+				h.storeWebhook(ctx, endpointID, headers, payload, false)
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			cfg, err := ParseVerificationConfig([]byte(configJSON))
+			if err != nil {
+				slog.Error("failed to parse verification config", "endpoint_id", endpointID, "error", err)
+				h.storeWebhook(ctx, endpointID, headers, payload, false)
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			verifier = NewCustomVerifier(cfg)
+		} else {
+			verifier = NewVerifier(endpoint.ProviderType)
+		}
 		signatureValid = verifier.Verify(payload, headers, secret)
 	}
 

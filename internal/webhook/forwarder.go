@@ -68,9 +68,12 @@ func (f *Forwarder) Forward(ctx context.Context, destinationURL string, headers 
 		"webhook_id", webhookID,
 		"destination", destinationURL,
 		"attempt", attempt,
+		"payload_size", len(payload),
+		"header_count", len(headers),
 	)
 
 	// Send request
+	start := time.Now()
 	resp, err := f.client.Do(req)
 	if err != nil {
 		result.Error = fmt.Sprintf("network error: %v", err)
@@ -88,30 +91,44 @@ func (f *Forwarder) Forward(ctx context.Context, destinationURL string, headers 
 
 	result.StatusCode = resp.StatusCode
 
+	elapsed := time.Since(start)
+
 	// Determine result
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		result.Success = true
-		slog.Info("forward succeeded",
+		slog.Info("webhook delivered",
+			"webhook_id", webhookID,
+			"status", resp.StatusCode,
+		)
+		slog.Debug("forward details",
 			"webhook_id", webhookID,
 			"destination", destinationURL,
-			"status_code", resp.StatusCode,
+			"duration", elapsed.String(),
 		)
 	} else if resp.StatusCode >= 400 && resp.StatusCode < 500 {
 		// Client error - permanent failure, don't retry
 		result.PermanentFailure = true
 		result.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
-		slog.Warn("forward failed permanently",
+		slog.Warn("webhook failed (permanent)",
+			"webhook_id", webhookID,
+			"status", resp.StatusCode,
+		)
+		slog.Debug("forward details",
 			"webhook_id", webhookID,
 			"destination", destinationURL,
-			"status_code", resp.StatusCode,
+			"duration", elapsed.String(),
 		)
 	} else {
 		// Server error - transient failure, will retry
 		result.Error = fmt.Sprintf("HTTP %d", resp.StatusCode)
-		slog.Warn("forward failed (will retry)",
+		slog.Warn("webhook failed (will retry)",
+			"webhook_id", webhookID,
+			"status", resp.StatusCode,
+		)
+		slog.Debug("forward details",
 			"webhook_id", webhookID,
 			"destination", destinationURL,
-			"status_code", resp.StatusCode,
+			"duration", elapsed.String(),
 		)
 	}
 

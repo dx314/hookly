@@ -31,6 +31,8 @@ message CreateEndpointRequest {
   ProviderType provider_type = 2;
   string signature_secret = 3;
   string destination_url = 4;
+  // Custom verification config (required for PROVIDER_TYPE_CUSTOM)
+  VerificationConfig verification_config = 5;
 }
 
 message CreateEndpointResponse {
@@ -62,6 +64,8 @@ message UpdateEndpointRequest {
   optional string signature_secret = 3;
   optional string destination_url = 4;
   optional bool muted = 5;
+  // Custom verification config (only for PROVIDER_TYPE_CUSTOM endpoints)
+  VerificationConfig verification_config = 6;
 }
 
 message UpdateEndpointResponse {

@@ -112,6 +112,18 @@ func (m *ConnectionManager) IsAnyConnected() bool {
 	return len(m.connections) > 0
 }
 
+// ConnectedEndpointIDs returns all endpoint IDs that have active relay connections.
+func (m *ConnectionManager) ConnectedEndpointIDs() []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	ids := make([]string, 0, len(m.endpoints))
+	for epID := range m.endpoints {
+		ids = append(ids, epID)
+	}
+	return ids
+}
+
 // UpdateHeartbeat updates the heartbeat time for a hub.
 func (m *ConnectionManager) UpdateHeartbeat(hubID string) {
 	m.mu.Lock()

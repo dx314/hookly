@@ -15,26 +15,38 @@ func serviceCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "service",
 		Usage: "Manage hookly as a system service",
+		Description: `Install and manage hookly as a background service.
+
+By default, installs as a system service (requires sudo).
+Use --user flag for a user-level service (no sudo, runs on login).
+
+System services run at boot and require root privileges.
+User services run when you log in and don't need sudo.`,
 		Subcommands: []*cli.Command{
 			{
-				Name:   "install",
-				Usage:  "Install hookly as a system service",
+				Name:  "install",
+				Usage: "Install hookly as a system service",
+				Description: `Installs hookly to run automatically as a background service.
+
+The --config flag is required and must point to your hookly.yaml.
+Use --user to install as a user service (no sudo required).`,
 				Action: runServiceInstall,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:  "config",
-						Usage: "Path to hookly.yaml configuration file",
+						Usage: "Path to hookly.yaml (required)",
 					},
 					&cli.BoolFlag{
 						Name:  "user",
-						Usage: "Install as user service (no sudo required, runs on login)",
+						Usage: "Install as user service (no sudo, runs on login)",
 					},
 				},
 			},
 			{
-				Name:   "uninstall",
-				Usage:  "Remove hookly service",
-				Action: runServiceUninstall,
+				Name:        "uninstall",
+				Usage:       "Remove hookly service",
+				Description: "Stops the service if running and removes it from the system.",
+				Action:      runServiceUninstall,
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  "user",
@@ -43,9 +55,10 @@ func serviceCommand() *cli.Command {
 				},
 			},
 			{
-				Name:   "start",
-				Usage:  "Start the hookly service",
-				Action: runServiceStart,
+				Name:        "start",
+				Usage:       "Start the hookly service",
+				Description: "Starts the installed hookly service.",
+				Action:      runServiceStart,
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  "user",
@@ -54,9 +67,10 @@ func serviceCommand() *cli.Command {
 				},
 			},
 			{
-				Name:   "stop",
-				Usage:  "Stop the hookly service",
-				Action: runServiceStop,
+				Name:        "stop",
+				Usage:       "Stop the hookly service",
+				Description: "Stops the running hookly service.",
+				Action:      runServiceStop,
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  "user",
@@ -65,9 +79,10 @@ func serviceCommand() *cli.Command {
 				},
 			},
 			{
-				Name:   "restart",
-				Usage:  "Restart the hookly service",
-				Action: runServiceRestart,
+				Name:        "restart",
+				Usage:       "Restart the hookly service",
+				Description: "Stops and starts the hookly service.",
+				Action:      runServiceRestart,
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  "user",
@@ -76,9 +91,10 @@ func serviceCommand() *cli.Command {
 				},
 			},
 			{
-				Name:   "status",
-				Usage:  "Check hookly service status",
-				Action: runServiceStatus,
+				Name:        "status",
+				Usage:       "Check hookly service status",
+				Description: "Shows whether the service is running, stopped, or not installed.",
+				Action:      runServiceStatus,
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:  "user",
@@ -87,14 +103,18 @@ func serviceCommand() *cli.Command {
 				},
 			},
 			{
-				Name:   "logs",
-				Usage:  "View hookly service logs",
+				Name:  "logs",
+				Usage: "View hookly service logs",
+				Description: `View log output from the hookly service.
+
+Use -f/--follow to stream logs in real-time (like tail -f).
+Use -n/--lines to control how many lines to show.`,
 				Action: runServiceLogs,
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:    "follow",
 						Aliases: []string{"f"},
-						Usage:   "Follow log output",
+						Usage:   "Follow log output (like tail -f)",
 					},
 					&cli.IntFlag{
 						Name:    "lines",

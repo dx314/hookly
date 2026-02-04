@@ -31,6 +31,7 @@ const (
 	ProviderType_PROVIDER_TYPE_GITHUB      ProviderType = 2
 	ProviderType_PROVIDER_TYPE_TELEGRAM    ProviderType = 3
 	ProviderType_PROVIDER_TYPE_GENERIC     ProviderType = 4
+	ProviderType_PROVIDER_TYPE_CUSTOM      ProviderType = 5
 )
 
 // Enum value maps for ProviderType.
@@ -41,6 +42,7 @@ var (
 		2: "PROVIDER_TYPE_GITHUB",
 		3: "PROVIDER_TYPE_TELEGRAM",
 		4: "PROVIDER_TYPE_GENERIC",
+		5: "PROVIDER_TYPE_CUSTOM",
 	}
 	ProviderType_value = map[string]int32{
 		"PROVIDER_TYPE_UNSPECIFIED": 0,
@@ -48,6 +50,7 @@ var (
 		"PROVIDER_TYPE_GITHUB":      2,
 		"PROVIDER_TYPE_TELEGRAM":    3,
 		"PROVIDER_TYPE_GENERIC":     4,
+		"PROVIDER_TYPE_CUSTOM":      5,
 	}
 )
 
@@ -76,6 +79,62 @@ func (x ProviderType) Number() protoreflect.EnumNumber {
 // Deprecated: Use ProviderType.Descriptor instead.
 func (ProviderType) EnumDescriptor() ([]byte, []int) {
 	return file_hookly_v1_common_proto_rawDescGZIP(), []int{0}
+}
+
+// Verification method for custom provider type
+type VerificationMethod int32
+
+const (
+	VerificationMethod_VERIFICATION_METHOD_UNSPECIFIED      VerificationMethod = 0
+	VerificationMethod_VERIFICATION_METHOD_STATIC           VerificationMethod = 1 // Direct comparison of header value
+	VerificationMethod_VERIFICATION_METHOD_HMAC_SHA256      VerificationMethod = 2 // HMAC-SHA256 of payload
+	VerificationMethod_VERIFICATION_METHOD_HMAC_SHA1        VerificationMethod = 3 // HMAC-SHA1 of payload
+	VerificationMethod_VERIFICATION_METHOD_TIMESTAMPED_HMAC VerificationMethod = 4 // Timestamp + payload HMAC (like Stripe)
+)
+
+// Enum value maps for VerificationMethod.
+var (
+	VerificationMethod_name = map[int32]string{
+		0: "VERIFICATION_METHOD_UNSPECIFIED",
+		1: "VERIFICATION_METHOD_STATIC",
+		2: "VERIFICATION_METHOD_HMAC_SHA256",
+		3: "VERIFICATION_METHOD_HMAC_SHA1",
+		4: "VERIFICATION_METHOD_TIMESTAMPED_HMAC",
+	}
+	VerificationMethod_value = map[string]int32{
+		"VERIFICATION_METHOD_UNSPECIFIED":      0,
+		"VERIFICATION_METHOD_STATIC":           1,
+		"VERIFICATION_METHOD_HMAC_SHA256":      2,
+		"VERIFICATION_METHOD_HMAC_SHA1":        3,
+		"VERIFICATION_METHOD_TIMESTAMPED_HMAC": 4,
+	}
+)
+
+func (x VerificationMethod) Enum() *VerificationMethod {
+	p := new(VerificationMethod)
+	*p = x
+	return p
+}
+
+func (x VerificationMethod) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (VerificationMethod) Descriptor() protoreflect.EnumDescriptor {
+	return file_hookly_v1_common_proto_enumTypes[1].Descriptor()
+}
+
+func (VerificationMethod) Type() protoreflect.EnumType {
+	return &file_hookly_v1_common_proto_enumTypes[1]
+}
+
+func (x VerificationMethod) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use VerificationMethod.Descriptor instead.
+func (VerificationMethod) EnumDescriptor() ([]byte, []int) {
+	return file_hookly_v1_common_proto_rawDescGZIP(), []int{1}
 }
 
 // Webhook delivery status
@@ -118,11 +177,11 @@ func (x WebhookStatus) String() string {
 }
 
 func (WebhookStatus) Descriptor() protoreflect.EnumDescriptor {
-	return file_hookly_v1_common_proto_enumTypes[1].Descriptor()
+	return file_hookly_v1_common_proto_enumTypes[2].Descriptor()
 }
 
 func (WebhookStatus) Type() protoreflect.EnumType {
-	return &file_hookly_v1_common_proto_enumTypes[1]
+	return &file_hookly_v1_common_proto_enumTypes[2]
 }
 
 func (x WebhookStatus) Number() protoreflect.EnumNumber {
@@ -131,7 +190,84 @@ func (x WebhookStatus) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use WebhookStatus.Descriptor instead.
 func (WebhookStatus) EnumDescriptor() ([]byte, []int) {
-	return file_hookly_v1_common_proto_rawDescGZIP(), []int{1}
+	return file_hookly_v1_common_proto_rawDescGZIP(), []int{2}
+}
+
+// Custom verification configuration for PROVIDER_TYPE_CUSTOM
+type VerificationConfig struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Method             VerificationMethod     `protobuf:"varint,1,opt,name=method,proto3,enum=hookly.v1.VerificationMethod" json:"method,omitempty"`
+	SignatureHeader    string                 `protobuf:"bytes,2,opt,name=signature_header,json=signatureHeader,proto3" json:"signature_header,omitempty"`           // Header containing the signature
+	SignaturePrefix    string                 `protobuf:"bytes,3,opt,name=signature_prefix,json=signaturePrefix,proto3" json:"signature_prefix,omitempty"`           // Optional prefix to strip (e.g., "sha256=")
+	TimestampHeader    string                 `protobuf:"bytes,4,opt,name=timestamp_header,json=timestampHeader,proto3" json:"timestamp_header,omitempty"`           // Header containing timestamp (for timestamped_hmac)
+	TimestampTolerance int64                  `protobuf:"varint,5,opt,name=timestamp_tolerance,json=timestampTolerance,proto3" json:"timestamp_tolerance,omitempty"` // Max age in seconds (default 300)
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *VerificationConfig) Reset() {
+	*x = VerificationConfig{}
+	mi := &file_hookly_v1_common_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerificationConfig) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerificationConfig) ProtoMessage() {}
+
+func (x *VerificationConfig) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_common_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerificationConfig.ProtoReflect.Descriptor instead.
+func (*VerificationConfig) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_common_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *VerificationConfig) GetMethod() VerificationMethod {
+	if x != nil {
+		return x.Method
+	}
+	return VerificationMethod_VERIFICATION_METHOD_UNSPECIFIED
+}
+
+func (x *VerificationConfig) GetSignatureHeader() string {
+	if x != nil {
+		return x.SignatureHeader
+	}
+	return ""
+}
+
+func (x *VerificationConfig) GetSignaturePrefix() string {
+	if x != nil {
+		return x.SignaturePrefix
+	}
+	return ""
+}
+
+func (x *VerificationConfig) GetTimestampHeader() string {
+	if x != nil {
+		return x.TimestampHeader
+	}
+	return ""
+}
+
+func (x *VerificationConfig) GetTimestampTolerance() int64 {
+	if x != nil {
+		return x.TimestampTolerance
+	}
+	return 0
 }
 
 // Endpoint configuration
@@ -143,14 +279,17 @@ type Endpoint struct {
 	DestinationUrl string                 `protobuf:"bytes,4,opt,name=destination_url,json=destinationUrl,proto3" json:"destination_url,omitempty"`
 	Muted          bool                   `protobuf:"varint,5,opt,name=muted,proto3" json:"muted,omitempty"`
 	CreatedAt      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"` // Note: signature_secret is not exposed in API responses
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	UpdatedAt      *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// Note: signature_secret is not exposed in API responses
+	// Custom verification config (only for PROVIDER_TYPE_CUSTOM)
+	VerificationConfig *VerificationConfig `protobuf:"bytes,8,opt,name=verification_config,json=verificationConfig,proto3" json:"verification_config,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *Endpoint) Reset() {
 	*x = Endpoint{}
-	mi := &file_hookly_v1_common_proto_msgTypes[0]
+	mi := &file_hookly_v1_common_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -162,7 +301,7 @@ func (x *Endpoint) String() string {
 func (*Endpoint) ProtoMessage() {}
 
 func (x *Endpoint) ProtoReflect() protoreflect.Message {
-	mi := &file_hookly_v1_common_proto_msgTypes[0]
+	mi := &file_hookly_v1_common_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -175,7 +314,7 @@ func (x *Endpoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Endpoint.ProtoReflect.Descriptor instead.
 func (*Endpoint) Descriptor() ([]byte, []int) {
-	return file_hookly_v1_common_proto_rawDescGZIP(), []int{0}
+	return file_hookly_v1_common_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *Endpoint) GetId() string {
@@ -227,6 +366,13 @@ func (x *Endpoint) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Endpoint) GetVerificationConfig() *VerificationConfig {
+	if x != nil {
+		return x.VerificationConfig
+	}
+	return nil
+}
+
 // Webhook record
 type Webhook struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -247,7 +393,7 @@ type Webhook struct {
 
 func (x *Webhook) Reset() {
 	*x = Webhook{}
-	mi := &file_hookly_v1_common_proto_msgTypes[1]
+	mi := &file_hookly_v1_common_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -259,7 +405,7 @@ func (x *Webhook) String() string {
 func (*Webhook) ProtoMessage() {}
 
 func (x *Webhook) ProtoReflect() protoreflect.Message {
-	mi := &file_hookly_v1_common_proto_msgTypes[1]
+	mi := &file_hookly_v1_common_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -272,7 +418,7 @@ func (x *Webhook) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Webhook.ProtoReflect.Descriptor instead.
 func (*Webhook) Descriptor() ([]byte, []int) {
-	return file_hookly_v1_common_proto_rawDescGZIP(), []int{1}
+	return file_hookly_v1_common_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *Webhook) GetId() string {
@@ -363,7 +509,7 @@ type PaginationRequest struct {
 
 func (x *PaginationRequest) Reset() {
 	*x = PaginationRequest{}
-	mi := &file_hookly_v1_common_proto_msgTypes[2]
+	mi := &file_hookly_v1_common_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -375,7 +521,7 @@ func (x *PaginationRequest) String() string {
 func (*PaginationRequest) ProtoMessage() {}
 
 func (x *PaginationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_hookly_v1_common_proto_msgTypes[2]
+	mi := &file_hookly_v1_common_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -388,7 +534,7 @@ func (x *PaginationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaginationRequest.ProtoReflect.Descriptor instead.
 func (*PaginationRequest) Descriptor() ([]byte, []int) {
-	return file_hookly_v1_common_proto_rawDescGZIP(), []int{2}
+	return file_hookly_v1_common_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *PaginationRequest) GetPageSize() int32 {
@@ -416,7 +562,7 @@ type PaginationResponse struct {
 
 func (x *PaginationResponse) Reset() {
 	*x = PaginationResponse{}
-	mi := &file_hookly_v1_common_proto_msgTypes[3]
+	mi := &file_hookly_v1_common_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -428,7 +574,7 @@ func (x *PaginationResponse) String() string {
 func (*PaginationResponse) ProtoMessage() {}
 
 func (x *PaginationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_hookly_v1_common_proto_msgTypes[3]
+	mi := &file_hookly_v1_common_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -441,7 +587,7 @@ func (x *PaginationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaginationResponse.ProtoReflect.Descriptor instead.
 func (*PaginationResponse) Descriptor() ([]byte, []int) {
-	return file_hookly_v1_common_proto_rawDescGZIP(), []int{3}
+	return file_hookly_v1_common_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *PaginationResponse) GetNextPageToken() string {
@@ -458,21 +604,80 @@ func (x *PaginationResponse) GetTotalCount() int32 {
 	return 0
 }
 
+// Connected endpoint info for status display
+type ConnectedEndpoint struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ConnectedEndpoint) Reset() {
+	*x = ConnectedEndpoint{}
+	mi := &file_hookly_v1_common_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ConnectedEndpoint) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ConnectedEndpoint) ProtoMessage() {}
+
+func (x *ConnectedEndpoint) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_common_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ConnectedEndpoint.ProtoReflect.Descriptor instead.
+func (*ConnectedEndpoint) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_common_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *ConnectedEndpoint) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ConnectedEndpoint) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 // System status information
 type SystemStatus struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	PendingCount         int32                  `protobuf:"varint,1,opt,name=pending_count,json=pendingCount,proto3" json:"pending_count,omitempty"`
-	FailedCount          int32                  `protobuf:"varint,2,opt,name=failed_count,json=failedCount,proto3" json:"failed_count,omitempty"`
-	DeadLetterCount      int32                  `protobuf:"varint,3,opt,name=dead_letter_count,json=deadLetterCount,proto3" json:"dead_letter_count,omitempty"`
-	HomeHubConnected     bool                   `protobuf:"varint,4,opt,name=home_hub_connected,json=homeHubConnected,proto3" json:"home_hub_connected,omitempty"`
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	PendingCount    int32                  `protobuf:"varint,1,opt,name=pending_count,json=pendingCount,proto3" json:"pending_count,omitempty"`
+	FailedCount     int32                  `protobuf:"varint,2,opt,name=failed_count,json=failedCount,proto3" json:"failed_count,omitempty"`
+	DeadLetterCount int32                  `protobuf:"varint,3,opt,name=dead_letter_count,json=deadLetterCount,proto3" json:"dead_letter_count,omitempty"`
+	// Deprecated: use connected_endpoints instead
+	//
+	// Deprecated: Marked as deprecated in hookly/v1/common.proto.
+	HomeHubConnected bool `protobuf:"varint,4,opt,name=home_hub_connected,json=homeHubConnected,proto3" json:"home_hub_connected,omitempty"`
+	// Deprecated: Marked as deprecated in hookly/v1/common.proto.
 	LastHomeHubHeartbeat *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=last_home_hub_heartbeat,json=lastHomeHubHeartbeat,proto3" json:"last_home_hub_heartbeat,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	// Endpoints with active relay connections
+	ConnectedEndpoints []*ConnectedEndpoint `protobuf:"bytes,6,rep,name=connected_endpoints,json=connectedEndpoints,proto3" json:"connected_endpoints,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
 }
 
 func (x *SystemStatus) Reset() {
 	*x = SystemStatus{}
-	mi := &file_hookly_v1_common_proto_msgTypes[4]
+	mi := &file_hookly_v1_common_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -484,7 +689,7 @@ func (x *SystemStatus) String() string {
 func (*SystemStatus) ProtoMessage() {}
 
 func (x *SystemStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_hookly_v1_common_proto_msgTypes[4]
+	mi := &file_hookly_v1_common_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -497,7 +702,7 @@ func (x *SystemStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SystemStatus.ProtoReflect.Descriptor instead.
 func (*SystemStatus) Descriptor() ([]byte, []int) {
-	return file_hookly_v1_common_proto_rawDescGZIP(), []int{4}
+	return file_hookly_v1_common_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SystemStatus) GetPendingCount() int32 {
@@ -521,6 +726,7 @@ func (x *SystemStatus) GetDeadLetterCount() int32 {
 	return 0
 }
 
+// Deprecated: Marked as deprecated in hookly/v1/common.proto.
 func (x *SystemStatus) GetHomeHubConnected() bool {
 	if x != nil {
 		return x.HomeHubConnected
@@ -528,9 +734,17 @@ func (x *SystemStatus) GetHomeHubConnected() bool {
 	return false
 }
 
+// Deprecated: Marked as deprecated in hookly/v1/common.proto.
 func (x *SystemStatus) GetLastHomeHubHeartbeat() *timestamppb.Timestamp {
 	if x != nil {
 		return x.LastHomeHubHeartbeat
+	}
+	return nil
+}
+
+func (x *SystemStatus) GetConnectedEndpoints() []*ConnectedEndpoint {
+	if x != nil {
+		return x.ConnectedEndpoints
 	}
 	return nil
 }
@@ -539,7 +753,13 @@ var File_hookly_v1_common_proto protoreflect.FileDescriptor
 
 const file_hookly_v1_common_proto_rawDesc = "" +
 	"\n" +
-	"\x16hookly/v1/common.proto\x12\thookly.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa1\x02\n" +
+	"\x16hookly/v1/common.proto\x12\thookly.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xfd\x01\n" +
+	"\x12VerificationConfig\x125\n" +
+	"\x06method\x18\x01 \x01(\x0e2\x1d.hookly.v1.VerificationMethodR\x06method\x12)\n" +
+	"\x10signature_header\x18\x02 \x01(\tR\x0fsignatureHeader\x12)\n" +
+	"\x10signature_prefix\x18\x03 \x01(\tR\x0fsignaturePrefix\x12)\n" +
+	"\x10timestamp_header\x18\x04 \x01(\tR\x0ftimestampHeader\x12/\n" +
+	"\x13timestamp_tolerance\x18\x05 \x01(\x03R\x12timestampTolerance\"\xf1\x02\n" +
 	"\bEndpoint\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12<\n" +
@@ -549,7 +769,8 @@ const file_hookly_v1_common_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"\xa7\x04\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12N\n" +
+	"\x13verification_config\x18\b \x01(\v2\x1d.hookly.v1.VerificationConfigR\x12verificationConfig\"\xa7\x04\n" +
 	"\aWebhook\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vendpoint_id\x18\x02 \x01(\tR\n" +
@@ -575,19 +796,30 @@ const file_hookly_v1_common_proto_rawDesc = "" +
 	"\x12PaginationResponse\x12&\n" +
 	"\x0fnext_page_token\x18\x01 \x01(\tR\rnextPageToken\x12\x1f\n" +
 	"\vtotal_count\x18\x02 \x01(\x05R\n" +
-	"totalCount\"\x83\x02\n" +
+	"totalCount\"7\n" +
+	"\x11ConnectedEndpoint\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"\xda\x02\n" +
 	"\fSystemStatus\x12#\n" +
 	"\rpending_count\x18\x01 \x01(\x05R\fpendingCount\x12!\n" +
 	"\ffailed_count\x18\x02 \x01(\x05R\vfailedCount\x12*\n" +
-	"\x11dead_letter_count\x18\x03 \x01(\x05R\x0fdeadLetterCount\x12,\n" +
-	"\x12home_hub_connected\x18\x04 \x01(\bR\x10homeHubConnected\x12Q\n" +
-	"\x17last_home_hub_heartbeat\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x14lastHomeHubHeartbeat*\x98\x01\n" +
+	"\x11dead_letter_count\x18\x03 \x01(\x05R\x0fdeadLetterCount\x120\n" +
+	"\x12home_hub_connected\x18\x04 \x01(\bB\x02\x18\x01R\x10homeHubConnected\x12U\n" +
+	"\x17last_home_hub_heartbeat\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x02\x18\x01R\x14lastHomeHubHeartbeat\x12M\n" +
+	"\x13connected_endpoints\x18\x06 \x03(\v2\x1c.hookly.v1.ConnectedEndpointR\x12connectedEndpoints*\xb2\x01\n" +
 	"\fProviderType\x12\x1d\n" +
 	"\x19PROVIDER_TYPE_UNSPECIFIED\x10\x00\x12\x18\n" +
 	"\x14PROVIDER_TYPE_STRIPE\x10\x01\x12\x18\n" +
 	"\x14PROVIDER_TYPE_GITHUB\x10\x02\x12\x1a\n" +
 	"\x16PROVIDER_TYPE_TELEGRAM\x10\x03\x12\x19\n" +
-	"\x15PROVIDER_TYPE_GENERIC\x10\x04*\xa4\x01\n" +
+	"\x15PROVIDER_TYPE_GENERIC\x10\x04\x12\x18\n" +
+	"\x14PROVIDER_TYPE_CUSTOM\x10\x05*\xcb\x01\n" +
+	"\x12VerificationMethod\x12#\n" +
+	"\x1fVERIFICATION_METHOD_UNSPECIFIED\x10\x00\x12\x1e\n" +
+	"\x1aVERIFICATION_METHOD_STATIC\x10\x01\x12#\n" +
+	"\x1fVERIFICATION_METHOD_HMAC_SHA256\x10\x02\x12!\n" +
+	"\x1dVERIFICATION_METHOD_HMAC_SHA1\x10\x03\x12(\n" +
+	"$VERIFICATION_METHOD_TIMESTAMPED_HMAC\x10\x04*\xa4\x01\n" +
 	"\rWebhookStatus\x12\x1e\n" +
 	"\x1aWEBHOOK_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16WEBHOOK_STATUS_PENDING\x10\x01\x12\x1c\n" +
@@ -609,34 +841,40 @@ func file_hookly_v1_common_proto_rawDescGZIP() []byte {
 	return file_hookly_v1_common_proto_rawDescData
 }
 
-var file_hookly_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_hookly_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_hookly_v1_common_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_hookly_v1_common_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_hookly_v1_common_proto_goTypes = []any{
 	(ProviderType)(0),             // 0: hookly.v1.ProviderType
-	(WebhookStatus)(0),            // 1: hookly.v1.WebhookStatus
-	(*Endpoint)(nil),              // 2: hookly.v1.Endpoint
-	(*Webhook)(nil),               // 3: hookly.v1.Webhook
-	(*PaginationRequest)(nil),     // 4: hookly.v1.PaginationRequest
-	(*PaginationResponse)(nil),    // 5: hookly.v1.PaginationResponse
-	(*SystemStatus)(nil),          // 6: hookly.v1.SystemStatus
-	nil,                           // 7: hookly.v1.Webhook.HeadersEntry
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
+	(VerificationMethod)(0),       // 1: hookly.v1.VerificationMethod
+	(WebhookStatus)(0),            // 2: hookly.v1.WebhookStatus
+	(*VerificationConfig)(nil),    // 3: hookly.v1.VerificationConfig
+	(*Endpoint)(nil),              // 4: hookly.v1.Endpoint
+	(*Webhook)(nil),               // 5: hookly.v1.Webhook
+	(*PaginationRequest)(nil),     // 6: hookly.v1.PaginationRequest
+	(*PaginationResponse)(nil),    // 7: hookly.v1.PaginationResponse
+	(*ConnectedEndpoint)(nil),     // 8: hookly.v1.ConnectedEndpoint
+	(*SystemStatus)(nil),          // 9: hookly.v1.SystemStatus
+	nil,                           // 10: hookly.v1.Webhook.HeadersEntry
+	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
 }
 var file_hookly_v1_common_proto_depIdxs = []int32{
-	0, // 0: hookly.v1.Endpoint.provider_type:type_name -> hookly.v1.ProviderType
-	8, // 1: hookly.v1.Endpoint.created_at:type_name -> google.protobuf.Timestamp
-	8, // 2: hookly.v1.Endpoint.updated_at:type_name -> google.protobuf.Timestamp
-	8, // 3: hookly.v1.Webhook.received_at:type_name -> google.protobuf.Timestamp
-	7, // 4: hookly.v1.Webhook.headers:type_name -> hookly.v1.Webhook.HeadersEntry
-	1, // 5: hookly.v1.Webhook.status:type_name -> hookly.v1.WebhookStatus
-	8, // 6: hookly.v1.Webhook.last_attempt_at:type_name -> google.protobuf.Timestamp
-	8, // 7: hookly.v1.Webhook.delivered_at:type_name -> google.protobuf.Timestamp
-	8, // 8: hookly.v1.SystemStatus.last_home_hub_heartbeat:type_name -> google.protobuf.Timestamp
-	9, // [9:9] is the sub-list for method output_type
-	9, // [9:9] is the sub-list for method input_type
-	9, // [9:9] is the sub-list for extension type_name
-	9, // [9:9] is the sub-list for extension extendee
-	0, // [0:9] is the sub-list for field type_name
+	1,  // 0: hookly.v1.VerificationConfig.method:type_name -> hookly.v1.VerificationMethod
+	0,  // 1: hookly.v1.Endpoint.provider_type:type_name -> hookly.v1.ProviderType
+	11, // 2: hookly.v1.Endpoint.created_at:type_name -> google.protobuf.Timestamp
+	11, // 3: hookly.v1.Endpoint.updated_at:type_name -> google.protobuf.Timestamp
+	3,  // 4: hookly.v1.Endpoint.verification_config:type_name -> hookly.v1.VerificationConfig
+	11, // 5: hookly.v1.Webhook.received_at:type_name -> google.protobuf.Timestamp
+	10, // 6: hookly.v1.Webhook.headers:type_name -> hookly.v1.Webhook.HeadersEntry
+	2,  // 7: hookly.v1.Webhook.status:type_name -> hookly.v1.WebhookStatus
+	11, // 8: hookly.v1.Webhook.last_attempt_at:type_name -> google.protobuf.Timestamp
+	11, // 9: hookly.v1.Webhook.delivered_at:type_name -> google.protobuf.Timestamp
+	11, // 10: hookly.v1.SystemStatus.last_home_hub_heartbeat:type_name -> google.protobuf.Timestamp
+	8,  // 11: hookly.v1.SystemStatus.connected_endpoints:type_name -> hookly.v1.ConnectedEndpoint
+	12, // [12:12] is the sub-list for method output_type
+	12, // [12:12] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_hookly_v1_common_proto_init() }
@@ -649,8 +887,8 @@ func file_hookly_v1_common_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hookly_v1_common_proto_rawDesc), len(file_hookly_v1_common_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   6,
+			NumEnums:      3,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   0,
 		},

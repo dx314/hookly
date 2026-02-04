@@ -20,15 +20,16 @@ type ApiToken struct {
 }
 
 type Endpoint struct {
-	ID                       string `json:"id"`
-	UserID                   string `json:"user_id"`
-	Name                     string `json:"name"`
-	ProviderType             string `json:"provider_type"`
-	SignatureSecretEncrypted []byte `json:"signature_secret_encrypted"`
-	DestinationUrl           string `json:"destination_url"`
-	Muted                    int64  `json:"muted"`
-	CreatedAt                string `json:"created_at"`
-	UpdatedAt                string `json:"updated_at"`
+	ID                          string `json:"id"`
+	UserID                      string `json:"user_id"`
+	Name                        string `json:"name"`
+	ProviderType                string `json:"provider_type"`
+	SignatureSecretEncrypted    []byte `json:"signature_secret_encrypted"`
+	VerificationConfigEncrypted []byte `json:"verification_config_encrypted"`
+	DestinationUrl              string `json:"destination_url"`
+	Muted                       int64  `json:"muted"`
+	CreatedAt                   string `json:"created_at"`
+	UpdatedAt                   string `json:"updated_at"`
 }
 
 type Session struct {
