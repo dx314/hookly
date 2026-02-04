@@ -12,9 +12,8 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	gonanoid "github.com/matoous/go-nanoid/v2"
-
 	"hooks.dx314.com/internal/db"
+	"hooks.dx314.com/internal/id"
 )
 
 // Server is the MCP server for Hookly.
@@ -161,10 +160,7 @@ func (s *Server) handleCreateEndpoint(ctx context.Context, req mcp.CallToolReque
 	}
 
 	// Generate ID
-	id, err := gonanoid.New(21)
-	if err != nil {
-		return mcp.NewToolResultError(fmt.Sprintf("Failed to generate ID: %v", err)), nil
-	}
+	endpointID := id.NewEndpointID()
 
 	// Encrypt secret
 	encrypted, err := s.secretManager.EncryptSecret(signatureSecret)
@@ -174,7 +170,7 @@ func (s *Server) handleCreateEndpoint(ctx context.Context, req mcp.CallToolReque
 
 	// Create endpoint
 	endpoint, err := s.queries.CreateEndpoint(ctx, db.CreateEndpointParams{
-		ID:                       id,
+		ID:                       endpointID,
 		UserID:                   s.userID,
 		Name:                     name,
 		ProviderType:             providerType,
