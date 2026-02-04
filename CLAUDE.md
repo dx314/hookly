@@ -58,6 +58,19 @@ For patterns, see `/home/alex/src/aura/`:
 - `backend/cmd/api/main.go` — ConnectRPC setup
 - `backend/internal/server/interceptors.go` — auth interceptor
 
+## Deploy
+
+```bash
+./deploy/edge/deploy.sh          # build, push, deploy, cleanup
+./deploy/edge/deploy.sh --deploy-only   # just redeploy existing image
+```
+
+**Production**: https://hooks.dx314.com
+**Coolify**: https://svr.alexdunmow.com
+**Registry**: git.dev.alexdunmow.com/alex/hookly/edge
+
+Tokens: `~/.config/coolify/token`, `~/.config/gitea/token`
+
 ## Spec
 
 Full spec in `SPEC.md`. Work orders in `works/` (all DONE).
