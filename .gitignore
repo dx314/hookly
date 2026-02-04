@@ -2,6 +2,8 @@
 /edge-gateway
 /home-hub
 /hookly-mcp
+/hookly/hookly
+*.test
 
 # Frontend
 frontend/node_modules/
@@ -29,3 +31,4 @@ gen/
 # Environment
 .env
 .env.local
+hookly.yaml
