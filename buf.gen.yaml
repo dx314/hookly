@@ -1,0 +1,22 @@
+version: v2
+managed:
+  enabled: true
+  override:
+    - file_option: go_package_prefix
+      value: hookly/internal/api
+plugins:
+  # Go backend
+  - remote: buf.build/protocolbuffers/go
+    out: internal/api
+    opt:
+      - paths=source_relative
+  - remote: buf.build/connectrpc/go
+    out: internal/api
+    opt:
+      - paths=source_relative
+  # TypeScript frontend - Connect-ES v2 uses unified protobuf-es plugin
+  - remote: buf.build/bufbuild/es:v2.11.0
+    out: frontend/src/api
+    opt:
+      - target=ts
+      - import_extension=none

@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+/* CSS Variables for theming */
+@theme {
+	/* Colors */
+	--color-background: #ffffff;
+	--color-foreground: #0a0a0a;
+	--color-muted: #f5f5f5;
+	--color-muted-foreground: #737373;
+	--color-border: #e5e5e5;
+	--color-input: #e5e5e5;
+	--color-ring: #0a0a0a;
+
+	--color-primary: #0a0a0a;
+	--color-primary-foreground: #fafafa;
+	--color-secondary: #f5f5f5;
+	--color-secondary-foreground: #0a0a0a;
+	--color-accent: #f5f5f5;
+	--color-accent-foreground: #0a0a0a;
+	--color-destructive: #ef4444;
+	--color-destructive-foreground: #fafafa;
+
+	/* Status colors */
+	--color-status-pending: #eab308;
+	--color-status-delivered: #22c55e;
+	--color-status-failed: #ef4444;
+	--color-status-dead-letter: #6b7280;
+
+	/* Border radius */
+	--radius-sm: 0.25rem;
+	--radius-md: 0.375rem;
+	--radius-lg: 0.5rem;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color-background: #0a0a0a;
+		--color-foreground: #fafafa;
+		--color-muted: #262626;
+		--color-muted-foreground: #a3a3a3;
+		--color-border: #262626;
+		--color-input: #262626;
+		--color-ring: #d4d4d4;
+
+		--color-primary: #fafafa;
+		--color-primary-foreground: #0a0a0a;
+		--color-secondary: #262626;
+		--color-secondary-foreground: #fafafa;
+		--color-accent: #262626;
+		--color-accent-foreground: #fafafa;
+	}
+}
+
+/* Base styles */
+body {
+	background-color: var(--color-background);
+	color: var(--color-foreground);
+	font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+/* Utility classes for status badges */
+.badge-pending {
+	background-color: color-mix(in srgb, var(--color-status-pending) 20%, transparent);
+	color: var(--color-status-pending);
+}
+
+.badge-delivered {
+	background-color: color-mix(in srgb, var(--color-status-delivered) 20%, transparent);
+	color: var(--color-status-delivered);
+}
+
+.badge-failed {
+	background-color: color-mix(in srgb, var(--color-status-failed) 20%, transparent);
+	color: var(--color-status-failed);
+}
+
+.badge-dead-letter {
+	background-color: color-mix(in srgb, var(--color-status-dead-letter) 20%, transparent);
+	color: var(--color-status-dead-letter);
+}

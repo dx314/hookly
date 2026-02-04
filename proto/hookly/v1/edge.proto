@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package hookly.v1;
+
+import "hookly/v1/common.proto";
+
+// EdgeService provides the API for managing endpoints and webhooks.
+// Used by the UI and MCP server.
+service EdgeService {
+  // Endpoint management
+  rpc CreateEndpoint(CreateEndpointRequest) returns (CreateEndpointResponse);
+  rpc GetEndpoint(GetEndpointRequest) returns (GetEndpointResponse);
+  rpc ListEndpoints(ListEndpointsRequest) returns (ListEndpointsResponse);
+  rpc UpdateEndpoint(UpdateEndpointRequest) returns (UpdateEndpointResponse);
+  rpc DeleteEndpoint(DeleteEndpointRequest) returns (DeleteEndpointResponse);
+
+  // Webhook management
+  rpc GetWebhook(GetWebhookRequest) returns (GetWebhookResponse);
+  rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse);
+  rpc ReplayWebhook(ReplayWebhookRequest) returns (ReplayWebhookResponse);
+
+  // System status
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);
+  rpc GetSettings(GetSettingsRequest) returns (GetSettingsResponse);
+}
+
+// Endpoint requests/responses
+
+message CreateEndpointRequest {
+  string name = 1;
+  ProviderType provider_type = 2;
+  string signature_secret = 3;
+  string destination_url = 4;
+}
+
+message CreateEndpointResponse {
+  Endpoint endpoint = 1;
+  string webhook_url = 2; // Full URL for provider configuration
+}
+
+message GetEndpointRequest {
+  string id = 1;
+}
+
+message GetEndpointResponse {
+  Endpoint endpoint = 1;
+  string webhook_url = 2;
+}
+
+message ListEndpointsRequest {
+  PaginationRequest pagination = 1;
+}
+
+message ListEndpointsResponse {
+  repeated Endpoint endpoints = 1;
+  PaginationResponse pagination = 2;
+}
+
+message UpdateEndpointRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string signature_secret = 3;
+  optional string destination_url = 4;
+  optional bool muted = 5;
+}
+
+message UpdateEndpointResponse {
+  Endpoint endpoint = 1;
+}
+
+message DeleteEndpointRequest {
+  string id = 1;
+}
+
+message DeleteEndpointResponse {}
+
+// Webhook requests/responses
+
+message GetWebhookRequest {
+  string id = 1;
+}
+
+message GetWebhookResponse {
+  Webhook webhook = 1;
+}
+
+message ListWebhooksRequest {
+  optional string endpoint_id = 1;
+  optional WebhookStatus status = 2;
+  PaginationRequest pagination = 3;
+}
+
+message ListWebhooksResponse {
+  repeated Webhook webhooks = 1;
+  PaginationResponse pagination = 2;
+}
+
+message ReplayWebhookRequest {
+  string id = 1;
+}
+
+message ReplayWebhookResponse {
+  Webhook webhook = 1;
+}
+
+// Status requests/responses
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+  SystemStatus status = 1;
+}
+
+message GetSettingsRequest {}
+
+message GetSettingsResponse {
+  string base_url = 1;
+  bool github_auth_enabled = 2;
+  bool telegram_notifications_enabled = 3;
+}

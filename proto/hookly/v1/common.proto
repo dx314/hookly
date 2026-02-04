@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package hookly.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Provider type for webhook signature verification
+enum ProviderType {
+  PROVIDER_TYPE_UNSPECIFIED = 0;
+  PROVIDER_TYPE_STRIPE = 1;
+  PROVIDER_TYPE_GITHUB = 2;
+  PROVIDER_TYPE_TELEGRAM = 3;
+  PROVIDER_TYPE_GENERIC = 4;
+}
+
+// Webhook delivery status
+enum WebhookStatus {
+  WEBHOOK_STATUS_UNSPECIFIED = 0;
+  WEBHOOK_STATUS_PENDING = 1;
+  WEBHOOK_STATUS_DELIVERED = 2;
+  WEBHOOK_STATUS_FAILED = 3;
+  WEBHOOK_STATUS_DEAD_LETTER = 4;
+}
+
+// Endpoint configuration
+message Endpoint {
+  string id = 1;
+  string name = 2;
+  ProviderType provider_type = 3;
+  string destination_url = 4;
+  bool muted = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  // Note: signature_secret is not exposed in API responses
+}
+
+// Webhook record
+message Webhook {
+  string id = 1;
+  string endpoint_id = 2;
+  google.protobuf.Timestamp received_at = 3;
+  map<string, string> headers = 4;
+  bytes payload = 5;
+  bool signature_valid = 6;
+  WebhookStatus status = 7;
+  int32 attempts = 8;
+  google.protobuf.Timestamp last_attempt_at = 9;
+  google.protobuf.Timestamp delivered_at = 10;
+  string error_message = 11;
+}
+
+// Pagination request parameters
+message PaginationRequest {
+  int32 page_size = 1;
+  string page_token = 2;
+}
+
+// Pagination response metadata
+message PaginationResponse {
+  string next_page_token = 1;
+  int32 total_count = 2;
+}
+
+// System status information
+message SystemStatus {
+  int32 pending_count = 1;
+  int32 failed_count = 2;
+  int32 dead_letter_count = 3;
+  bool home_hub_connected = 4;
+  google.protobuf.Timestamp last_home_hub_heartbeat = 5;
+}

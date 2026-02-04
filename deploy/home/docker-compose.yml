@@ -1,0 +1,7 @@
+services:
+  home-hub:
+    image: ghcr.io/youruser/hookly-home:latest
+    environment:
+      - EDGE_URL=${EDGE_URL}
+      - HOME_HUB_SECRET=${HOME_HUB_SECRET}
+    restart: unless-stopped

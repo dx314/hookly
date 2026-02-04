@@ -1,0 +1,20 @@
+services:
+  edge-gateway:
+    image: ghcr.io/youruser/hookly-edge:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data
+    environment:
+      - DATABASE_PATH=/data/hookly.db
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - PORT=8080
+      - BASE_URL=${BASE_URL}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GITHUB_ORG=${GITHUB_ORG}
+      - GITHUB_ALLOWED_USERS=${GITHUB_ALLOWED_USERS}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - HOME_HUB_SECRET=${HOME_HUB_SECRET}
+    restart: unless-stopped
