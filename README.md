@@ -19,7 +19,7 @@ The CLI opens an outbound connection to the edge. Webhooks flow through that str
 
 ## Features
 
-- **Signature verification**: Built-in support for Stripe, GitHub, Telegram. Custom verification for any provider.
+- **Signature verification**: Provider presets (Stripe, GitHub, Telegram) plus flexible HMAC-SHA256/SHA1, static tokens, and timestamped signatures for any service.
 - **Retry with backoff**: 1s → 1h cap, 7 days before dead-letter. 4xx = permanent fail, 5xx = retry.
 - **In-order delivery**: Per-endpoint ordering. Endpoints are independent.
 - **Web UI**: Dashboard, endpoint management, webhook inspection, replay failed deliveries, theme customization.
