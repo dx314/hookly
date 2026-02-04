@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 
+	"hooks.dx314.com/internal/cli"
 	"hooks.dx314.com/internal/crypto"
 	"hooks.dx314.com/internal/db"
 	"hooks.dx314.com/internal/mcp"
@@ -32,6 +33,20 @@ func run() error {
 	// Load .env file if present
 	_ = godotenv.Load()
 
+	// Load credentials from CLI (same as `hookly login`)
+	credsMgr, err := cli.NewCredentialsManager()
+	if err != nil {
+		return fmt.Errorf("init credentials: %w", err)
+	}
+
+	creds, err := credsMgr.Load()
+	if err != nil {
+		return fmt.Errorf("load credentials: %w", err)
+	}
+	if creds == nil {
+		return errors.New("not logged in - run `hookly login` first")
+	}
+
 	// Get required configuration
 	databasePath := os.Getenv("DATABASE_PATH")
 	if databasePath == "" {
@@ -49,7 +64,7 @@ func run() error {
 
 	baseURL := os.Getenv("BASE_URL")
 	if baseURL == "" {
-		baseURL = "http://localhost:8080"
+		baseURL = creds.EdgeURL // Use edge URL from credentials as fallback
 	}
 
 	// Open database
@@ -62,7 +77,7 @@ func run() error {
 	queries := db.New(conn)
 	secretManager := db.NewSecretManager(key)
 
-	// Create and run MCP server
-	server := mcp.NewServer(queries, secretManager, baseURL)
+	// Create and run MCP server using credentials from CLI
+	server := mcp.NewServer(queries, secretManager, baseURL, creds.UserID)
 	return server.ServeStdio()
 }

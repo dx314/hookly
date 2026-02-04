@@ -6,6 +6,10 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"connectrpc.com/connect"
+
+	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
 )
 
 func TestCredentialsManager(t *testing.T) {
@@ -187,7 +191,7 @@ func TestIntegrationClient(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	resp, err := client.Edge.ListEndpoints(ctx, nil)
+	resp, err := client.Edge.ListEndpoints(ctx, connect.NewRequest(&hooklyv1.ListEndpointsRequest{}))
 	if err != nil {
 		t.Fatalf("ListEndpoints: %v", err)
 	}

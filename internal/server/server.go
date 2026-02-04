@@ -10,6 +10,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 // Server wraps the HTTP server with graceful shutdown.
@@ -32,7 +34,7 @@ func New(addr string) *Server {
 	s := &Server{
 		server: &http.Server{
 			Addr:         addr,
-			Handler:      r,
+			Handler:      h2c.NewHandler(r, &http2.Server{}),
 			ReadTimeout:  30 * time.Second,
 			WriteTimeout: 30 * time.Second,
 			IdleTimeout:  60 * time.Second,

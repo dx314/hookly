@@ -30,12 +30,19 @@ func NewHandlers(github *GitHubClient, sessions *SessionManager, authorizer *Aut
 }
 
 // Login redirects to GitHub for OAuth.
+// Supports optional return_to parameter to redirect after login.
 func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 	state, err := GenerateState()
 	if err != nil {
 		slog.Error("failed to generate state", "error", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
+	}
+
+	// Store return_to in state if provided (format: state|return_to)
+	returnTo := r.URL.Query().Get("return_to")
+	if returnTo != "" {
+		state = state + "|" + base64.URLEncoding.EncodeToString([]byte(returnTo))
 	}
 
 	h.sessions.SetStateCookie(w, state)
@@ -46,9 +53,17 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) Callback(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Validate state
-	state := r.URL.Query().Get("state")
-	if !ValidateState(r, state) {
+	// Validate state (may contain return_to: state|base64(return_to))
+	fullState := r.URL.Query().Get("state")
+	var returnTo string
+
+	if parts := strings.SplitN(fullState, "|", 2); len(parts) == 2 {
+		if decoded, err := base64.URLEncoding.DecodeString(parts[1]); err == nil {
+			returnTo = string(decoded)
+		}
+	}
+
+	if !ValidateState(r, fullState) {
 		slog.Warn("invalid OAuth state")
 		http.Error(w, "Invalid state", http.StatusBadRequest)
 		return
@@ -103,8 +118,12 @@ func (h *Handlers) Callback(w http.ResponseWriter, r *http.Request) {
 	h.sessions.SetSessionCookie(w, session)
 	slog.Info("user logged in", "username", user.Login, "user_id", user.ID)
 
-	// Redirect to home
-	http.Redirect(w, r, "/", http.StatusFound)
+	// Redirect to return_to or home
+	redirectURL := "/"
+	if returnTo != "" && strings.HasPrefix(returnTo, "/") {
+		redirectURL = returnTo
+	}
+	http.Redirect(w, r, redirectURL, http.StatusFound)
 }
 
 // Logout clears the session and redirects to home.
@@ -143,105 +162,58 @@ func (h *Handlers) Me(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// CLILogin initiates OAuth flow for CLI authentication.
-// The CLI passes its callback port in the state parameter.
-// GET /auth/cli?port=12345&state=xxx
-func (h *Handlers) CLILogin(w http.ResponseWriter, r *http.Request) {
+// CLIRegister redirects to the Svelte page for CLI authorization.
+// Requires the user to be logged in. If not, redirects to login first.
+// GET /auth/cli/register?port=12345&state=xxx
+func (h *Handlers) CLIRegister(w http.ResponseWriter, r *http.Request) {
 	port := r.URL.Query().Get("port")
-	if port == "" {
-		http.Error(w, "Missing port parameter", http.StatusBadRequest)
+	state := r.URL.Query().Get("state")
+
+	if port == "" || state == "" {
+		http.Error(w, "Missing port or state parameter", http.StatusBadRequest)
 		return
 	}
 
-	clientState := r.URL.Query().Get("state")
-	if clientState == "" {
-		http.Error(w, "Missing state parameter", http.StatusBadRequest)
+	// Check if user is logged in
+	session, _ := h.sessions.GetSessionFromRequest(r)
+	if session == nil {
+		// Redirect to login, then back here
+		returnURL := fmt.Sprintf("/auth/cli/register?port=%s&state=%s", url.QueryEscape(port), url.QueryEscape(state))
+		http.Redirect(w, r, "/auth/login?return_to="+url.QueryEscape(returnURL), http.StatusFound)
 		return
 	}
 
-	// Generate server-side state for CSRF protection
-	serverState, err := GenerateState()
-	if err != nil {
-		slog.Error("failed to generate state", "error", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-
-	// Encode CLI info in state: serverState|port|clientState
-	combinedState := base64.URLEncoding.EncodeToString([]byte(fmt.Sprintf("%s|%s|%s", serverState, port, clientState)))
-
-	// Set state cookie for validation
-	h.sessions.SetCLIStateCookie(w, serverState)
-
-	// Redirect to GitHub
-	http.Redirect(w, r, h.github.GetAuthURL(combinedState), http.StatusFound)
+	// Redirect to Svelte page with session info
+	svelteURL := fmt.Sprintf("/cli/register?port=%s&state=%s&username=%s",
+		url.QueryEscape(port),
+		url.QueryEscape(state),
+		url.QueryEscape(session.Username),
+	)
+	http.Redirect(w, r, svelteURL, http.StatusFound)
 }
 
-// CLICallback handles the OAuth callback for CLI authentication.
-// Creates an API token and redirects to the CLI's local callback server.
-func (h *Handlers) CLICallback(w http.ResponseWriter, r *http.Request) {
+// CLIAuthorize creates an API token and redirects to the CLI's local server.
+// POST /cli/register/authorize
+func (h *Handlers) CLIAuthorize(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Decode combined state
-	encodedState := r.URL.Query().Get("state")
-	stateBytes, err := base64.URLEncoding.DecodeString(encodedState)
-	if err != nil {
-		slog.Warn("invalid state encoding")
-		http.Error(w, "Invalid state", http.StatusBadRequest)
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	parts := strings.SplitN(string(stateBytes), "|", 3)
-	if len(parts) != 3 {
-		slog.Warn("invalid state format")
-		http.Error(w, "Invalid state", http.StatusBadRequest)
+	// Check if user is logged in
+	session, _ := h.sessions.GetSessionFromRequest(r)
+	if session == nil {
+		http.Error(w, "Not authenticated", http.StatusUnauthorized)
 		return
 	}
 
-	serverState, port, clientState := parts[0], parts[1], parts[2]
+	port := r.FormValue("port")
+	state := r.FormValue("state")
 
-	// Validate server state
-	if !h.validateCLIState(r, serverState) {
-		slog.Warn("invalid OAuth state")
-		http.Error(w, "Invalid state", http.StatusBadRequest)
-		return
-	}
-	h.sessions.ClearCLIStateCookie(w)
-
-	// Check for error from GitHub
-	if errMsg := r.URL.Query().Get("error"); errMsg != "" {
-		errDesc := r.URL.Query().Get("error_description")
-		slog.Warn("OAuth error from GitHub", "error", errMsg, "description", errDesc)
-		h.redirectCLIError(w, r, port, clientState, "Authorization denied: "+errDesc)
-		return
-	}
-
-	// Exchange code for token
-	code := r.URL.Query().Get("code")
-	if code == "" {
-		h.redirectCLIError(w, r, port, clientState, "Missing authorization code")
-		return
-	}
-
-	token, err := h.github.ExchangeCode(ctx, code)
-	if err != nil {
-		slog.Error("failed to exchange code", "error", err)
-		h.redirectCLIError(w, r, port, clientState, "Failed to authenticate")
-		return
-	}
-
-	// Get user info
-	user, err := h.github.GetUser(ctx, token.AccessToken)
-	if err != nil {
-		slog.Error("failed to get user", "error", err)
-		h.redirectCLIError(w, r, port, clientState, "Failed to get user info")
-		return
-	}
-
-	// Check authorization
-	if !h.authorizer.IsAuthorized(ctx, user.Login, token.AccessToken) {
-		slog.Warn("user not authorized", "username", user.Login)
-		h.redirectCLIError(w, r, port, clientState, "You are not authorized to access this application")
+	if port == "" || state == "" {
+		http.Error(w, "Missing port or state", http.StatusBadRequest)
 		return
 	}
 
@@ -253,22 +225,22 @@ func (h *Handlers) CLICallback(w http.ResponseWriter, r *http.Request) {
 	tokenName := fmt.Sprintf("CLI - %s", hostname)
 
 	// Create API token
-	apiToken, _, err := h.tokens.GenerateToken(ctx, fmt.Sprintf("%d", user.ID), user.Login, tokenName)
+	apiToken, _, err := h.tokens.GenerateToken(ctx, session.UserID, session.Username, tokenName)
 	if err != nil {
 		slog.Error("failed to create API token", "error", err)
-		h.redirectCLIError(w, r, port, clientState, "Failed to create API token")
+		http.Error(w, "Failed to create API token", http.StatusInternalServerError)
 		return
 	}
 
-	slog.Info("CLI login successful", "username", user.Login, "user_id", user.ID)
+	slog.Info("CLI authorized", "username", session.Username, "user_id", session.UserID)
 
 	// Redirect to CLI callback with token
-	callbackURL := fmt.Sprintf("http://localhost:%s/callback?token=%s&state=%s&user_id=%d&username=%s",
+	callbackURL := fmt.Sprintf("http://localhost:%s/callback?token=%s&state=%s&user_id=%s&username=%s",
 		port,
 		url.QueryEscape(apiToken),
-		url.QueryEscape(clientState),
-		user.ID,
-		url.QueryEscape(user.Login),
+		url.QueryEscape(state),
+		url.QueryEscape(session.UserID),
+		url.QueryEscape(session.Username),
 	)
 	http.Redirect(w, r, callbackURL, http.StatusFound)
 }
@@ -323,21 +295,3 @@ func (h *Handlers) RevokeToken(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// validateCLIState validates the CLI OAuth state cookie.
-func (h *Handlers) validateCLIState(r *http.Request, state string) bool {
-	cookie, err := r.Cookie(CLIStateCookieName)
-	if err != nil {
-		return false
-	}
-	return cookie.Value == state
-}
-
-// redirectCLIError redirects to CLI callback with an error.
-func (h *Handlers) redirectCLIError(w http.ResponseWriter, r *http.Request, port, state, errMsg string) {
-	callbackURL := fmt.Sprintf("http://localhost:%s/callback?error=%s&state=%s",
-		port,
-		url.QueryEscape(errMsg),
-		url.QueryEscape(state),
-	)
-	http.Redirect(w, r, callbackURL, http.StatusFound)
-}

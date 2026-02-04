@@ -104,8 +104,8 @@ func run() error {
 		r.Get("/auth/me", authHandlers.Me)
 
 		// CLI auth routes
-		r.Get("/auth/cli", authHandlers.CLILogin)
-		r.Get("/auth/cli/callback", authHandlers.CLICallback)
+		r.Get("/auth/cli/register", authHandlers.CLIRegister)
+		r.Post("/auth/cli/authorize", authHandlers.CLIAuthorize)
 		r.Post("/auth/token/revoke", authHandlers.RevokeToken)
 
 		slog.Info("github auth enabled",
@@ -116,14 +116,14 @@ func run() error {
 		slog.Warn("github auth disabled (GITHUB_CLIENT_ID/GITHUB_CLIENT_SECRET not set)")
 	}
 
-	// Relay service (ConnectRPC, no auth required - uses shared secret)
-	if cfg.HomeHubSecret != "" {
-		relayHandler := relay.NewHandler(cfg.HomeHubSecret, connMgr, queries, notifier)
+	// Relay service (ConnectRPC, uses bearer token auth)
+	if tokenManager != nil {
+		relayHandler := relay.NewHandler(tokenManager, connMgr, queries, notifier)
 		path, handler := hooklyv1connect.NewRelayServiceHandler(relayHandler, connect.WithInterceptors())
 		r.Mount(path, handler)
 		slog.Info("relay service enabled")
 	} else {
-		slog.Warn("relay service disabled (HOME_HUB_SECRET not set)")
+		slog.Warn("relay service disabled (GitHub auth not configured)")
 	}
 
 	// EdgeService (API for UI/MCP)

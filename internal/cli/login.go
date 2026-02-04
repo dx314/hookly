@@ -54,16 +54,9 @@ func Login(ctx context.Context, edgeURL string) (*LoginResult, error) {
 		// Check for error
 		if errMsg := r.URL.Query().Get("error"); errMsg != "" {
 			errCh <- errors.New(errMsg)
-			w.Header().Set("Content-Type", "text/html")
-			fmt.Fprintf(w, `<!DOCTYPE html>
-<html>
-<head><title>Login Failed</title></head>
-<body>
-<h1>Login Failed</h1>
-<p>%s</p>
-<p>You can close this window.</p>
-</body>
-</html>`, errMsg)
+			// Redirect to error page on edge server
+			errorURL := fmt.Sprintf("%s/cli/login/error?error=%s", edgeURL, url.QueryEscape(errMsg))
+			http.Redirect(w, r, errorURL, http.StatusFound)
 			return
 		}
 
@@ -71,7 +64,8 @@ func Login(ctx context.Context, edgeURL string) (*LoginResult, error) {
 		returnedState := r.URL.Query().Get("state")
 		if returnedState != state {
 			errCh <- errors.New("state mismatch")
-			http.Error(w, "Invalid state", http.StatusBadRequest)
+			errorURL := fmt.Sprintf("%s/cli/login/error?error=%s", edgeURL, url.QueryEscape("state mismatch"))
+			http.Redirect(w, r, errorURL, http.StatusFound)
 			return
 		}
 
@@ -82,7 +76,8 @@ func Login(ctx context.Context, edgeURL string) (*LoginResult, error) {
 
 		if token == "" {
 			errCh <- errors.New("missing token in callback")
-			http.Error(w, "Missing token", http.StatusBadRequest)
+			errorURL := fmt.Sprintf("%s/cli/login/error?error=%s", edgeURL, url.QueryEscape("missing token"))
+			http.Redirect(w, r, errorURL, http.StatusFound)
 			return
 		}
 
@@ -92,16 +87,9 @@ func Login(ctx context.Context, edgeURL string) (*LoginResult, error) {
 			Username: username,
 		}
 
-		w.Header().Set("Content-Type", "text/html")
-		fmt.Fprintf(w, `<!DOCTYPE html>
-<html>
-<head><title>Login Successful</title></head>
-<body>
-<h1>Login Successful</h1>
-<p>Logged in as <strong>%s</strong></p>
-<p>You can close this window and return to the terminal.</p>
-</body>
-</html>`, username)
+		// Redirect to success page on edge server
+		successURL := fmt.Sprintf("%s/cli/login/success?username=%s", edgeURL, url.QueryEscape(username))
+		http.Redirect(w, r, successURL, http.StatusFound)
 	})
 
 	server := &http.Server{Handler: mux}
@@ -114,7 +102,7 @@ func Login(ctx context.Context, edgeURL string) (*LoginResult, error) {
 	}()
 
 	// Build login URL
-	loginURL := fmt.Sprintf("%s/auth/cli?port=%d&state=%s",
+	loginURL := fmt.Sprintf("%s/auth/cli/register?port=%d&state=%s",
 		edgeURL,
 		port,
 		url.QueryEscape(state),

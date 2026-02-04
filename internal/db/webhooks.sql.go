@@ -11,18 +11,22 @@ import (
 )
 
 const countWebhooks = `-- name: CountWebhooks :one
-SELECT COUNT(*) FROM webhooks
-WHERE (?1 IS NULL OR endpoint_id = ?1)
-  AND (?2 IS NULL OR status = ?2)
+SELECT COUNT(*) FROM webhooks w
+JOIN endpoints e ON w.endpoint_id = e.id
+WHERE e.user_id = ?1
+  AND (?2 IS NULL OR w.endpoint_id = ?2)
+  AND (?3 IS NULL OR w.status = ?3)
 `
 
 type CountWebhooksParams struct {
+	UserID     string      `json:"user_id"`
 	EndpointID interface{} `json:"endpoint_id"`
 	Status     interface{} `json:"status"`
 }
 
+// User-facing query: counts webhooks owned by user
 func (q *Queries) CountWebhooks(ctx context.Context, arg CountWebhooksParams) (int64, error) {
-	row := q.db.QueryRowContext(ctx, countWebhooks, arg.EndpointID, arg.Status)
+	row := q.db.QueryRowContext(ctx, countWebhooks, arg.UserID, arg.EndpointID, arg.Status)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
@@ -74,7 +78,7 @@ WHERE status = 'dead_letter'
   AND received_at < datetime('now', '-14 days')
 `
 
-// Delete dead letter webhooks older than 14 days from receipt.
+// System query: cleanup old dead letter webhooks (no user filter)
 func (q *Queries) DeleteDeadLetterWebhooks(ctx context.Context) (int64, error) {
 	result, err := q.db.ExecContext(ctx, deleteDeadLetterWebhooks)
 	if err != nil {
@@ -89,7 +93,7 @@ WHERE status = 'delivered'
   AND delivered_at < datetime('now', '-7 days')
 `
 
-// Delete delivered webhooks older than 7 days.
+// System query: cleanup old delivered webhooks (no user filter)
 func (q *Queries) DeleteDeliveredWebhooks(ctx context.Context) (int64, error) {
 	result, err := q.db.ExecContext(ctx, deleteDeliveredWebhooks)
 	if err != nil {
@@ -104,7 +108,7 @@ WHERE status = 'failed'
   AND last_attempt_at < datetime('now', '-7 days')
 `
 
-// Delete failed webhooks older than 7 days from last attempt.
+// System query: cleanup old failed webhooks (no user filter)
 func (q *Queries) DeleteFailedWebhooks(ctx context.Context) (int64, error) {
 	result, err := q.db.ExecContext(ctx, deleteFailedWebhooks)
 	if err != nil {
@@ -140,7 +144,7 @@ type GetDeadLetterWebhooksRow struct {
 	ProviderType     string         `json:"provider_type"`
 }
 
-// Get recently dead-lettered webhooks for notification.
+// System query: gets dead letter webhooks for admin notification (no user filter)
 func (q *Queries) GetDeadLetterWebhooks(ctx context.Context, limit int64) ([]GetDeadLetterWebhooksRow, error) {
 	rows, err := q.db.QueryContext(ctx, getDeadLetterWebhooks, limit)
 	if err != nil {
@@ -219,8 +223,7 @@ type GetPendingWebhooksRow struct {
 	ProviderType     string         `json:"provider_type"`
 }
 
-// Get webhooks ready for delivery with backoff timing and in-order per endpoint.
-// Only returns the oldest pending webhook per endpoint that has passed its backoff delay.
+// System query: gets all pending webhooks for dispatch (no user filter)
 func (q *Queries) GetPendingWebhooks(ctx context.Context, limit int64) ([]GetPendingWebhooksRow, error) {
 	rows, err := q.db.QueryContext(ctx, getPendingWebhooks, limit)
 	if err != nil {
@@ -261,10 +264,12 @@ func (q *Queries) GetPendingWebhooks(ctx context.Context, limit int64) ([]GetPen
 
 const getQueueStats = `-- name: GetQueueStats :one
 SELECT
-    SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
-    SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed_count,
-    SUM(CASE WHEN status = 'dead_letter' THEN 1 ELSE 0 END) AS dead_letter_count
-FROM webhooks
+    SUM(CASE WHEN w.status = 'pending' THEN 1 ELSE 0 END) AS pending_count,
+    SUM(CASE WHEN w.status = 'failed' THEN 1 ELSE 0 END) AS failed_count,
+    SUM(CASE WHEN w.status = 'dead_letter' THEN 1 ELSE 0 END) AS dead_letter_count
+FROM webhooks w
+JOIN endpoints e ON w.endpoint_id = e.id
+WHERE e.user_id = ?
 `
 
 type GetQueueStatsRow struct {
@@ -273,8 +278,9 @@ type GetQueueStatsRow struct {
 	DeadLetterCount sql.NullFloat64 `json:"dead_letter_count"`
 }
 
-func (q *Queries) GetQueueStats(ctx context.Context) (GetQueueStatsRow, error) {
-	row := q.db.QueryRowContext(ctx, getQueueStats)
+// User-facing query: gets queue stats for user's endpoints
+func (q *Queries) GetQueueStats(ctx context.Context, userID string) (GetQueueStatsRow, error) {
+	row := q.db.QueryRowContext(ctx, getQueueStats, userID)
 	var i GetQueueStatsRow
 	err := row.Scan(&i.PendingCount, &i.FailedCount, &i.DeadLetterCount)
 	return i, err
@@ -307,7 +313,7 @@ type GetUnnotifiedDeadLettersRow struct {
 	EndpointDestinationUrl string         `json:"endpoint_destination_url"`
 }
 
-// Get dead letter webhooks that haven't been notified yet.
+// System query: gets unnotified dead letters for admin (no user filter)
 func (q *Queries) GetUnnotifiedDeadLetters(ctx context.Context, limit int64) ([]GetUnnotifiedDeadLettersRow, error) {
 	rows, err := q.db.QueryContext(ctx, getUnnotifiedDeadLetters, limit)
 	if err != nil {
@@ -347,11 +353,19 @@ func (q *Queries) GetUnnotifiedDeadLetters(ctx context.Context, limit int64) ([]
 }
 
 const getWebhook = `-- name: GetWebhook :one
-SELECT id, endpoint_id, received_at, headers, payload, signature_valid, status, attempts, last_attempt_at, delivered_at, error_message, notification_sent FROM webhooks WHERE id = ?
+SELECT w.id, w.endpoint_id, w.received_at, w.headers, w.payload, w.signature_valid, w.status, w.attempts, w.last_attempt_at, w.delivered_at, w.error_message, w.notification_sent FROM webhooks w
+JOIN endpoints e ON w.endpoint_id = e.id
+WHERE w.id = ? AND e.user_id = ?
 `
 
-func (q *Queries) GetWebhook(ctx context.Context, id string) (Webhook, error) {
-	row := q.db.QueryRowContext(ctx, getWebhook, id)
+type GetWebhookParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+// User-facing query: validates endpoint ownership via JOIN
+func (q *Queries) GetWebhook(ctx context.Context, arg GetWebhookParams) (Webhook, error) {
+	row := q.db.QueryRowContext(ctx, getWebhook, arg.ID, arg.UserID)
 	var i Webhook
 	err := row.Scan(
 		&i.ID,
@@ -374,8 +388,13 @@ const getWebhookWithEndpoint = `-- name: GetWebhookWithEndpoint :one
 SELECT w.id, w.endpoint_id, w.received_at, w.headers, w.payload, w.signature_valid, w.status, w.attempts, w.last_attempt_at, w.delivered_at, w.error_message, w.notification_sent, e.name as endpoint_name, e.destination_url as endpoint_destination_url
 FROM webhooks w
 JOIN endpoints e ON w.endpoint_id = e.id
-WHERE w.id = ?
+WHERE w.id = ? AND e.user_id = ?
 `
+
+type GetWebhookWithEndpointParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
 
 type GetWebhookWithEndpointRow struct {
 	ID                     string         `json:"id"`
@@ -394,9 +413,9 @@ type GetWebhookWithEndpointRow struct {
 	EndpointDestinationUrl string         `json:"endpoint_destination_url"`
 }
 
-// Get webhook with endpoint info for notifications.
-func (q *Queries) GetWebhookWithEndpoint(ctx context.Context, id string) (GetWebhookWithEndpointRow, error) {
-	row := q.db.QueryRowContext(ctx, getWebhookWithEndpoint, id)
+// User-facing query: gets webhook with endpoint info, validates ownership
+func (q *Queries) GetWebhookWithEndpoint(ctx context.Context, arg GetWebhookWithEndpointParams) (GetWebhookWithEndpointRow, error) {
+	row := q.db.QueryRowContext(ctx, getWebhookWithEndpoint, arg.ID, arg.UserID)
 	var i GetWebhookWithEndpointRow
 	err := row.Scan(
 		&i.ID,
@@ -417,27 +436,79 @@ func (q *Queries) GetWebhookWithEndpoint(ctx context.Context, id string) (GetWeb
 	return i, err
 }
 
+const getWebhookWithEndpointByID = `-- name: GetWebhookWithEndpointByID :one
+SELECT w.id, w.endpoint_id, w.received_at, w.headers, w.payload, w.signature_valid, w.status, w.attempts, w.last_attempt_at, w.delivered_at, w.error_message, w.notification_sent, e.name as endpoint_name, e.destination_url as endpoint_destination_url
+FROM webhooks w
+JOIN endpoints e ON w.endpoint_id = e.id
+WHERE w.id = ?
+`
+
+type GetWebhookWithEndpointByIDRow struct {
+	ID                     string         `json:"id"`
+	EndpointID             string         `json:"endpoint_id"`
+	ReceivedAt             string         `json:"received_at"`
+	Headers                string         `json:"headers"`
+	Payload                []byte         `json:"payload"`
+	SignatureValid         int64          `json:"signature_valid"`
+	Status                 string         `json:"status"`
+	Attempts               int64          `json:"attempts"`
+	LastAttemptAt          sql.NullString `json:"last_attempt_at"`
+	DeliveredAt            sql.NullString `json:"delivered_at"`
+	ErrorMessage           sql.NullString `json:"error_message"`
+	NotificationSent       int64          `json:"notification_sent"`
+	EndpointName           string         `json:"endpoint_name"`
+	EndpointDestinationUrl string         `json:"endpoint_destination_url"`
+}
+
+// System query: gets webhook with endpoint info for notifications (no user filter)
+func (q *Queries) GetWebhookWithEndpointByID(ctx context.Context, id string) (GetWebhookWithEndpointByIDRow, error) {
+	row := q.db.QueryRowContext(ctx, getWebhookWithEndpointByID, id)
+	var i GetWebhookWithEndpointByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.EndpointID,
+		&i.ReceivedAt,
+		&i.Headers,
+		&i.Payload,
+		&i.SignatureValid,
+		&i.Status,
+		&i.Attempts,
+		&i.LastAttemptAt,
+		&i.DeliveredAt,
+		&i.ErrorMessage,
+		&i.NotificationSent,
+		&i.EndpointName,
+		&i.EndpointDestinationUrl,
+	)
+	return i, err
+}
+
 const listWebhooks = `-- name: ListWebhooks :many
-SELECT id, endpoint_id, received_at, headers, payload, signature_valid, status, attempts, last_attempt_at, delivered_at, error_message, notification_sent FROM webhooks
-WHERE (?3 IS NULL OR endpoint_id = ?3)
-  AND (?4 IS NULL OR status = ?4)
-ORDER BY received_at DESC
-LIMIT ? OFFSET ?
+SELECT w.id, w.endpoint_id, w.received_at, w.headers, w.payload, w.signature_valid, w.status, w.attempts, w.last_attempt_at, w.delivered_at, w.error_message, w.notification_sent FROM webhooks w
+JOIN endpoints e ON w.endpoint_id = e.id
+WHERE e.user_id = ?1
+  AND (?2 IS NULL OR w.endpoint_id = ?2)
+  AND (?3 IS NULL OR w.status = ?3)
+ORDER BY w.received_at DESC
+LIMIT ?5 OFFSET ?4
 `
 
 type ListWebhooksParams struct {
+	UserID     string      `json:"user_id"`
 	EndpointID interface{} `json:"endpoint_id"`
 	Status     interface{} `json:"status"`
-	Limit      int64       `json:"limit"`
 	Offset     int64       `json:"offset"`
+	Limit      int64       `json:"limit"`
 }
 
+// User-facing query: filters by endpoint ownership
 func (q *Queries) ListWebhooks(ctx context.Context, arg ListWebhooksParams) ([]Webhook, error) {
 	rows, err := q.db.QueryContext(ctx, listWebhooks,
+		arg.UserID,
 		arg.EndpointID,
 		arg.Status,
-		arg.Limit,
 		arg.Offset,
+		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -480,7 +551,7 @@ WHERE status = 'pending'
   AND received_at < datetime('now', '-7 days')
 `
 
-// Mark pending webhooks as dead_letter after 7 days.
+// System query: marks old pending webhooks as dead_letter (no user filter)
 func (q *Queries) MarkDeadLetter(ctx context.Context) (int64, error) {
 	result, err := q.db.ExecContext(ctx, markDeadLetter)
 	if err != nil {
@@ -495,7 +566,7 @@ SET notification_sent = 1
 WHERE id = ?
 `
 
-// Mark notification as sent to prevent spam.
+// System query: marks notification as sent (no user filter)
 func (q *Queries) MarkNotificationSent(ctx context.Context, id string) error {
 	_, err := q.db.ExecContext(ctx, markNotificationSent, id)
 	return err
@@ -512,7 +583,7 @@ WHERE id = ?
 RETURNING id, endpoint_id, received_at, headers, payload, signature_valid, status, attempts, last_attempt_at, delivered_at, error_message, notification_sent
 `
 
-// Mark a webhook as successfully delivered.
+// System query: no user filter (called by background dispatcher)
 func (q *Queries) MarkWebhookDelivered(ctx context.Context, id string) (Webhook, error) {
 	row := q.db.QueryRowContext(ctx, markWebhookDelivered, id)
 	var i Webhook
@@ -548,7 +619,7 @@ type MarkWebhookFailedParams struct {
 	ID           string         `json:"id"`
 }
 
-// Mark a webhook as permanently failed (4xx response).
+// System query: no user filter (called by background dispatcher)
 func (q *Queries) MarkWebhookFailed(ctx context.Context, arg MarkWebhookFailedParams) (Webhook, error) {
 	row := q.db.QueryRowContext(ctx, markWebhookFailed, arg.ErrorMessage, arg.ID)
 	var i Webhook
@@ -583,7 +654,7 @@ type RecordWebhookAttemptParams struct {
 	ID           string         `json:"id"`
 }
 
-// Record a failed delivery attempt (5xx or network error) - stays pending for retry.
+// System query: no user filter (called by background dispatcher)
 func (q *Queries) RecordWebhookAttempt(ctx context.Context, arg RecordWebhookAttemptParams) (Webhook, error) {
 	row := q.db.QueryRowContext(ctx, recordWebhookAttempt, arg.ErrorMessage, arg.ID)
 	var i Webhook
@@ -612,12 +683,19 @@ SET status = 'pending',
     delivered_at = NULL,
     error_message = NULL,
     notification_sent = 0
-WHERE id = ?
+WHERE webhooks.id = ?
+  AND webhooks.endpoint_id IN (SELECT e.id FROM endpoints e WHERE e.user_id = ?)
 RETURNING id, endpoint_id, received_at, headers, payload, signature_valid, status, attempts, last_attempt_at, delivered_at, error_message, notification_sent
 `
 
-func (q *Queries) ResetWebhookForReplay(ctx context.Context, id string) (Webhook, error) {
-	row := q.db.QueryRowContext(ctx, resetWebhookForReplay, id)
+type ResetWebhookForReplayParams struct {
+	ID     string `json:"id"`
+	UserID string `json:"user_id"`
+}
+
+// User-facing query: validates endpoint ownership via subquery
+func (q *Queries) ResetWebhookForReplay(ctx context.Context, arg ResetWebhookForReplayParams) (Webhook, error) {
+	row := q.db.QueryRowContext(ctx, resetWebhookForReplay, arg.ID, arg.UserID)
 	var i Webhook
 	err := row.Scan(
 		&i.ID,

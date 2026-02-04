@@ -24,16 +24,30 @@ External → edge-gateway (public) ←gRPC stream← home-hub (private) → loca
 
 | Area | Files |
 |------|-------|
-| **Entrypoints** | `cmd/edge-gateway/main.go`, `cmd/home-hub/main.go`, `cmd/hookly-mcp/main.go` |
+| **Entrypoints** | `cmd/edge-gateway/main.go`, `hookly/main.go` (CLI), `cmd/hookly-mcp/main.go` |
 | **Proto** | `proto/hookly/v1/{common,edge,relay}.proto` |
-| **Schema** | `sql/schema.sql`, `sql/queries/*.sql` |
+| **Schema** | `sql/schema.sql`, `sql/queries/*.sql`, `internal/db/migrations/*.sql` |
 | **Webhook** | `internal/webhook/{handler,verify,forwarder,scheduler,backoff}.go` |
-| **Relay** | `internal/relay/{handler,client,dispatcher,manager,auth}.go` |
+| **Relay** | `internal/relay/{handler,client,dispatcher,manager}.go` |
 | **Auth** | `internal/auth/{github,session,authorize,handlers}.go` |
 | **API** | `internal/service/edge/service.go` (ConnectRPC) |
 | **Config** | `internal/config/{config,home}.go` |
 | **MCP** | `internal/mcp/{server,tools}.go` |
 | **Frontend** | `frontend/src/routes/**/*.svelte` |
+
+## Migrations
+
+Uses [goose](https://github.com/pressly/goose) with embedded SQL migrations. Path from `DATABASE_PATH` env (default: `./hookly.db`).
+
+```bash
+make migrate-status      # show migration status
+make migrate-up          # apply pending migrations
+make migrate-down        # rollback one migration
+make migrate-create NAME=add_foo  # create new migration
+make dump-schema         # dump schema from DB
+```
+
+Migrations run automatically on startup. Files in `internal/db/migrations/`.
 
 ## Patterns
 
@@ -47,9 +61,22 @@ External → edge-gateway (public) ←gRPC stream← home-hub (private) → loca
 
 ## Env Vars
 
-**Edge**: `DATABASE_PATH`, `ENCRYPTION_KEY`, `PORT`, `BASE_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_ORG`, `GITHUB_ALLOWED_USERS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `HOME_HUB_SECRET`
+**Edge**: `DATABASE_PATH`, `ENCRYPTION_KEY`, `PORT`, `BASE_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_ORG`, `GITHUB_ALLOWED_USERS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
 
 **Home**: `EDGE_URL`, `HOME_HUB_SECRET`, `HUB_ID`
+
+**MCP**: `DATABASE_PATH`, `ENCRYPTION_KEY`, `BASE_URL` (optional). Uses CLI credentials from `hookly login`.
+
+**CLI**: Uses bearer token auth (from `hookly login`). Config: `hookly.yaml`, creds: `~/.config/hookly/`
+
+## CLI
+
+```bash
+go install hooks.dx314.com/hookly@latest
+```
+
+Commands: `login`, `logout`, `whoami`, `status`, `init`, `version`, `help`
+Default (no args): run relay client. Config: `hookly.yaml`, creds: `~/.config/hookly/`
 
 ## References
 

@@ -1,16 +1,16 @@
 -- name: CreateEndpoint :one
-INSERT INTO endpoints (id, name, provider_type, signature_secret_encrypted, destination_url, muted, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, 0, datetime('now'), datetime('now'))
+INSERT INTO endpoints (id, user_id, name, provider_type, signature_secret_encrypted, destination_url, muted, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, 0, datetime('now'), datetime('now'))
 RETURNING *;
 
 -- name: GetEndpoint :one
-SELECT * FROM endpoints WHERE id = ?;
+SELECT * FROM endpoints WHERE id = ? AND user_id = ?;
 
 -- name: ListEndpoints :many
-SELECT * FROM endpoints ORDER BY created_at DESC LIMIT ? OFFSET ?;
+SELECT * FROM endpoints WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?;
 
 -- name: CountEndpoints :one
-SELECT COUNT(*) FROM endpoints;
+SELECT COUNT(*) FROM endpoints WHERE user_id = ?;
 
 -- name: UpdateEndpoint :one
 UPDATE endpoints
@@ -19,13 +19,14 @@ SET name = COALESCE(sqlc.narg('name'), name),
     destination_url = COALESCE(sqlc.narg('destination_url'), destination_url),
     muted = COALESCE(sqlc.narg('muted'), muted),
     updated_at = datetime('now')
-WHERE id = ?
+WHERE id = ? AND user_id = ?
 RETURNING *;
 
 -- name: DeleteEndpoint :exec
-DELETE FROM endpoints WHERE id = ?;
+DELETE FROM endpoints WHERE id = ? AND user_id = ?;
 
 -- name: GetEndpointByID :one
-SELECT id, name, provider_type, signature_secret_encrypted, destination_url, muted
+-- Public query for webhook ingestion and relay auth - no user_id filter
+SELECT id, user_id, name, provider_type, signature_secret_encrypted, destination_url, muted
 FROM endpoints
 WHERE id = ?;

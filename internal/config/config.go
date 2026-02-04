@@ -19,7 +19,6 @@ type Config struct {
 	EncryptionKey      []byte
 	Port               int
 	BaseURL            string
-	HomeHubSecret      string
 	GitHubClientID     string
 	GitHubClientSecret string
 	GitHubOrg          string
@@ -51,7 +50,6 @@ func Load() (*Config, error) {
 
 	cfg.Port = getEnvInt("PORT", 8080)
 	cfg.BaseURL = getEnv("BASE_URL", "http://localhost:8080")
-	cfg.HomeHubSecret = os.Getenv("HOME_HUB_SECRET")
 
 	// GitHub OAuth (optional)
 	cfg.GitHubClientID = os.Getenv("GITHUB_CLIENT_ID")

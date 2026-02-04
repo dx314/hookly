@@ -123,7 +123,7 @@ func TestIntegrationGetEndpoint(t *testing.T) {
 	t.Logf("  Muted: %v", ep.Muted)
 }
 
-func TestIntegrationGetDashboard(t *testing.T) {
+func TestIntegrationGetStatus(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
 	}
@@ -134,16 +134,21 @@ func TestIntegrationGetDashboard(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	resp, err := client.Edge.GetDashboard(ctx, connect.NewRequest(&hooklyv1.GetDashboardRequest{}))
+	resp, err := client.Edge.GetStatus(ctx, connect.NewRequest(&hooklyv1.GetStatusRequest{}))
 	if err != nil {
-		t.Fatalf("GetDashboard: %v", err)
+		t.Fatalf("GetStatus: %v", err)
 	}
 
-	t.Logf("Dashboard stats:")
-	t.Logf("  Total endpoints: %d", resp.Msg.TotalEndpoints)
-	t.Logf("  Total webhooks: %d", resp.Msg.TotalWebhooks)
-	t.Logf("  Pending webhooks: %d", resp.Msg.PendingWebhooks)
-	t.Logf("  Failed webhooks: %d", resp.Msg.FailedWebhooks)
+	status := resp.Msg.Status
+	if status == nil {
+		t.Fatal("status is nil")
+	}
+
+	t.Logf("Server status:")
+	t.Logf("  Pending webhooks: %d", status.PendingCount)
+	t.Logf("  Failed webhooks: %d", status.FailedCount)
+	t.Logf("  Dead letter webhooks: %d", status.DeadLetterCount)
+	t.Logf("  Home hub connected: %v", status.HomeHubConnected)
 }
 
 func TestIntegrationInvalidToken(t *testing.T) {
@@ -209,7 +214,7 @@ func TestIntegrationListWebhooks(t *testing.T) {
 
 	// List webhooks for this endpoint
 	webhooksResp, err := client.Edge.ListWebhooks(ctx, connect.NewRequest(&hooklyv1.ListWebhooksRequest{
-		EndpointId: endpointID,
+		EndpointId: &endpointID,
 	}))
 	if err != nil {
 		t.Fatalf("ListWebhooks: %v", err)

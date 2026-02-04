@@ -224,9 +224,8 @@ func (*StreamResponse_Heartbeat) isStreamResponse_Message() {}
 type ConnectRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	HubId         string                 `protobuf:"bytes,1,opt,name=hub_id,json=hubId,proto3" json:"hub_id,omitempty"`
-	Timestamp     int64                  `protobuf:"varint,2,opt,name=timestamp,proto3" json:"timestamp,omitempty"`                       // Unix timestamp
-	Signature     string                 `protobuf:"bytes,3,opt,name=signature,proto3" json:"signature,omitempty"`                        // HMAC-SHA256(hub_id + timestamp, secret)
-	EndpointIds   []string               `protobuf:"bytes,4,rep,name=endpoint_ids,json=endpointIds,proto3" json:"endpoint_ids,omitempty"` // Endpoints this hub handles
+	Token         string                 `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`                                // Bearer token from CLI login
+	EndpointIds   []string               `protobuf:"bytes,3,rep,name=endpoint_ids,json=endpointIds,proto3" json:"endpoint_ids,omitempty"` // Endpoints this hub handles
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -268,16 +267,9 @@ func (x *ConnectRequest) GetHubId() string {
 	return ""
 }
 
-func (x *ConnectRequest) GetTimestamp() int64 {
+func (x *ConnectRequest) GetToken() string {
 	if x != nil {
-		return x.Timestamp
-	}
-	return 0
-}
-
-func (x *ConnectRequest) GetSignature() string {
-	if x != nil {
-		return x.Signature
+		return x.Token
 	}
 	return ""
 }
@@ -571,12 +563,11 @@ const file_hookly_v1_relay_proto_rawDesc = "" +
 	"\x10connect_response\x18\x01 \x01(\v2\x1a.hookly.v1.ConnectResponseH\x00R\x0fconnectResponse\x126\n" +
 	"\awebhook\x18\x02 \x01(\v2\x1a.hookly.v1.WebhookEnvelopeH\x00R\awebhook\x124\n" +
 	"\theartbeat\x18\x03 \x01(\v2\x14.hookly.v1.HeartbeatH\x00R\theartbeatB\t\n" +
-	"\amessage\"\x86\x01\n" +
+	"\amessage\"`\n" +
 	"\x0eConnectRequest\x12\x15\n" +
-	"\x06hub_id\x18\x01 \x01(\tR\x05hubId\x12\x1c\n" +
-	"\ttimestamp\x18\x02 \x01(\x03R\ttimestamp\x12\x1c\n" +
-	"\tsignature\x18\x03 \x01(\tR\tsignature\x12!\n" +
-	"\fendpoint_ids\x18\x04 \x03(\tR\vendpointIds\"A\n" +
+	"\x06hub_id\x18\x01 \x01(\tR\x05hubId\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\x12!\n" +
+	"\fendpoint_ids\x18\x03 \x03(\tR\vendpointIds\"A\n" +
 	"\x0fConnectResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
 	"\x05error\x18\x02 \x01(\tR\x05error\")\n" +

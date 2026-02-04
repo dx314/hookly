@@ -117,4 +117,8 @@ message GetSettingsResponse {
   string base_url = 1;
   bool github_auth_enabled = 2;
   bool telegram_notifications_enabled = 3;
+  // User info (requires authentication)
+  string user_id = 4;
+  string username = 5;
+  string avatar_url = 6;
 }

@@ -11,6 +11,7 @@ import (
 	"connectrpc.com/connect"
 
 	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
+	"hooks.dx314.com/internal/auth"
 	"hooks.dx314.com/internal/db"
 	"hooks.dx314.com/internal/notify"
 )
@@ -22,19 +23,19 @@ const (
 
 // Handler implements the RelayService.
 type Handler struct {
-	secret   string
+	tokenMgr *auth.TokenManager
 	manager  *ConnectionManager
 	queries  *db.Queries
 	notifier notify.Notifier
 }
 
 // NewHandler creates a new relay handler.
-func NewHandler(secret string, manager *ConnectionManager, queries *db.Queries, notifier notify.Notifier) *Handler {
+func NewHandler(tokenMgr *auth.TokenManager, manager *ConnectionManager, queries *db.Queries, notifier notify.Notifier) *Handler {
 	if notifier == nil {
 		notifier = notify.NopNotifier{}
 	}
 	return &Handler{
-		secret:   secret,
+		tokenMgr: tokenMgr,
 		manager:  manager,
 		queries:  queries,
 		notifier: notifier,
@@ -54,20 +55,41 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 		return connect.NewError(connect.CodeUnauthenticated, errors.New("first message must be connect request"))
 	}
 
-	// Validate authentication
-	if !ValidateHMAC(connectReq.HubId, connectReq.Timestamp, connectReq.Signature, h.secret) {
-		slog.Warn("relay auth failed", "hub_id", connectReq.HubId)
-		if err := stream.Send(&hooklyv1.StreamResponse{
-			Message: &hooklyv1.StreamResponse_ConnectResponse{
-				ConnectResponse: &hooklyv1.ConnectResponse{
-					Success: false,
-					Error:   "authentication failed",
-				},
-			},
-		}); err != nil {
-			return err
+	// Validate bearer token
+	if connectReq.Token == "" {
+		return h.sendConnectError(stream, connect.CodeUnauthenticated, "TOKEN_MISSING", "no token provided - run 'hookly login' first")
+	}
+
+	token, err := h.tokenMgr.ValidateToken(ctx, connectReq.Token)
+	if err != nil {
+		slog.Warn("relay auth failed", "hub_id", connectReq.HubId, "error", err)
+		if errors.Is(err, auth.ErrTokenNotFound) || errors.Is(err, auth.ErrInvalidToken) {
+			return h.sendConnectError(stream, connect.CodeUnauthenticated, "TOKEN_INVALID", "invalid token - run 'hookly login' to re-authenticate")
 		}
-		return connect.NewError(connect.CodeUnauthenticated, errors.New("authentication failed"))
+		if errors.Is(err, auth.ErrTokenRevoked) {
+			return h.sendConnectError(stream, connect.CodeUnauthenticated, "TOKEN_REVOKED", "token has been revoked - run 'hookly login' to re-authenticate")
+		}
+		return h.sendConnectError(stream, connect.CodeUnauthenticated, "AUTH_FAILED", "authentication failed")
+	}
+
+	// Verify user owns the requested endpoints
+	endpointIDs := connectReq.EndpointIds
+	if len(endpointIDs) == 0 {
+		return h.sendConnectError(stream, connect.CodeInvalidArgument, "NO_ENDPOINTS", "no endpoints specified in hookly.yaml")
+	}
+
+	for _, epID := range endpointIDs {
+		ep, err := h.queries.GetEndpointByID(ctx, epID)
+		if err != nil {
+			slog.Warn("endpoint not found", "endpoint_id", epID, "user_id", token.UserID)
+			return h.sendConnectError(stream, connect.CodeNotFound, "ENDPOINT_NOT_FOUND",
+				"endpoint '"+epID+"' does not exist - check your hookly.yaml or run 'hookly init' to reconfigure")
+		}
+		if ep.UserID != token.UserID {
+			slog.Warn("endpoint ownership mismatch", "endpoint_id", epID, "user_id", token.UserID, "owner", ep.UserID)
+			return h.sendConnectError(stream, connect.CodePermissionDenied, "ENDPOINT_ACCESS_DENIED",
+				"you don't have access to endpoint '"+epID+"' - it belongs to another user")
+		}
 	}
 
 	// Send success response
@@ -82,7 +104,6 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 	}
 
 	hubID := connectReq.HubId
-	endpointIDs := connectReq.EndpointIds
 
 	// Register connection with endpoints
 	conn := h.manager.AddConnection(hubID, endpointIDs)
@@ -207,8 +228,8 @@ func (h *Handler) handleAck(ctx context.Context, ack *hooklyv1.DeliveryAck) {
 }
 
 func (h *Handler) sendFailureNotification(ctx context.Context, webhookID, errorMsg string) {
-	// Get webhook with endpoint info
-	row, err := h.queries.GetWebhookWithEndpoint(ctx, webhookID)
+	// Get webhook with endpoint info (system query, no user filter)
+	row, err := h.queries.GetWebhookWithEndpointByID(ctx, webhookID)
 	if err != nil {
 		slog.Error("failed to get webhook for notification", "webhook_id", webhookID, "error", err)
 		return
@@ -248,4 +269,18 @@ func stringToNullString(s string) sql.NullString {
 		return sql.NullString{Valid: false}
 	}
 	return sql.NullString{String: s, Valid: true}
+}
+
+// sendConnectError sends an error response and returns the appropriate connect error.
+// The errorCode is a short machine-readable code, message is human-readable.
+func (h *Handler) sendConnectError(stream *connect.BidiStream[hooklyv1.StreamRequest, hooklyv1.StreamResponse], code connect.Code, errorCode, message string) error {
+	_ = stream.Send(&hooklyv1.StreamResponse{
+		Message: &hooklyv1.StreamResponse_ConnectResponse{
+			ConnectResponse: &hooklyv1.ConnectResponse{
+				Success: false,
+				Error:   errorCode + ": " + message,
+			},
+		},
+	})
+	return connect.NewError(code, errors.New(errorCode+": "+message))
 }

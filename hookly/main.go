@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -14,12 +15,23 @@ import (
 	clicmd "hooks.dx314.com/internal/cli"
 	"hooks.dx314.com/internal/config"
 	"hooks.dx314.com/internal/relay"
+	svc "hooks.dx314.com/internal/service"
 )
 
 const version = "0.1.0"
 const defaultEdgeURL = "https://hooks.dx314.com"
 
 func main() {
+	// Check if running in service mode (invoked by service manager)
+	if isServiceMode() {
+		configPath := getServiceConfigPath()
+		if err := svc.RunServiceMode(configPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Service error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	// Setup structured logging (quiet by default)
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelWarn,
@@ -63,6 +75,7 @@ func main() {
 				Usage:  "Create hookly.yaml configuration file",
 				Action: runInit,
 			},
+			serviceCommand(),
 		},
 	}
 
@@ -82,15 +95,33 @@ func runRelay(c *cli.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Load credentials (required for relay)
+	credsMgr, err := clicmd.NewCredentialsManager()
+	if err != nil {
+		return fmt.Errorf("init credentials manager: %w", err)
+	}
+
+	creds, err := credsMgr.Load()
+	if err != nil {
+		return fmt.Errorf("load credentials: %w", err)
+	}
+
+	if creds == nil {
+		return fmt.Errorf("not logged in\n\nRun 'hookly login' to authenticate first")
+	}
+
 	// Load config from hookly.yaml
 	cfg, err := config.LoadHooklyYAML("hookly.yaml")
 	if err != nil {
 		return fmt.Errorf("load config: %w\n\nRun 'hookly init' to create a hookly.yaml file", err)
 	}
 
+	// Inject token from credentials
+	cfg.Token = creds.APIToken
+
 	slog.Info("hookly starting",
 		"edge_url", cfg.EdgeURL,
-		"hub_id", cfg.HubID,
+		"hub_id", cfg.GetHubID(),
 		"endpoints", len(cfg.Endpoints),
 	)
 
@@ -110,7 +141,7 @@ func runRelay(c *cli.Context) error {
 	select {
 	case err := <-errCh:
 		if err != nil && err != context.Canceled {
-			return fmt.Errorf("client error: %w", err)
+			return handleRelayError(err, credsMgr)
 		}
 	case sig := <-sigCh:
 		slog.Info("received shutdown signal", "signal", sig)
@@ -120,6 +151,62 @@ func runRelay(c *cli.Context) error {
 	cancel()
 	slog.Info("hookly stopped")
 	return nil
+}
+
+// handleRelayError handles errors from the relay client and takes appropriate action.
+func handleRelayError(err error, credsMgr *clicmd.CredentialsManager) error {
+	// Token errors - clear credentials and prompt re-login
+	if errors.Is(err, relay.ErrTokenInvalid) || errors.Is(err, relay.ErrTokenRevoked) {
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "Authentication failed - your token is invalid or has been revoked.")
+		fmt.Fprintln(os.Stderr)
+
+		// Clear the invalid credentials
+		if delErr := credsMgr.Delete(); delErr != nil {
+			slog.Warn("failed to clear credentials", "error", delErr)
+		} else {
+			fmt.Fprintln(os.Stderr, "Credentials have been cleared.")
+		}
+
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "Run 'hookly login' to re-authenticate.")
+		return err
+	}
+
+	// Endpoint not found - suggest reconfiguring
+	if errors.Is(err, relay.ErrEndpointNotFound) {
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "Endpoint not found - the endpoint in your hookly.yaml doesn't exist.")
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "This can happen if:")
+		fmt.Fprintln(os.Stderr, "  - The endpoint was deleted from the web UI")
+		fmt.Fprintln(os.Stderr, "  - The endpoint ID in hookly.yaml is incorrect")
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "Run 'hookly init' to reconfigure with a valid endpoint.")
+		return err
+	}
+
+	// Endpoint access denied - different user
+	if errors.Is(err, relay.ErrEndpointForbidden) {
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "Access denied - this endpoint belongs to another user.")
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "Make sure you're logged in as the correct user ('hookly whoami'),")
+		fmt.Fprintln(os.Stderr, "or run 'hookly init' to select an endpoint you own.")
+		return err
+	}
+
+	// No endpoints configured
+	if errors.Is(err, relay.ErrNoEndpoints) {
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "No endpoints configured in hookly.yaml.")
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "Run 'hookly init' to set up your configuration.")
+		return err
+	}
+
+	// Generic error
+	return fmt.Errorf("relay error: %w", err)
 }
 
 // runLogin handles the login command.
@@ -301,11 +388,9 @@ func runInitBasic(c *cli.Context) error {
 	fmt.Println("")
 	fmt.Println("Edit the file to configure:")
 	fmt.Println("  - edge_url: Your hookly edge server URL")
-	fmt.Println("  - secret: Your home hub secret")
-	fmt.Println("  - hub_id: A unique identifier for this hub")
 	fmt.Println("  - endpoints: The endpoint IDs to handle")
 	fmt.Println("")
-	fmt.Println("Or run 'hookly login' first for interactive setup.")
+	fmt.Println("Then run 'hookly login' to authenticate, and 'hookly' to start the relay.")
 	return nil
 }
 
@@ -338,7 +423,29 @@ func runInitWizard(c *cli.Context, creds *clicmd.Credentials, credsMgr *clicmd.C
 	fmt.Println()
 	fmt.Println("Created hookly.yaml")
 	fmt.Println()
-	fmt.Println("Update the 'secret' field with your HOME_HUB_SECRET from the edge server.")
-	fmt.Println("Then run 'hookly' to start the relay.")
+	fmt.Printf("Webhook URL: %s/h/%s\n", cfg.EdgeURL, cfg.EndpointID)
+	fmt.Println()
+	fmt.Println("Run 'hookly' to start the relay.")
 	return nil
+}
+
+// isServiceMode checks if hookly was started by the service manager.
+func isServiceMode() bool {
+	for _, arg := range os.Args {
+		if arg == "--service-mode" {
+			return true
+		}
+	}
+	return false
+}
+
+// getServiceConfigPath extracts the config path from service mode arguments.
+func getServiceConfigPath() string {
+	for i, arg := range os.Args {
+		if arg == "--config" && i+1 < len(os.Args) {
+			return os.Args[i+1]
+		}
+	}
+	// Default to system config path
+	return "/etc/hookly/hookly.yaml"
 }

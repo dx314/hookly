@@ -30,6 +30,34 @@ proto:
 sqlc:
 	sqlc generate
 
+# Migration commands (uses DATABASE_PATH from .env or defaults to ./hookly.db)
+migrate-status:
+	@go run ./cmd/migrate status
+
+migrate-up:
+	@go run ./cmd/migrate up
+
+migrate-down:
+	@go run ./cmd/migrate down
+
+migrate-baseline:
+	@go run ./cmd/migrate baseline
+
+migrate-create:
+	@if [ -z "$(NAME)" ]; then echo "Usage: make migrate-create NAME=add_foo"; exit 1; fi
+	@goose -dir internal/db/migrations create $(NAME) sql
+
+# Dump schema from database (uses DATABASE_PATH from .env or override with DB=path)
+dump-schema:
+	@DB_PATH=$${DATABASE_PATH:-./hookly.db}; \
+	if [ -n "$(DB)" ]; then DB_PATH="$(DB)"; fi; \
+	if [ ! -f "$$DB_PATH" ]; then echo "Database not found: $$DB_PATH"; exit 1; fi; \
+	echo "-- Hookly Database Schema (auto-generated from $$DB_PATH)" > sql/schema.sql; \
+	echo "-- Run 'make dump-schema' to regenerate" >> sql/schema.sql; \
+	echo "" >> sql/schema.sql; \
+	sqlite3 "$$DB_PATH" ".schema --indent" | grep -v "^CREATE TABLE goose_db_version" >> sql/schema.sql; \
+	echo "Schema dumped to sql/schema.sql"
+
 # Clean build artifacts
 clean:
 	rm -rf bin/

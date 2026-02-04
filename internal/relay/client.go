@@ -3,9 +3,11 @@ package relay
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"connectrpc.com/connect"
@@ -20,6 +22,15 @@ const (
 	initialBackoff  = 1 * time.Second
 	maxBackoff      = 60 * time.Second
 	clientHeartbeat = 30 * time.Second
+)
+
+// Connection error types - permanent errors should not be retried
+var (
+	ErrTokenInvalid      = errors.New("token invalid or expired")
+	ErrTokenRevoked      = errors.New("token revoked")
+	ErrEndpointNotFound  = errors.New("endpoint not found")
+	ErrEndpointForbidden = errors.New("endpoint access denied")
+	ErrNoEndpoints       = errors.New("no endpoints configured")
 )
 
 // Client connects to the edge relay service and handles webhooks.
@@ -38,6 +49,7 @@ func NewClient(cfg *config.HooklyConfig) *Client {
 
 // Run connects to the edge and processes webhooks until context is cancelled.
 // Automatically reconnects on disconnect with exponential backoff.
+// Returns immediately on permanent errors (auth issues, endpoint not found).
 func (c *Client) Run(ctx context.Context) error {
 	backoff := initialBackoff
 
@@ -48,14 +60,21 @@ func (c *Client) Run(ctx context.Context) error {
 		default:
 		}
 
-		slog.Info("connecting to edge", "url", c.config.EdgeURL, "hub_id", c.config.HubID)
+		slog.Info("connecting to edge", "url", c.config.EdgeURL, "hub_id", c.config.GetHubID())
 
 		err := c.connect(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				return err
 			}
-			slog.Error("connection failed", "error", err, "retry_in", backoff)
+
+			// Check for permanent errors that shouldn't be retried
+			if isPermanentError(err) {
+				slog.Error("connection failed (not retrying)", "error", err)
+				return err
+			}
+
+			slog.Warn("connection failed, will retry", "error", err, "retry_in", backoff)
 
 			select {
 			case <-ctx.Done():
@@ -75,6 +94,18 @@ func (c *Client) Run(ctx context.Context) error {
 	}
 }
 
+// isPermanentError returns true if the error should not be retried.
+func isPermanentError(err error) bool {
+	if errors.Is(err, ErrTokenInvalid) ||
+		errors.Is(err, ErrTokenRevoked) ||
+		errors.Is(err, ErrEndpointNotFound) ||
+		errors.Is(err, ErrEndpointForbidden) ||
+		errors.Is(err, ErrNoEndpoints) {
+		return true
+	}
+	return false
+}
+
 func (c *Client) connect(ctx context.Context) error {
 	// Create ConnectRPC client
 	client := hooklyv1connect.NewRelayServiceClient(
@@ -85,16 +116,14 @@ func (c *Client) connect(ctx context.Context) error {
 	// Open bidirectional stream
 	stream := client.Stream(ctx)
 
-	// Send authentication message with endpoint IDs
-	timestamp := time.Now().Unix()
-	signature := GenerateHMAC(c.config.HubID, timestamp, c.config.Secret)
+	// Send authentication message with bearer token
+	hubID := c.config.GetHubID()
 
 	if err := stream.Send(&hooklyv1.StreamRequest{
 		Message: &hooklyv1.StreamRequest_Connect{
 			Connect: &hooklyv1.ConnectRequest{
-				HubId:       c.config.HubID,
-				Timestamp:   timestamp,
-				Signature:   signature,
+				HubId:       hubID,
+				Token:       c.config.Token,
 				EndpointIds: c.config.EndpointIDs(),
 			},
 		},
@@ -105,15 +134,15 @@ func (c *Client) connect(ctx context.Context) error {
 	// Wait for auth response
 	resp, err := stream.Receive()
 	if err != nil {
-		return err
+		return fmt.Errorf("connect to edge: %w", err)
 	}
 
 	authResp := resp.GetConnectResponse()
 	if authResp == nil {
-		return errors.New("expected connect response")
+		return errors.New("unexpected response from server")
 	}
 	if !authResp.Success {
-		return errors.New("authentication failed: " + authResp.Error)
+		return parseConnectError(authResp.Error)
 	}
 
 	slog.Info("connected to edge", "endpoints", c.config.EndpointIDs())
@@ -202,5 +231,35 @@ func (c *Client) handleWebhook(ctx context.Context, stream *connect.BidiStreamFo
 		},
 	}); err != nil {
 		slog.Error("failed to send ACK", "webhook_id", envelope.Id, "error", err)
+	}
+}
+
+// parseConnectError parses the server error string and returns a typed error.
+// Server errors are in format "ERROR_CODE: human message"
+func parseConnectError(serverError string) error {
+	// Extract the error code (before the colon)
+	code := serverError
+	message := serverError
+	if idx := strings.Index(serverError, ": "); idx > 0 {
+		code = serverError[:idx]
+		message = serverError[idx+2:]
+	}
+
+	// Map error codes to typed errors with helpful messages
+	switch code {
+	case "TOKEN_MISSING":
+		return fmt.Errorf("%w: %s", ErrTokenInvalid, message)
+	case "TOKEN_INVALID":
+		return fmt.Errorf("%w: %s", ErrTokenInvalid, message)
+	case "TOKEN_REVOKED":
+		return fmt.Errorf("%w: %s", ErrTokenRevoked, message)
+	case "NO_ENDPOINTS":
+		return fmt.Errorf("%w: %s", ErrNoEndpoints, message)
+	case "ENDPOINT_NOT_FOUND":
+		return fmt.Errorf("%w: %s", ErrEndpointNotFound, message)
+	case "ENDPOINT_ACCESS_DENIED":
+		return fmt.Errorf("%w: %s", ErrEndpointForbidden, message)
+	default:
+		return fmt.Errorf("server error: %s", serverError)
 	}
 }

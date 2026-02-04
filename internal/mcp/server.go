@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -22,14 +23,16 @@ type Server struct {
 	queries       *db.Queries
 	secretManager *db.SecretManager
 	baseURL       string
+	userID        string
 }
 
 // NewServer creates a new Hookly MCP server.
-func NewServer(queries *db.Queries, secretManager *db.SecretManager, baseURL string) *Server {
+func NewServer(queries *db.Queries, secretManager *db.SecretManager, baseURL, userID string) *Server {
 	s := &Server{
 		queries:       queries,
 		secretManager: secretManager,
 		baseURL:       baseURL,
+		userID:        userID,
 	}
 
 	// Create MCP server
@@ -74,6 +77,7 @@ func (s *Server) registerTools() {
 
 func (s *Server) handleListEndpoints(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	endpoints, err := s.queries.ListEndpoints(ctx, db.ListEndpointsParams{
+		UserID: s.userID,
 		Limit:  1000,
 		Offset: 0,
 	})
@@ -114,9 +118,12 @@ func (s *Server) handleGetEndpoint(ctx context.Context, req mcp.CallToolRequest)
 		return mcp.NewToolResultError("endpoint_id is required"), nil
 	}
 
-	endpoint, err := s.queries.GetEndpoint(ctx, endpointID)
+	endpoint, err := s.queries.GetEndpoint(ctx, db.GetEndpointParams{
+		ID:     endpointID,
+		UserID: s.userID,
+	})
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return mcp.NewToolResultError("Endpoint not found"), nil
 		}
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to get endpoint: %v", err)), nil
@@ -168,6 +175,7 @@ func (s *Server) handleCreateEndpoint(ctx context.Context, req mcp.CallToolReque
 	// Create endpoint
 	endpoint, err := s.queries.CreateEndpoint(ctx, db.CreateEndpointParams{
 		ID:                       id,
+		UserID:                   s.userID,
 		Name:                     name,
 		ProviderType:             providerType,
 		SignatureSecretEncrypted: encrypted,
@@ -196,7 +204,23 @@ func (s *Server) handleDeleteEndpoint(ctx context.Context, req mcp.CallToolReque
 		return mcp.NewToolResultError("endpoint_id is required"), nil
 	}
 
-	err := s.queries.DeleteEndpoint(ctx, endpointID)
+	// Check if endpoint exists and belongs to user
+	_, err := s.queries.GetEndpoint(ctx, db.GetEndpointParams{
+		ID:     endpointID,
+		UserID: s.userID,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return mcp.NewToolResultError("Endpoint not found"), nil
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to get endpoint: %v", err)), nil
+	}
+
+	// Delete endpoint
+	err = s.queries.DeleteEndpoint(ctx, db.DeleteEndpointParams{
+		ID:     endpointID,
+		UserID: s.userID,
+	})
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to delete endpoint: %v", err)), nil
 	}
@@ -218,11 +242,12 @@ func (s *Server) handleMuteEndpoint(ctx context.Context, req mcp.CallToolRequest
 	}
 
 	endpoint, err := s.queries.UpdateEndpoint(ctx, db.UpdateEndpointParams{
-		ID:    endpointID,
-		Muted: sql.NullInt64{Int64: mutedInt, Valid: true},
+		ID:     endpointID,
+		UserID: s.userID,
+		Muted:  sql.NullInt64{Int64: mutedInt, Valid: true},
 	})
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return mcp.NewToolResultError("Endpoint not found"), nil
 		}
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to update endpoint: %v", err)), nil
@@ -240,17 +265,18 @@ func (s *Server) handleListWebhooks(ctx context.Context, req mcp.CallToolRequest
 	status := mcp.ParseString(req, "status", "")
 	limit := mcp.ParseInt(req, "limit", 50)
 
-	var endpointIDNull, statusNull sql.NullString
+	var endpointIDVal, statusVal interface{}
 	if endpointID != "" {
-		endpointIDNull = sql.NullString{String: endpointID, Valid: true}
+		endpointIDVal = endpointID
 	}
 	if status != "" {
-		statusNull = sql.NullString{String: status, Valid: true}
+		statusVal = status
 	}
 
 	webhooks, err := s.queries.ListWebhooks(ctx, db.ListWebhooksParams{
-		EndpointID: endpointIDNull,
-		Status:     statusNull,
+		UserID:     s.userID,
+		EndpointID: endpointIDVal,
+		Status:     statusVal,
 		Limit:      int64(limit),
 		Offset:     0,
 	})
@@ -302,9 +328,12 @@ func (s *Server) handleGetWebhook(ctx context.Context, req mcp.CallToolRequest) 
 		return mcp.NewToolResultError("webhook_id is required"), nil
 	}
 
-	webhook, err := s.queries.GetWebhook(ctx, webhookID)
+	webhook, err := s.queries.GetWebhook(ctx, db.GetWebhookParams{
+		ID:     webhookID,
+		UserID: s.userID,
+	})
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return mcp.NewToolResultError("Webhook not found"), nil
 		}
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to get webhook: %v", err)), nil
@@ -346,9 +375,12 @@ func (s *Server) handleReplayWebhook(ctx context.Context, req mcp.CallToolReques
 		return mcp.NewToolResultError("webhook_id is required"), nil
 	}
 
-	webhook, err := s.queries.ResetWebhookForReplay(ctx, webhookID)
+	webhook, err := s.queries.ResetWebhookForReplay(ctx, db.ResetWebhookForReplayParams{
+		ID:     webhookID,
+		UserID: s.userID,
+	})
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return mcp.NewToolResultError("Webhook not found"), nil
 		}
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to replay webhook: %v", err)), nil
@@ -358,12 +390,12 @@ func (s *Server) handleReplayWebhook(ctx context.Context, req mcp.CallToolReques
 }
 
 func (s *Server) handleGetStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	stats, err := s.queries.GetQueueStats(ctx)
+	stats, err := s.queries.GetQueueStats(ctx, s.userID)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to get stats: %v", err)), nil
 	}
 
-	endpointCount, err := s.queries.CountEndpoints(ctx)
+	endpointCount, err := s.queries.CountEndpoints(ctx, s.userID)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to count endpoints: %v", err)), nil
 	}

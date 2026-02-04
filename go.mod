@@ -6,16 +6,25 @@ require (
 	connectrpc.com/connect v1.19.1
 	github.com/go-chi/chi/v5 v5.2.4
 	github.com/joho/godotenv v1.5.1
+	github.com/kardianos/service v1.2.2
 	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/mattn/go-sqlite3 v1.14.33
+	github.com/pressly/goose/v3 v3.26.0
+	github.com/urfave/cli/v2 v2.27.7
+	golang.org/x/net v0.49.0
 	google.golang.org/protobuf v1.36.11
 )
 
 require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
+	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/urfave/cli/v2 v2.27.7 // indirect
+	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/xrash/smetrics v0.0.0-20240521201337-686a1a2994c1 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/sync v0.19.0 // indirect
+	golang.org/x/sys v0.40.0 // indirect
+	golang.org/x/text v0.33.0 // indirect
 )
 
 require (

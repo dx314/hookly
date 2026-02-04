@@ -1,16 +1,21 @@
 -- Hookly Database Schema
--- SQLite with foreign keys and WAL mode enabled
+-- This file is used by sqlc for code generation.
+-- Actual migrations are in internal/db/migrations/
 
 CREATE TABLE IF NOT EXISTS endpoints (
     id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
     name TEXT NOT NULL,
     provider_type TEXT NOT NULL CHECK (provider_type IN ('stripe', 'github', 'telegram', 'generic')),
-    signature_secret_encrypted BLOB NOT NULL,
+    signature_secret_encrypted BLOB,
     destination_url TEXT NOT NULL,
     muted INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE INDEX IF NOT EXISTS idx_endpoints_user_id ON endpoints(user_id);
+CREATE INDEX IF NOT EXISTS idx_endpoints_user_created ON endpoints(user_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS webhooks (
     id TEXT PRIMARY KEY,

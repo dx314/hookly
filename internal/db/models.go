@@ -21,6 +21,7 @@ type ApiToken struct {
 
 type Endpoint struct {
 	ID                       string `json:"id"`
+	UserID                   string `json:"user_id"`
 	Name                     string `json:"name"`
 	ProviderType             string `json:"provider_type"`
 	SignatureSecretEncrypted []byte `json:"signature_secret_encrypted"`

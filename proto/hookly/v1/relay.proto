@@ -34,9 +34,8 @@ message StreamResponse {
 // Initial connection request with authentication
 message ConnectRequest {
   string hub_id = 1;
-  int64 timestamp = 2;      // Unix timestamp
-  string signature = 3;     // HMAC-SHA256(hub_id + timestamp, secret)
-  repeated string endpoint_ids = 4;  // Endpoints this hub handles
+  string token = 2;  // Bearer token from CLI login
+  repeated string endpoint_ids = 3;  // Endpoints this hub handles
 }
 
 // Connection response

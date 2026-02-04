@@ -11,12 +11,13 @@ import (
 	"time"
 
 	"connectrpc.com/connect"
-	gonanoid "github.com/matoous/go-nanoid/v2"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
+	"hooks.dx314.com/internal/auth"
 	"hooks.dx314.com/internal/config"
 	"hooks.dx314.com/internal/db"
+	"hooks.dx314.com/internal/id"
 	"hooks.dx314.com/internal/relay"
 )
 
@@ -38,14 +39,28 @@ func New(queries *db.Queries, secretManager *db.SecretManager, connMgr *relay.Co
 	}
 }
 
-// generateID creates a new nanoid.
+// generateID creates a new endpoint ID with maximum security.
 func (s *Service) generateID() string {
-	id, _ := gonanoid.New()
-	return id
+	return id.NewEndpointID()
+}
+
+// getUserID extracts the user ID from the auth context.
+// Returns NotFound error if not authenticated (prevents enumeration attacks).
+func getUserID(ctx context.Context) (string, error) {
+	session := auth.GetSessionFromContext(ctx)
+	if session == nil {
+		return "", connect.NewError(connect.CodeUnauthenticated, errors.New("authentication required"))
+	}
+	return session.UserID, nil
 }
 
 // CreateEndpoint creates a new webhook endpoint.
 func (s *Service) CreateEndpoint(ctx context.Context, req *connect.Request[hooklyv1.CreateEndpointRequest]) (*connect.Response[hooklyv1.CreateEndpointResponse], error) {
+	userID, err := getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	msg := req.Msg
 
 	// Validate required fields
@@ -62,7 +77,6 @@ func (s *Service) CreateEndpoint(ctx context.Context, req *connect.Request[hookl
 	// Encrypt signature secret if provided
 	var encryptedSecret []byte
 	if msg.SignatureSecret != "" {
-		var err error
 		encryptedSecret, err = s.secretManager.EncryptSecret(msg.SignatureSecret)
 		if err != nil {
 			slog.Error("failed to encrypt secret", "error", err)
@@ -76,6 +90,7 @@ func (s *Service) CreateEndpoint(ctx context.Context, req *connect.Request[hookl
 	// Create in database
 	endpoint, err := s.queries.CreateEndpoint(ctx, db.CreateEndpointParams{
 		ID:                       id,
+		UserID:                   userID,
 		Name:                     msg.Name,
 		ProviderType:             providerType,
 		SignatureSecretEncrypted: encryptedSecret,
@@ -86,7 +101,7 @@ func (s *Service) CreateEndpoint(ctx context.Context, req *connect.Request[hookl
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to create endpoint"))
 	}
 
-	slog.Info("endpoint created", "id", id, "name", msg.Name)
+	slog.Info("endpoint created", "id", id, "name", msg.Name, "user_id", userID)
 
 	return connect.NewResponse(&hooklyv1.CreateEndpointResponse{
 		Endpoint:   dbEndpointToProto(&endpoint),
@@ -96,11 +111,19 @@ func (s *Service) CreateEndpoint(ctx context.Context, req *connect.Request[hookl
 
 // GetEndpoint retrieves an endpoint by ID.
 func (s *Service) GetEndpoint(ctx context.Context, req *connect.Request[hooklyv1.GetEndpointRequest]) (*connect.Response[hooklyv1.GetEndpointResponse], error) {
+	userID, err := getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if req.Msg.Id == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
 	}
 
-	endpoint, err := s.queries.GetEndpoint(ctx, req.Msg.Id)
+	endpoint, err := s.queries.GetEndpoint(ctx, db.GetEndpointParams{
+		ID:     req.Msg.Id,
+		UserID: userID,
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("endpoint not found"))
@@ -117,6 +140,11 @@ func (s *Service) GetEndpoint(ctx context.Context, req *connect.Request[hooklyv1
 
 // ListEndpoints lists all endpoints with pagination.
 func (s *Service) ListEndpoints(ctx context.Context, req *connect.Request[hooklyv1.ListEndpointsRequest]) (*connect.Response[hooklyv1.ListEndpointsResponse], error) {
+	userID, err := getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	// Parse pagination
 	pageSize := int64(50)
 	offset := int64(0)
@@ -126,7 +154,6 @@ func (s *Service) ListEndpoints(ctx context.Context, req *connect.Request[hookly
 			pageSize = int64(req.Msg.Pagination.PageSize)
 		}
 		if req.Msg.Pagination.PageToken != "" {
-			var err error
 			offset, err = strconv.ParseInt(req.Msg.Pagination.PageToken, 10, 64)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid page token"))
@@ -135,6 +162,7 @@ func (s *Service) ListEndpoints(ctx context.Context, req *connect.Request[hookly
 	}
 
 	endpoints, err := s.queries.ListEndpoints(ctx, db.ListEndpointsParams{
+		UserID: userID,
 		Limit:  pageSize + 1, // Fetch one extra to check if there's a next page
 		Offset: offset,
 	})
@@ -144,7 +172,7 @@ func (s *Service) ListEndpoints(ctx context.Context, req *connect.Request[hookly
 	}
 
 	// Get total count
-	totalCount, err := s.queries.CountEndpoints(ctx)
+	totalCount, err := s.queries.CountEndpoints(ctx, userID)
 	if err != nil {
 		slog.Error("failed to count endpoints", "error", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to count endpoints"))
@@ -173,6 +201,11 @@ func (s *Service) ListEndpoints(ctx context.Context, req *connect.Request[hookly
 
 // UpdateEndpoint updates an existing endpoint.
 func (s *Service) UpdateEndpoint(ctx context.Context, req *connect.Request[hooklyv1.UpdateEndpointRequest]) (*connect.Response[hooklyv1.UpdateEndpointResponse], error) {
+	userID, err := getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	msg := req.Msg
 
 	if msg.Id == "" {
@@ -181,7 +214,8 @@ func (s *Service) UpdateEndpoint(ctx context.Context, req *connect.Request[hookl
 
 	// Build update params
 	params := db.UpdateEndpointParams{
-		ID: msg.Id,
+		ID:     msg.Id,
+		UserID: userID,
 	}
 
 	if msg.Name != nil {
@@ -224,12 +258,20 @@ func (s *Service) UpdateEndpoint(ctx context.Context, req *connect.Request[hookl
 
 // DeleteEndpoint deletes an endpoint.
 func (s *Service) DeleteEndpoint(ctx context.Context, req *connect.Request[hooklyv1.DeleteEndpointRequest]) (*connect.Response[hooklyv1.DeleteEndpointResponse], error) {
+	userID, err := getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if req.Msg.Id == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
 	}
 
-	// Check if endpoint exists
-	_, err := s.queries.GetEndpoint(ctx, req.Msg.Id)
+	// Check if endpoint exists and belongs to user
+	_, err = s.queries.GetEndpoint(ctx, db.GetEndpointParams{
+		ID:     req.Msg.Id,
+		UserID: userID,
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("endpoint not found"))
@@ -239,7 +281,10 @@ func (s *Service) DeleteEndpoint(ctx context.Context, req *connect.Request[hookl
 	}
 
 	// Delete endpoint (webhooks cascade delete via FK)
-	if err := s.queries.DeleteEndpoint(ctx, req.Msg.Id); err != nil {
+	if err := s.queries.DeleteEndpoint(ctx, db.DeleteEndpointParams{
+		ID:     req.Msg.Id,
+		UserID: userID,
+	}); err != nil {
 		slog.Error("failed to delete endpoint", "error", err, "id", req.Msg.Id)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to delete endpoint"))
 	}
@@ -251,11 +296,19 @@ func (s *Service) DeleteEndpoint(ctx context.Context, req *connect.Request[hookl
 
 // GetWebhook retrieves a webhook by ID.
 func (s *Service) GetWebhook(ctx context.Context, req *connect.Request[hooklyv1.GetWebhookRequest]) (*connect.Response[hooklyv1.GetWebhookResponse], error) {
+	userID, err := getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if req.Msg.Id == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
 	}
 
-	webhook, err := s.queries.GetWebhook(ctx, req.Msg.Id)
+	webhook, err := s.queries.GetWebhook(ctx, db.GetWebhookParams{
+		ID:     req.Msg.Id,
+		UserID: userID,
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("webhook not found"))
@@ -271,6 +324,11 @@ func (s *Service) GetWebhook(ctx context.Context, req *connect.Request[hooklyv1.
 
 // ListWebhooks lists webhooks with filters and pagination.
 func (s *Service) ListWebhooks(ctx context.Context, req *connect.Request[hooklyv1.ListWebhooksRequest]) (*connect.Response[hooklyv1.ListWebhooksResponse], error) {
+	userID, err := getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	msg := req.Msg
 
 	// Parse pagination
@@ -282,7 +340,6 @@ func (s *Service) ListWebhooks(ctx context.Context, req *connect.Request[hooklyv
 			pageSize = int64(msg.Pagination.PageSize)
 		}
 		if msg.Pagination.PageToken != "" {
-			var err error
 			offset, err = strconv.ParseInt(msg.Pagination.PageToken, 10, 64)
 			if err != nil {
 				return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid page token"))
@@ -302,6 +359,7 @@ func (s *Service) ListWebhooks(ctx context.Context, req *connect.Request[hooklyv
 	}
 
 	webhooks, err := s.queries.ListWebhooks(ctx, db.ListWebhooksParams{
+		UserID:     userID,
 		EndpointID: endpointID,
 		Status:     status,
 		Limit:      pageSize + 1,
@@ -314,6 +372,7 @@ func (s *Service) ListWebhooks(ctx context.Context, req *connect.Request[hooklyv
 
 	// Get total count with filters
 	totalCount, err := s.queries.CountWebhooks(ctx, db.CountWebhooksParams{
+		UserID:     userID,
 		EndpointID: endpointID,
 		Status:     status,
 	})
@@ -345,11 +404,19 @@ func (s *Service) ListWebhooks(ctx context.Context, req *connect.Request[hooklyv
 
 // ReplayWebhook resets a webhook for re-delivery.
 func (s *Service) ReplayWebhook(ctx context.Context, req *connect.Request[hooklyv1.ReplayWebhookRequest]) (*connect.Response[hooklyv1.ReplayWebhookResponse], error) {
+	userID, err := getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if req.Msg.Id == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
 	}
 
-	webhook, err := s.queries.ResetWebhookForReplay(ctx, req.Msg.Id)
+	webhook, err := s.queries.ResetWebhookForReplay(ctx, db.ResetWebhookForReplayParams{
+		ID:     req.Msg.Id,
+		UserID: userID,
+	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("webhook not found"))
@@ -367,7 +434,12 @@ func (s *Service) ReplayWebhook(ctx context.Context, req *connect.Request[hookly
 
 // GetStatus returns system status.
 func (s *Service) GetStatus(ctx context.Context, _ *connect.Request[hooklyv1.GetStatusRequest]) (*connect.Response[hooklyv1.GetStatusResponse], error) {
-	stats, err := s.queries.GetQueueStats(ctx)
+	userID, err := getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	stats, err := s.queries.GetQueueStats(ctx, userID)
 	if err != nil {
 		slog.Error("failed to get queue stats", "error", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get status"))
@@ -398,12 +470,20 @@ func (s *Service) GetStatus(ctx context.Context, _ *connect.Request[hooklyv1.Get
 	}), nil
 }
 
-// GetSettings returns system settings (with secrets redacted).
+// GetSettings returns system settings and user info.
 func (s *Service) GetSettings(ctx context.Context, _ *connect.Request[hooklyv1.GetSettingsRequest]) (*connect.Response[hooklyv1.GetSettingsResponse], error) {
+	session := auth.GetSessionFromContext(ctx)
+	if session == nil {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("authentication required"))
+	}
+
 	return connect.NewResponse(&hooklyv1.GetSettingsResponse{
-		BaseUrl:                     s.cfg.BaseURL,
-		GithubAuthEnabled:           s.cfg.GitHubAuthEnabled(),
+		BaseUrl:                      s.cfg.BaseURL,
+		GithubAuthEnabled:            s.cfg.GitHubAuthEnabled(),
 		TelegramNotificationsEnabled: s.cfg.TelegramEnabled(),
+		UserId:                       session.UserID,
+		Username:                     session.Username,
+		AvatarUrl:                    session.AvatarURL,
 	}), nil
 }
 

@@ -76,18 +76,21 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Verify signature
-	secret, err := h.secretManager.DecryptSecret(endpoint.SignatureSecretEncrypted)
-	if err != nil {
-		slog.Error("failed to decrypt secret", "endpoint_id", endpointID, "error", err)
-		// Still store webhook but mark as invalid
-		h.storeWebhook(ctx, endpointID, headers, payload, false)
-		w.WriteHeader(http.StatusOK)
-		return
-	}
+	// Verify signature (if secret configured)
+	signatureValid := true // Default to valid if no secret configured
+	if len(endpoint.SignatureSecretEncrypted) > 0 {
+		secret, err := h.secretManager.DecryptSecret(endpoint.SignatureSecretEncrypted)
+		if err != nil {
+			slog.Error("failed to decrypt secret", "endpoint_id", endpointID, "error", err)
+			// Still store webhook but mark as invalid
+			h.storeWebhook(ctx, endpointID, headers, payload, false)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 
-	verifier := NewVerifier(endpoint.ProviderType)
-	signatureValid := verifier.Verify(payload, headers, secret)
+		verifier := NewVerifier(endpoint.ProviderType)
+		signatureValid = verifier.Verify(payload, headers, secret)
+	}
 
 	if !signatureValid {
 		slog.Warn("webhook signature verification failed",

@@ -942,8 +942,12 @@ type GetSettingsResponse struct {
 	BaseUrl                      string                 `protobuf:"bytes,1,opt,name=base_url,json=baseUrl,proto3" json:"base_url,omitempty"`
 	GithubAuthEnabled            bool                   `protobuf:"varint,2,opt,name=github_auth_enabled,json=githubAuthEnabled,proto3" json:"github_auth_enabled,omitempty"`
 	TelegramNotificationsEnabled bool                   `protobuf:"varint,3,opt,name=telegram_notifications_enabled,json=telegramNotificationsEnabled,proto3" json:"telegram_notifications_enabled,omitempty"`
-	unknownFields                protoimpl.UnknownFields
-	sizeCache                    protoimpl.SizeCache
+	// User info (requires authentication)
+	UserId        string `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Username      string `protobuf:"bytes,5,opt,name=username,proto3" json:"username,omitempty"`
+	AvatarUrl     string `protobuf:"bytes,6,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetSettingsResponse) Reset() {
@@ -995,6 +999,27 @@ func (x *GetSettingsResponse) GetTelegramNotificationsEnabled() bool {
 		return x.TelegramNotificationsEnabled
 	}
 	return false
+}
+
+func (x *GetSettingsResponse) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *GetSettingsResponse) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *GetSettingsResponse) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
 }
 
 var File_hookly_v1_edge_proto protoreflect.FileDescriptor
@@ -1066,11 +1091,15 @@ const file_hookly_v1_edge_proto_rawDesc = "" +
 	"\x10GetStatusRequest\"D\n" +
 	"\x11GetStatusResponse\x12/\n" +
 	"\x06status\x18\x01 \x01(\v2\x17.hookly.v1.SystemStatusR\x06status\"\x14\n" +
-	"\x12GetSettingsRequest\"\xa6\x01\n" +
+	"\x12GetSettingsRequest\"\xfa\x01\n" +
 	"\x13GetSettingsResponse\x12\x19\n" +
 	"\bbase_url\x18\x01 \x01(\tR\abaseUrl\x12.\n" +
 	"\x13github_auth_enabled\x18\x02 \x01(\bR\x11githubAuthEnabled\x12D\n" +
-	"\x1etelegram_notifications_enabled\x18\x03 \x01(\bR\x1ctelegramNotificationsEnabled2\xba\x06\n" +
+	"\x1etelegram_notifications_enabled\x18\x03 \x01(\bR\x1ctelegramNotificationsEnabled\x12\x17\n" +
+	"\auser_id\x18\x04 \x01(\tR\x06userId\x12\x1a\n" +
+	"\busername\x18\x05 \x01(\tR\busername\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\x06 \x01(\tR\tavatarUrl2\xba\x06\n" +
 	"\vEdgeService\x12U\n" +
 	"\x0eCreateEndpoint\x12 .hookly.v1.CreateEndpointRequest\x1a!.hookly.v1.CreateEndpointResponse\x12L\n" +
 	"\vGetEndpoint\x12\x1d.hookly.v1.GetEndpointRequest\x1a\x1e.hookly.v1.GetEndpointResponse\x12R\n" +

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -11,9 +12,10 @@ import (
 // HooklyConfig holds configuration for the hookly CLI.
 type HooklyConfig struct {
 	EdgeURL   string           `yaml:"edge_url"`
-	Secret    string           `yaml:"secret"`
-	HubID     string           `yaml:"hub_id"`
+	HubID     string           `yaml:"hub_id,omitempty"` // Optional, auto-generated from hostname if empty
 	Endpoints []EndpointConfig `yaml:"endpoints"`
+	// Token is loaded from credentials, not from YAML
+	Token string `yaml:"-"`
 }
 
 // EndpointConfig defines an endpoint this hub handles.
@@ -46,12 +48,6 @@ func (c *HooklyConfig) Validate() error {
 	if c.EdgeURL == "" {
 		return errors.New("edge_url is required")
 	}
-	if c.Secret == "" {
-		return errors.New("secret is required")
-	}
-	if c.HubID == "" {
-		return errors.New("hub_id is required")
-	}
 	if len(c.Endpoints) == 0 {
 		return errors.New("at least one endpoint is required")
 	}
@@ -63,6 +59,27 @@ func (c *HooklyConfig) Validate() error {
 	}
 
 	return nil
+}
+
+// GetHubID returns the hub ID, auto-generating from hostname if not set.
+func (c *HooklyConfig) GetHubID() string {
+	if c.HubID != "" {
+		return c.HubID
+	}
+	return generateHubID()
+}
+
+// generateHubID creates a hub ID from the machine hostname.
+func generateHubID() string {
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "unknown"
+	}
+	// Sanitize: lowercase, replace spaces/dots with dashes
+	hostname = strings.ToLower(hostname)
+	hostname = strings.ReplaceAll(hostname, " ", "-")
+	hostname = strings.ReplaceAll(hostname, ".", "-")
+	return hostname
 }
 
 // EndpointIDs returns a list of all endpoint IDs.
@@ -90,8 +107,8 @@ func (c *HooklyConfig) GetDestination(endpointID, defaultDest string) string {
 func ExampleYAML() string {
 	return `# Hookly configuration
 edge_url: "https://hooks.example.com"
-secret: "your-home-hub-secret"
-hub_id: "myapp-dev"
+# hub_id is optional - auto-generated from hostname if not set
+# hub_id: "myapp-dev"
 
 endpoints:
   - id: "ep_abc123"
