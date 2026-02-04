@@ -2,12 +2,15 @@
 set -e
 
 # Hookly Edge Gateway Deploy Script
-# Usage: ./deploy.sh [--build-only|--push-only|--deploy-only]
+# Usage: ./deploy.sh [--build-only|--push-only|--deploy-only|--cleanup-only]
 
 REGISTRY="git.dev.alexdunmow.com"
 IMAGE="$REGISTRY/alex/hookly/edge:latest"
 COOLIFY_URL="https://svr.alexdunmow.com"
 APP_UUID="w80kgwc0wckwswowswk0k8cs"
+GITEA_OWNER="alex"
+GITEA_PACKAGE="hookly/edge"
+KEEP_VERSIONS=3  # Number of recent versions to keep
 
 # Colors
 RED='\033[0;31m'
@@ -25,6 +28,13 @@ if [[ -z "$COOLIFY_TOKEN" ]]; then
         COOLIFY_TOKEN=$(cat ~/.config/coolify/token)
     else
         error "COOLIFY_TOKEN not set. Export it or save to ~/.config/coolify/token"
+    fi
+fi
+
+# Check for Gitea API token
+if [[ -z "$GITEA_TOKEN" ]]; then
+    if [[ -f ~/.config/gitea/token ]]; then
+        GITEA_TOKEN=$(cat ~/.config/gitea/token)
     fi
 fi
 
@@ -79,6 +89,56 @@ deploy() {
     fi
 }
 
+cleanup() {
+    if [[ -z "$GITEA_TOKEN" ]]; then
+        warn "GITEA_TOKEN not set - skipping registry cleanup"
+        warn "Set it via env or save to ~/.config/gitea/token"
+        return 0
+    fi
+
+    log "Cleaning up old container images from Gitea registry..."
+
+    # Get all versions of the package
+    VERSIONS=$(curl -s -H "Authorization: token $GITEA_TOKEN" \
+        "https://$REGISTRY/api/v1/packages/$GITEA_OWNER/container/$GITEA_PACKAGE" \
+        | jq -r '.[].version' 2>/dev/null || echo "")
+
+    if [[ -z "$VERSIONS" ]]; then
+        log "No old versions to clean up"
+        return 0
+    fi
+
+    # Count versions
+    VERSION_COUNT=$(echo "$VERSIONS" | wc -l)
+
+    if [[ $VERSION_COUNT -le $KEEP_VERSIONS ]]; then
+        log "Only $VERSION_COUNT versions exist, keeping all (threshold: $KEEP_VERSIONS)"
+        return 0
+    fi
+
+    # Get versions to delete (all except the most recent N)
+    # Gitea returns versions sorted by creation date (newest first)
+    TO_DELETE=$(echo "$VERSIONS" | tail -n +$((KEEP_VERSIONS + 1)))
+    DELETE_COUNT=$(echo "$TO_DELETE" | wc -l)
+
+    log "Found $VERSION_COUNT versions, deleting $DELETE_COUNT old versions..."
+
+    for VERSION in $TO_DELETE; do
+        log "  Deleting version: $VERSION"
+        HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+            -H "Authorization: token $GITEA_TOKEN" \
+            "https://$REGISTRY/api/v1/packages/$GITEA_OWNER/container/$GITEA_PACKAGE/$VERSION")
+
+        if [[ "$HTTP_CODE" == "204" ]]; then
+            log "    Deleted successfully"
+        else
+            warn "    Failed to delete (HTTP $HTTP_CODE)"
+        fi
+    done
+
+    log "Cleanup complete"
+}
+
 # Parse arguments
 case "${1:-}" in
     --build-only)
@@ -90,9 +150,13 @@ case "${1:-}" in
     --deploy-only)
         deploy
         ;;
+    --cleanup-only)
+        cleanup
+        ;;
     *)
         build
         push
         deploy
+        cleanup
         ;;
 esac
