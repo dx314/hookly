@@ -59,7 +59,9 @@ push() {
 
 deploy() {
     log "Triggering Coolify deployment..."
-    RESPONSE=$(curl -s -H "Authorization: Bearer $COOLIFY_TOKEN" \
+    # Coolify's deploy endpoint only accepts POST (GET answers
+    # "This endpoint has changed to a POST request.")
+    RESPONSE=$(curl -s -X POST -H "Authorization: Bearer $COOLIFY_TOKEN" \
         "$COOLIFY_URL/api/v1/deploy?uuid=$APP_UUID")
 
     if echo "$RESPONSE" | grep -q "deployment_uuid"; then
