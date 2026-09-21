@@ -20,7 +20,8 @@ SET name = COALESCE(sqlc.narg('name'), name),
     destination_url = COALESCE(sqlc.narg('destination_url'), destination_url),
     muted = COALESCE(sqlc.narg('muted'), muted),
     updated_at = datetime('now')
-WHERE id = ? AND user_id = ?
+-- Named args: a bare "?" after sqlc.narg() gets the wrong parameter number in SQLite
+WHERE id = sqlc.arg('id') AND user_id = sqlc.arg('user_id')
 RETURNING *;
 
 -- name: DeleteEndpoint :exec

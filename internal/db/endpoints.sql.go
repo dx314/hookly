@@ -234,13 +234,13 @@ func (q *Queries) ListEndpoints(ctx context.Context, arg ListEndpointsParams) ([
 
 const updateEndpoint = `-- name: UpdateEndpoint :one
 UPDATE endpoints
-SET name = COALESCE(?3, name),
-    signature_secret_encrypted = COALESCE(?4, signature_secret_encrypted),
-    verification_config_encrypted = COALESCE(?5, verification_config_encrypted),
-    destination_url = COALESCE(?6, destination_url),
-    muted = COALESCE(?7, muted),
+SET name = COALESCE(?1, name),
+    signature_secret_encrypted = COALESCE(?2, signature_secret_encrypted),
+    verification_config_encrypted = COALESCE(?3, verification_config_encrypted),
+    destination_url = COALESCE(?4, destination_url),
+    muted = COALESCE(?5, muted),
     updated_at = datetime('now')
-WHERE id = ? AND user_id = ?
+WHERE id = ?6 AND user_id = ?7
 RETURNING id, user_id, name, provider_type, signature_secret_encrypted, verification_config_encrypted, destination_url, muted, created_at, updated_at
 `
 
@@ -254,6 +254,7 @@ type UpdateEndpointParams struct {
 	UserID                      string         `json:"user_id"`
 }
 
+// Named args: a bare "?" after sqlc.narg() gets the wrong parameter number in SQLite
 func (q *Queries) UpdateEndpoint(ctx context.Context, arg UpdateEndpointParams) (Endpoint, error) {
 	row := q.db.QueryRowContext(ctx, updateEndpoint,
 		arg.Name,
