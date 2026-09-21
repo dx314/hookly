@@ -157,8 +157,8 @@ func run() error {
 			fmt.Fprintf(w, `<!DOCTYPE html>
 <html>
 <head>
-<meta name="go-import" content="hooks.dx314.com git https://github.com/dx314/hookly">
-<meta name="go-source" content="hooks.dx314.com https://github.com/dx314/hookly https://github.com/dx314/hookly/tree/main{/dir} https://github.com/dx314/hookly/blob/main{/dir}/{file}#L{line}">
+<meta name="go-import" content="hooks.dx314.com git https://git.dev.alexdunmow.com/alex/hookly">
+<meta name="go-source" content="hooks.dx314.com https://git.dev.alexdunmow.com/alex/hookly https://git.dev.alexdunmow.com/alex/hookly/src/branch/main{/dir} https://git.dev.alexdunmow.com/alex/hookly/src/branch/main{/dir}/{file}#L{line}">
 </head>
 <body>go get hooks.dx314.com/hookly</body>
 </html>`)
