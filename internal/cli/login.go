@@ -1,18 +1,24 @@
 package cli
 
 import (
+	"bufio"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"time"
+
+	"hooks.dx314.com/internal/logincode"
 )
 
 const (
@@ -28,8 +34,17 @@ type LoginResult struct {
 }
 
 // Login performs the OAuth login flow.
-// It starts a local server, opens the browser, and waits for the callback.
+//
+// It starts a local server and opens the browser. The login then completes in
+// whichever way works first:
+//   - the browser reaches the local callback (browser on the same machine), or
+//   - the user pastes the login code shown in the browser into the terminal
+//     (CLI on a server over SSH, browser somewhere else).
 func Login(ctx context.Context, edgeURL string) (*LoginResult, error) {
+	return login(ctx, edgeURL, os.Stdin)
+}
+
+func login(ctx context.Context, edgeURL string, codeInput io.Reader) (*LoginResult, error) {
 	// Find an available port
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -51,6 +66,20 @@ func Login(ctx context.Context, edgeURL string) (*LoginResult, error) {
 	// Create callback server
 	mux := http.NewServeMux()
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		// The edge's login page calls the callback in the background with
+		// fetch(), from https://<edge> to http://localhost. Allow that origin,
+		// and answer Chrome's private-network preflight.
+		viaFetch := r.URL.Query().Get("via") == "fetch"
+		if origin := r.Header.Get("Origin"); origin != "" && origin == strings.TrimRight(edgeURL, "/") {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+			w.Header().Set("Access-Control-Allow-Private-Network", "true")
+			w.Header().Set("Vary", "Origin")
+		}
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		// Check for error
 		if errMsg := r.URL.Query().Get("error"); errMsg != "" {
 			errCh <- errors.New(errMsg)
@@ -81,10 +110,15 @@ func Login(ctx context.Context, edgeURL string) (*LoginResult, error) {
 			return
 		}
 
-		resultCh <- &LoginResult{
-			Token:    token,
-			UserID:   userID,
-			Username: username,
+		select {
+		case resultCh <- &LoginResult{Token: token, UserID: userID, Username: username}:
+		default: // already logged in via a pasted code
+		}
+
+		if viaFetch {
+			// Background call from the login page - it shows the result itself
+			w.WriteHeader(http.StatusNoContent)
+			return
 		}
 
 		// Redirect to success page on edge server
@@ -111,10 +145,15 @@ func Login(ctx context.Context, edgeURL string) (*LoginResult, error) {
 	// Open browser
 	fmt.Printf("Opening browser for login...\n")
 	fmt.Printf("If the browser doesn't open, visit: %s\n\n", loginURL)
+	fmt.Printf("On a server or over SSH? Open that URL in any browser, then paste the\n")
+	fmt.Printf("login code it shows here and press Enter.\n\n")
 
 	if err := openBrowser(loginURL); err != nil {
-		slog.Warn("failed to open browser", "error", err)
+		slog.Debug("failed to open browser", "error", err)
 	}
+
+	// Accept a pasted login code while waiting for the callback
+	go readLoginCode(codeInput, state, resultCh)
 
 	// Wait for callback with timeout
 	ctx, cancel := context.WithTimeout(ctx, CallbackTimeout)
@@ -136,6 +175,36 @@ func Login(ctx context.Context, edgeURL string) (*LoginResult, error) {
 	server.Close()
 
 	return result, nil
+}
+
+// readLoginCode reads pasted login codes from the terminal until one is valid.
+// A code only counts if it carries the state of this login attempt.
+func readLoginCode(input io.Reader, state string, resultCh chan<- *LoginResult) {
+	if input == nil {
+		return
+	}
+	scanner := bufio.NewScanner(input)
+	scanner.Buffer(make([]byte, 0, 4096), 64*1024)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" {
+			continue
+		}
+		payload, err := logincode.Decode(line)
+		if err != nil {
+			fmt.Println("That doesn't look like a login code - copy the whole code (it starts with " + logincode.Prefix + ") and try again:")
+			continue
+		}
+		if payload.State != state {
+			fmt.Println("That code is from a different login attempt - use the URL printed above and try again:")
+			continue
+		}
+		select {
+		case resultCh <- &LoginResult{Token: payload.Token, UserID: payload.UserID, Username: payload.Username}:
+		default: // already logged in via the callback
+		}
+		return
+	}
 }
 
 // generateState generates a random state string for CSRF protection.

@@ -8,7 +8,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+
+	"hooks.dx314.com/internal/logincode"
 )
 
 // Handlers provides HTTP handlers for authentication.
@@ -234,15 +237,29 @@ func (h *Handlers) CLIAuthorize(w http.ResponseWriter, r *http.Request) {
 
 	slog.Info("CLI authorized", "username", session.Username, "user_id", session.UserID)
 
-	// Redirect to CLI callback with token
-	callbackURL := fmt.Sprintf("http://localhost:%s/callback?token=%s&state=%s&user_id=%s&username=%s",
-		port,
-		url.QueryEscape(apiToken),
-		url.QueryEscape(state),
-		url.QueryEscape(session.UserID),
-		url.QueryEscape(session.Username),
-	)
-	http.Redirect(w, r, callbackURL, http.StatusFound)
+	// Hand the result to the CLI. The browser may not be on the machine that
+	// runs the CLI (e.g. `hookly login` over SSH), so instead of redirecting
+	// straight to the CLI's local callback, show a page that tries the callback
+	// in the background and also displays a login code to paste into the
+	// terminal. Everything travels in the URL fragment, which is never sent to
+	// a server or written to access logs.
+	code, err := logincode.Encode(logincode.Payload{
+		Token:    apiToken,
+		UserID:   session.UserID,
+		Username: session.Username,
+		State:    state,
+	})
+	if err != nil {
+		slog.Error("failed to encode login code", "error", err)
+		http.Error(w, "Failed to create login code", http.StatusInternalServerError)
+		return
+	}
+
+	fragment := url.Values{"code": {code}}
+	if n, err := strconv.Atoi(port); err == nil && n > 0 && n <= 65535 {
+		fragment.Set("port", port)
+	}
+	http.Redirect(w, r, "/cli/login/code#"+fragment.Encode(), http.StatusFound)
 }
 
 // RevokeToken revokes an API token. Requires authentication via session or token.
@@ -294,4 +311,3 @@ func (h *Handlers) RevokeToken(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
-
