@@ -41,7 +41,9 @@ fi
 build() {
     log "Building Docker image..."
     cd "$(dirname "$0")/../.."
-    docker build -t "$IMAGE" -f deploy/edge/Dockerfile .
+    # The Coolify server is x86_64; without this an Apple Silicon build pushes an
+    # arm64 image that fails there with "exec format error".
+    docker build --platform linux/amd64 -t "$IMAGE" -f deploy/edge/Dockerfile .
     log "Build complete: $IMAGE"
 }
 
