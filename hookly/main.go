@@ -23,7 +23,6 @@ import (
 	svc "hooks.dx314.com/internal/service"
 )
 
-const version = "0.1.0"
 const defaultEdgeURL = "https://hooks.dx314.com"
 
 // ANSI color codes
@@ -58,9 +57,10 @@ var appHelpTemplate = `{{ cyan .Name | bold }} {{ dim .Version }}
 
   {{ bold "Service Management" }}
     {{ green "install" }}   Install and start a user service for ./hookly.yaml (no sudo)
+              └─ one per directory: ~/homeboy → hookly-homeboy
     {{ green "uninstall" }} Stop and remove that service
     {{ green "service" }}   Advanced: manage user or system services
-              └─ install, uninstall, start, stop, restart, status, logs
+              └─ list, install, uninstall, start, stop, restart, status, logs
 
 {{ bold "QUICK START" }}
     {{ dim "$" }} hookly login                    {{ dim "# authenticate with GitHub" }}
@@ -186,7 +186,7 @@ func main() {
 	// Check if running in service mode (invoked by service manager)
 	if isServiceMode() {
 		configPath := getServiceConfigPath()
-		if err := svc.RunServiceMode(configPath); err != nil {
+		if err := svc.RunServiceMode(configPath, getServiceArg("--name")); err != nil {
 			fmt.Fprintf(os.Stderr, "Service error: %v\n", err)
 			os.Exit(1)
 		}
@@ -623,27 +623,38 @@ func isServiceMode() bool {
 
 // getServiceConfigPath extracts the config path from service mode arguments.
 func getServiceConfigPath() string {
-	for i, arg := range os.Args {
-		if arg == "--config" && i+1 < len(os.Args) {
-			return os.Args[i+1]
-		}
+	if path := getServiceArg("--config"); path != "" {
+		return path
 	}
 	// Default to system config path
 	return "/etc/hookly/hookly.yaml"
 }
 
-// fullVersion is the release version plus the exact build: the module version
-// for `go install hooks.dx314.com/hookly@...` builds (a pseudo-version ending
-// in the commit), or the VCS revision for builds from a checkout.
+// getServiceArg returns the value after flag in service mode arguments, or "".
+func getServiceArg(flag string) string {
+	for i, arg := range os.Args {
+		if arg == flag && i+1 < len(os.Args) {
+			return os.Args[i+1]
+		}
+	}
+	return ""
+}
+
+// fullVersion is the version Go stamped from git: the release tag for
+// `go install hooks.dx314.com/hookly@...` builds (e.g. "0.2.1"). Every push to
+// main is tagged with a higher version (.github/workflows/tag.yml), so a newer
+// build always prints a higher number. Builds from a checkout get a
+// pseudo-version after the last tag, e.g. "0.2.2-0.20260921090729-5f1a3d2a8c91+dirty".
 func fullVersion() string {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
-		return version
+		return "unknown"
 	}
 	if v := info.Main.Version; v != "" && v != "(devel)" {
-		return version + " (" + v + ")"
+		return strings.TrimPrefix(v, "v")
 	}
 
+	// Built without module version info (e.g. -buildvcs=false): show the commit
 	var revision, modified string
 	for _, setting := range info.Settings {
 		switch setting.Key {
@@ -655,11 +666,11 @@ func fullVersion() string {
 			}
 		}
 	}
-	if revision == "" {
-		return version
-	}
 	if len(revision) > 12 {
 		revision = revision[:12]
 	}
-	return version + " (" + revision + modified + ")"
+	if revision == "" {
+		return "dev"
+	}
+	return "dev (" + revision + modified + ")"
 }

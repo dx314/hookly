@@ -1,0 +1,59 @@
+name: Tag release
+
+# Every push to main gets the next version tag, so `hookly version` (and
+# `go install hooks.dx314.com/hookly@latest`) always moves forward.
+# A push containing a "feat" commit bumps the minor version, anything else the
+# patch version. Tags are never created by hand.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tag-release
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tag next version
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+
+          if git tag --points-at HEAD | grep -q '^v[0-9]'; then
+            echo "HEAD is already tagged: $(git tag --points-at HEAD)"
+            exit 0
+          fi
+
+          last=$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1)
+          last=${last:-v0.1.0}
+          IFS=. read -r major minor patch <<< "${last#v}"
+
+          # Commits in this push (all history since the last tag if unknown)
+          if [ -n "$BEFORE" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            range="$BEFORE..HEAD"
+          elif git rev-parse -q --verify "refs/tags/$last" >/dev/null; then
+            range="$last..HEAD"
+          else
+            range="HEAD"
+          fi
+
+          if git log --format=%s "$range" | grep -Eq '^feat(\(.+\))?!?:'; then
+            next="v$major.$((minor + 1)).0"
+          else
+            next="v$major.$minor.$((patch + 1))"
+          fi
+
+          echo "$last -> $next"
+          git tag "$next" HEAD
+          git push origin "$next"

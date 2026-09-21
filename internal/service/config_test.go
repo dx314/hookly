@@ -180,3 +180,40 @@ func TestContains(t *testing.T) {
 		})
 	}
 }
+
+func TestUnitName(t *testing.T) {
+	if got := UnitName(""); got != "hookly" {
+		t.Errorf(`UnitName("") = %q, want "hookly"`, got)
+	}
+	if got := (&ServiceConfig{Name: "homeboy"}).UnitName(); got != "hookly-homeboy" {
+		t.Errorf("UnitName = %q, want hookly-homeboy", got)
+	}
+}
+
+func TestDefaultName(t *testing.T) {
+	cases := map[string]string{
+		"/home/alex/homeboy/hookly.yaml":    "homeboy",
+		"/home/alex/My Project/hookly.yaml": "my-project",
+		"/srv/app_v2.0/hookly.yaml":         "app-v2-0",
+		"/hookly.yaml":                      "relay",
+		"/srv/___/hookly.yaml":              "relay",
+	}
+	for path, want := range cases {
+		if got := DefaultName(path); got != want {
+			t.Errorf("DefaultName(%q) = %q, want %q", path, got, want)
+		}
+	}
+}
+
+func TestValidateName(t *testing.T) {
+	for _, ok := range []string{"homeboy", "a", "app-2"} {
+		if err := ValidateName(ok); err != nil {
+			t.Errorf("ValidateName(%q) = %v, want nil", ok, err)
+		}
+	}
+	for _, bad := range []string{"", "-x", "Home", "a b", "a/b", "a.b"} {
+		if err := ValidateName(bad); err == nil {
+			t.Errorf("ValidateName(%q) = nil, want error", bad)
+		}
+	}
+}

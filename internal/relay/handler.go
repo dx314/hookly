@@ -92,6 +92,19 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 		}
 	}
 
+	hubID := connectReq.HubId
+
+	// Register connection with endpoints, unless another live relay has them
+	conn, conflict := h.manager.TryAddConnection(hubID, endpointIDs, connectReq.Capabilities, staleTimeout)
+	if conflict != nil {
+		slog.Warn("endpoint already relayed by another hub",
+			"hub_id", hubID, "endpoint_id", conflict.EndpointID, "holder", conflict.HubID)
+		return h.sendConnectError(stream, connect.CodeAlreadyExists, "ENDPOINT_IN_USE",
+			"endpoint '"+conflict.EndpointID+"' is already relayed by hub '"+conflict.HubID+
+				"' - each endpoint goes to one relay; stop the other relay, or add this one's services as destinations of that endpoint")
+	}
+	defer h.manager.RemoveConnection(conn)
+
 	// Send success response
 	if err := stream.Send(&hooklyv1.StreamResponse{
 		Message: &hooklyv1.StreamResponse_ConnectResponse{
@@ -102,12 +115,6 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 	}); err != nil {
 		return err
 	}
-
-	hubID := connectReq.HubId
-
-	// Register connection with endpoints
-	conn := h.manager.AddConnection(hubID, endpointIDs, connectReq.Capabilities)
-	defer h.manager.RemoveConnection(conn)
 
 	// Create channels for coordination
 	errCh := make(chan error, 2)

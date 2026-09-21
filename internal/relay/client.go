@@ -36,6 +36,7 @@ var (
 	ErrEndpointNotFound  = errors.New("endpoint not found")
 	ErrEndpointForbidden = errors.New("endpoint access denied")
 	ErrNoEndpoints       = errors.New("no endpoints configured")
+	ErrEndpointInUse     = errors.New("endpoint relayed by another hub")
 )
 
 // Client connects to the edge relay service and handles webhooks.
@@ -364,6 +365,9 @@ func parseConnectError(serverError string) error {
 		return fmt.Errorf("%w: %s", ErrEndpointNotFound, message)
 	case "ENDPOINT_ACCESS_DENIED":
 		return fmt.Errorf("%w: %s", ErrEndpointForbidden, message)
+	case "ENDPOINT_IN_USE":
+		// Retried: the other relay may be stopping, or its connection stale
+		return fmt.Errorf("%w: %s", ErrEndpointInUse, message)
 	default:
 		return fmt.Errorf("server error: %s", serverError)
 	}

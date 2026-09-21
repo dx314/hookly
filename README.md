@@ -94,13 +94,29 @@ That's it. Webhooks flow to your local service.
 | `hookly whoami` | Show current user |
 | `hookly status` | Show connection and config status |
 | `hookly init` | Create hookly.yaml interactively |
-| `hookly install` | Install and start a user service for `./hookly.yaml` (no sudo; `hookly uninstall` removes it) |
+| `hookly install` | Install and start a user service for `./hookly.yaml`, named after its directory (no sudo; `hookly uninstall` removes it) |
 | `hookly version` | Print the version and exact build |
+| `hookly service list --user` | List installed hookly services |
 | `hookly service install` | Install as system service |
 | `hookly service start` | Start the service |
 | `hookly service stop` | Stop the service |
 | `hookly service status` | Show service status |
 | `hookly service logs` | View service logs |
+
+All `hookly service` commands take `--name` to pick a named service.
+
+### Several relays on one machine
+
+Each directory with a `hookly.yaml` gets its own service: `hookly install` in
+`~/homeboy` installs `hookly-homeboy`, in `~/schoolboy` installs
+`hookly-schoolboy` (use `--name` to choose another name). Each runs with hub ID
+`<hostname>-<name>` unless `hub_id` is set.
+
+The edge sends each endpoint to one relay, so the relays must relay different
+endpoints: `hookly install` refuses a second service for an endpoint another one
+already has, and the edge rejects a relay whose endpoint a live relay holds. To
+deliver one endpoint to several local services, add them as destinations of that
+endpoint and list them in one `hookly.yaml`.
 
 ## Configuration
 
@@ -110,7 +126,7 @@ That's it. Webhooks flow to your local service.
 # Required: edge server URL
 edge_url: "https://hooks.dx314.com"
 
-# Optional: unique identifier (defaults to hostname)
+# Optional: unique identifier (defaults to hostname; <hostname>-<name> for a named service)
 hub_id: "my-server"
 
 # Endpoints this client handles

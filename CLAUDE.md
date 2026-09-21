@@ -82,7 +82,9 @@ go install hooks.dx314.com/hookly@latest
 Commands: `login`, `logout`, `whoami`, `status`, `init`, `service`
 Default (no args): run relay client. Config: `hookly.yaml`, creds: `~/.config/hookly/`
 
-Service subcommands: `install`, `uninstall`, `start`, `stop`, `restart`, `status`, `logs`
+Service subcommands: `list`, `install`, `uninstall`, `start`, `stop`, `restart`, `status`, `logs` (all take `--name`)
+
+**Versioning**: `hookly version` comes from git tags only (no version constant). `.github/workflows/tag.yml` tags every push to GitHub `main`: `feat` commit → minor bump, else patch. Never tag or edit versions by hand.
 
 ## References
 

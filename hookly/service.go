@@ -24,6 +24,17 @@ System services run at boot and require root privileges.
 User services run when you log in and don't need sudo.`,
 		Subcommands: []*cli.Command{
 			{
+				Name:   "list",
+				Usage:  "List installed hookly services",
+				Action: runServiceList,
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "user",
+						Usage: "List user services",
+					},
+				},
+			},
+			{
 				Name:  "install",
 				Usage: "Install hookly as a system service",
 				Description: `Installs hookly to run automatically as a background service.
@@ -40,6 +51,7 @@ Use --user to install as a user service (no sudo required).`,
 						Name:  "user",
 						Usage: "Install as user service (no sudo, runs on login)",
 					},
+					nameFlag(),
 				},
 			},
 			{
@@ -52,6 +64,7 @@ Use --user to install as a user service (no sudo required).`,
 						Name:  "user",
 						Usage: "Uninstall user service",
 					},
+					nameFlag(),
 				},
 			},
 			{
@@ -64,6 +77,7 @@ Use --user to install as a user service (no sudo required).`,
 						Name:  "user",
 						Usage: "Start user service",
 					},
+					nameFlag(),
 				},
 			},
 			{
@@ -76,6 +90,7 @@ Use --user to install as a user service (no sudo required).`,
 						Name:  "user",
 						Usage: "Stop user service",
 					},
+					nameFlag(),
 				},
 			},
 			{
@@ -88,6 +103,7 @@ Use --user to install as a user service (no sudo required).`,
 						Name:  "user",
 						Usage: "Restart user service",
 					},
+					nameFlag(),
 				},
 			},
 			{
@@ -100,6 +116,7 @@ Use --user to install as a user service (no sudo required).`,
 						Name:  "user",
 						Usage: "Check user service status",
 					},
+					nameFlag(),
 				},
 			},
 			{
@@ -126,27 +143,47 @@ Use -n/--lines to control how many lines to show.`,
 						Name:  "user",
 						Usage: "View user service logs",
 					},
+					nameFlag(),
 				},
 			},
 		},
 	}
 }
 
+// nameFlag selects a named service ("hookly-<name>"); without it the
+// commands act on the unnamed "hookly" service.
+func nameFlag() cli.Flag {
+	return &cli.StringFlag{
+		Name:  "name",
+		Usage: "Service name, for running several relays on one machine (unit hookly-<name>)",
+	}
+}
+
 // buildServiceConfig creates a ServiceConfig from CLI flags.
-func buildServiceConfig(c *cli.Context) *svc.ServiceConfig {
+func buildServiceConfig(c *cli.Context) (*svc.ServiceConfig, error) {
 	userService := c.Bool("user")
 	cfg := svc.DefaultServiceConfig(userService)
+
+	if name := c.String("name"); name != "" {
+		if err := svc.ValidateName(name); err != nil {
+			return nil, err
+		}
+		cfg.Name = name
+	}
 
 	// Override config path if specified
 	if configPath := c.String("config"); configPath != "" {
 		cfg.ConfigPath = configPath
 	}
 
-	return cfg
+	return cfg, nil
 }
 
 func runServiceInstall(c *cli.Context) error {
-	cfg := buildServiceConfig(c)
+	cfg, err := buildServiceConfig(c)
+	if err != nil {
+		return err
+	}
 
 	// Validate for installation
 	if err := cfg.ValidateForInstall(); err != nil {
@@ -169,18 +206,17 @@ func runServiceInstall(c *cli.Context) error {
 
 	fmt.Printf("Service installed successfully\n")
 	fmt.Printf("Config: %s\n", cfg.ConfigPath)
-	fmt.Printf("Logs:   %s\n", svc.GetLogPath(cfg.UserService))
-	fmt.Printf("\nStart with: hookly service start")
-	if cfg.UserService {
-		fmt.Printf(" --user")
-	}
-	fmt.Printf("\n")
+	fmt.Printf("Logs:   %s\n", svc.LogsHint(cfg))
+	fmt.Printf("\nStart with: hookly service start%s\n", serviceFlags(cfg))
 
 	return nil
 }
 
 func runServiceUninstall(c *cli.Context) error {
-	cfg := buildServiceConfig(c)
+	cfg, err := buildServiceConfig(c)
+	if err != nil {
+		return err
+	}
 
 	// Check if service is running first
 	status, err := svc.GetServiceStatus(cfg)
@@ -203,7 +239,10 @@ func runServiceUninstall(c *cli.Context) error {
 }
 
 func runServiceStart(c *cli.Context) error {
-	cfg := buildServiceConfig(c)
+	cfg, err := buildServiceConfig(c)
+	if err != nil {
+		return err
+	}
 
 	if err := svc.ControlService(cfg, "start"); err != nil {
 		if isNotInstalledError(err) {
@@ -220,7 +259,10 @@ func runServiceStart(c *cli.Context) error {
 }
 
 func runServiceStop(c *cli.Context) error {
-	cfg := buildServiceConfig(c)
+	cfg, err := buildServiceConfig(c)
+	if err != nil {
+		return err
+	}
 
 	if err := svc.ControlService(cfg, "stop"); err != nil {
 		if isNotInstalledError(err) {
@@ -237,7 +279,10 @@ func runServiceStop(c *cli.Context) error {
 }
 
 func runServiceRestart(c *cli.Context) error {
-	cfg := buildServiceConfig(c)
+	cfg, err := buildServiceConfig(c)
+	if err != nil {
+		return err
+	}
 
 	if err := svc.ControlService(cfg, "restart"); err != nil {
 		if isNotInstalledError(err) {
@@ -254,7 +299,10 @@ func runServiceRestart(c *cli.Context) error {
 }
 
 func runServiceStatus(c *cli.Context) error {
-	cfg := buildServiceConfig(c)
+	cfg, err := buildServiceConfig(c)
+	if err != nil {
+		return err
+	}
 
 	status, err := svc.GetServiceStatus(cfg)
 	if err != nil {
@@ -266,18 +314,58 @@ func runServiceStatus(c *cli.Context) error {
 	}
 
 	fmt.Printf("Status: %s\n", svc.StatusString(status))
-	fmt.Printf("Logs:   %s\n", svc.GetLogPath(cfg.UserService))
+	fmt.Printf("Logs:   %s\n", svc.LogsHint(cfg))
 	return nil
 }
 
 func runServiceLogs(c *cli.Context) error {
+	name := c.String("name")
+	if name != "" {
+		if err := svc.ValidateName(name); err != nil {
+			return err
+		}
+	}
 	logsCfg := &svc.LogsConfig{
+		Name:        name,
 		Follow:      c.Bool("follow"),
 		Lines:       c.Int("lines"),
 		UserService: c.Bool("user"),
 	}
 
 	return svc.ViewLogs(logsCfg)
+}
+
+func runServiceList(c *cli.Context) error {
+	userService := c.Bool("user")
+	installed, err := svc.ListInstalled(userService)
+	if err != nil {
+		return fmt.Errorf("list services: %w", err)
+	}
+	if len(installed) == 0 {
+		fmt.Println("No hookly services installed")
+		return nil
+	}
+	for _, inst := range installed {
+		cfg := &svc.ServiceConfig{Name: inst.Name, UserService: userService}
+		state := "unknown"
+		if status, err := svc.GetServiceStatus(cfg); err == nil {
+			state = svc.StatusString(status)
+		}
+		fmt.Printf("%-24s %-8s %s\n", inst.Unit, state, inst.ConfigPath)
+	}
+	return nil
+}
+
+// serviceFlags repeats the flags that select cfg's service, for hints.
+func serviceFlags(cfg *svc.ServiceConfig) string {
+	flags := ""
+	if cfg.UserService {
+		flags += " --user"
+	}
+	if cfg.Name != "" {
+		flags += " --name " + cfg.Name
+	}
+	return flags
 }
 
 // makeAbsolute converts a relative path to absolute.

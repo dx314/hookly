@@ -44,17 +44,45 @@ func NewConnectionManager() *ConnectionManager {
 	}
 }
 
-// AddConnection registers a new hub connection with its endpoints.
-// Returns the HubConnection for sending webhooks.
+// EndpointConflict is returned by TryAddConnection when another hub already
+// relays one of the requested endpoints.
+type EndpointConflict struct {
+	EndpointID string
+	HubID      string // the hub holding it
+}
+
+// AddConnection registers a new hub connection with its endpoints, taking
+// them over from any other hub. Returns the HubConnection for sending webhooks.
 func (m *ConnectionManager) AddConnection(hubID string, endpointIDs []string, capabilities []string) *HubConnection {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	return m.addLocked(hubID, endpointIDs, capabilities)
+}
 
+// TryAddConnection registers a hub connection unless another live hub
+// (heartbeat within staleAfter) already relays one of its endpoints: each
+// endpoint goes to one hub, so a second relay for it would silently take all
+// its deliveries. A reconnect from the same hub ID replaces the old connection.
+func (m *ConnectionManager) TryAddConnection(hubID string, endpointIDs []string, capabilities []string, staleAfter time.Duration) (*HubConnection, *EndpointConflict) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, epID := range endpointIDs {
+		holder, ok := m.endpoints[epID]
+		if !ok || holder == hubID {
+			continue
+		}
+		if conn := m.connections[holder]; conn != nil && time.Since(conn.lastHeartbeat) <= staleAfter {
+			return nil, &EndpointConflict{EndpointID: epID, HubID: holder}
+		}
+	}
+	return m.addLocked(hubID, endpointIDs, capabilities), nil
+}
+
+func (m *ConnectionManager) addLocked(hubID string, endpointIDs []string, capabilities []string) *HubConnection {
 	// Remove old connection if exists
 	if old, exists := m.connections[hubID]; exists {
-		for _, epID := range old.endpointIDs {
-			delete(m.endpoints, epID)
-		}
+		m.unrouteLocked(old)
 		close(old.sendCh)
 	}
 
@@ -95,17 +123,23 @@ func (m *ConnectionManager) RemoveConnection(conn *HubConnection) {
 		return
 	}
 
-	// Remove endpoint mappings
-	for _, epID := range conn.endpointIDs {
-		delete(m.endpoints, epID)
-	}
-
+	m.unrouteLocked(conn)
 	delete(m.connections, hubID)
 
 	slog.Info("hub disconnected",
 		"hub_id", hubID,
 		"total_hubs", len(m.connections),
 	)
+}
+
+// unrouteLocked removes conn's endpoint routes, leaving any that another hub
+// has since taken over.
+func (m *ConnectionManager) unrouteLocked(conn *HubConnection) {
+	for _, epID := range conn.endpointIDs {
+		if m.endpoints[epID] == conn.hubID {
+			delete(m.endpoints, epID)
+		}
+	}
 }
 
 // GetHubForEndpoint returns the connection for the hub handling this endpoint.

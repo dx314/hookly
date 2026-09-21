@@ -72,6 +72,11 @@ func (c *HooklyConfig) GetHubID() string {
 	return generateHubID()
 }
 
+// HostHubID is the default hub ID for this machine, derived from its hostname.
+func HostHubID() string {
+	return generateHubID()
+}
+
 // generateHubID creates a hub ID from the machine hostname.
 func generateHubID() string {
 	hostname, err := os.Hostname()

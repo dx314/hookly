@@ -33,7 +33,7 @@ type Program struct {
 // Start is called when the service is started.
 // Must not block - start work in a goroutine.
 func (p *Program) Start(s service.Service) error {
-	slog.Info("service starting", "config", p.cfg.ConfigPath)
+	slog.Info("service starting", "service", p.cfg.UnitName(), "config", p.cfg.ConfigPath)
 
 	// Load hookly config
 	hooklyCfg, err := config.LoadHooklyYAML(p.cfg.ConfigPath)
@@ -56,6 +56,12 @@ func (p *Program) Start(s service.Service) error {
 	}
 	hooklyCfg.Token = creds.APIToken
 
+	// Named services share the host, so each needs its own hub ID or the edge
+	// treats them as one hub and they keep replacing each other.
+	if hooklyCfg.HubID == "" && p.cfg.Name != "" {
+		hooklyCfg.HubID = config.HostHubID() + "-" + p.cfg.Name
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	p.cancel = cancel
 
@@ -73,7 +79,7 @@ func (p *Program) Start(s service.Service) error {
 
 	slog.Info("service started",
 		"edge_url", hooklyCfg.EdgeURL,
-		"hub_id", hooklyCfg.HubID,
+		"hub_id", hooklyCfg.GetHubID(),
 		"endpoints", len(hooklyCfg.Endpoints),
 	)
 
@@ -118,11 +124,23 @@ func NewService(cfg *ServiceConfig) (service.Service, error) {
 		options["UserService"] = true
 	}
 
+	// launchd writes stdout/stderr here (<unit>.out.log / <unit>.err.log)
+	if dir := logDir(cfg.UserService); dir != "" {
+		options["LogDirectory"] = dir
+	}
+
+	displayName := serviceDisplayName
+	args := []string{"--service-mode", "--config", cfg.ConfigPath}
+	if cfg.Name != "" {
+		displayName += " (" + cfg.Name + ")"
+		args = append(args, "--name", cfg.Name)
+	}
+
 	svcConfig := &service.Config{
-		Name:        serviceName,
-		DisplayName: serviceDisplayName,
+		Name:        cfg.UnitName(),
+		DisplayName: displayName,
 		Description: serviceDescription,
-		Arguments:   []string{"--service-mode", "--config", cfg.ConfigPath},
+		Arguments:   args,
 		Option:      options,
 	}
 
@@ -135,13 +153,15 @@ func NewService(cfg *ServiceConfig) (service.Service, error) {
 }
 
 // RunServiceMode runs hookly in service mode (called by service manager).
-func RunServiceMode(configPath string) error {
+// name is the instance name from --name ("" for the unnamed service).
+func RunServiceMode(configPath, name string) error {
 	// Setup logging for service mode
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
 	})))
 
 	cfg := &ServiceConfig{
+		Name:       name,
 		ConfigPath: configPath,
 	}
 
@@ -162,6 +182,11 @@ func ControlService(cfg *ServiceConfig, action string) error {
 
 	switch action {
 	case "install":
+		if dir := logDir(cfg.UserService); dir != "" {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				return fmt.Errorf("create log directory: %w", err)
+			}
+		}
 		return svc.Install()
 	case "uninstall":
 		return svc.Uninstall()

@@ -10,9 +10,14 @@ import (
 
 // LogsConfig holds options for viewing service logs.
 type LogsConfig struct {
-	Follow      bool // Tail/follow logs (-f)
-	Lines       int  // Number of lines to show (-n)
-	UserService bool // User service vs system service
+	Name        string // Service instance name ("" for the unnamed service)
+	Follow      bool   // Tail/follow logs (-f)
+	Lines       int    // Number of lines to show (-n)
+	UserService bool   // User service vs system service
+}
+
+func (c *LogsConfig) service() *ServiceConfig {
+	return &ServiceConfig{Name: c.Name, UserService: c.UserService}
 }
 
 // ViewLogs displays service logs using platform-appropriate commands.
@@ -25,7 +30,7 @@ func ViewLogs(cfg *LogsConfig) error {
 
 // viewLogsLinux uses journalctl to view logs on Linux.
 func viewLogsLinux(cfg *LogsConfig) error {
-	args := []string{"-u", serviceName}
+	args := []string{"-u", UnitName(cfg.Name)}
 
 	if cfg.UserService {
 		args = append(args, "--user")
@@ -52,12 +57,7 @@ func viewLogsLinux(cfg *LogsConfig) error {
 
 // viewLogsMacOS uses tail to view logs on macOS.
 func viewLogsMacOS(cfg *LogsConfig) error {
-	var logPath string
-	if cfg.UserService {
-		logPath = userLogPath()
-	} else {
-		logPath = systemLogPath()
-	}
+	logPath := cfg.service().LogPath()
 
 	if logPath == "" {
 		return fmt.Errorf("log path not configured")
@@ -91,17 +91,14 @@ func viewLogsMacOS(cfg *LogsConfig) error {
 	return cmd.Run()
 }
 
-// GetLogPath returns the log path for the service.
-func GetLogPath(userService bool) string {
+// LogsHint is where to find the service's logs: a file on macOS, a
+// journalctl command on Linux.
+func LogsHint(cfg *ServiceConfig) string {
 	if runtime.GOOS == "darwin" {
-		if userService {
-			return userLogPath()
-		}
-		return systemLogPath()
+		return cfg.LogPath()
 	}
-	// Linux uses journalctl
-	if userService {
-		return "journalctl --user -u " + serviceName
+	if cfg.UserService {
+		return "journalctl --user -u " + cfg.UnitName()
 	}
-	return "journalctl -u " + serviceName
+	return "journalctl -u " + cfg.UnitName()
 }
