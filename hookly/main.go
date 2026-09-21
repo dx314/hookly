@@ -54,23 +54,26 @@ var appHelpTemplate = `{{ cyan .Name | bold }} {{ dim .Version }}
 
   {{ bold "Setup" }}
     {{ green "init" }}      Create hookly.yaml interactively
+    {{ green "version" }}   Print the hookly version and build
 
   {{ bold "Service Management" }}
-    {{ green "service" }}   Install/manage as system service
+    {{ green "install" }}   Install and start a user service for ./hookly.yaml (no sudo)
+    {{ green "uninstall" }} Stop and remove that service
+    {{ green "service" }}   Advanced: manage user or system services
               └─ install, uninstall, start, stop, restart, status, logs
 
 {{ bold "QUICK START" }}
     {{ dim "$" }} hookly login                    {{ dim "# authenticate with GitHub" }}
     {{ dim "$" }} hookly init                     {{ dim "# create config interactively" }}
     {{ dim "$" }} hookly                          {{ dim "# start the relay" }}
+    {{ dim "$" }} hookly install                  {{ dim "# or keep it running as a service" }}
 
 {{ bold "EXAMPLES" }}
     {{ dim "# Start relay in foreground" }}
     {{ dim "$" }} hookly
 
-    {{ dim "# Run as a background service" }}
-    {{ dim "$" }} hookly service install --config ./hookly.yaml
-    {{ dim "$" }} hookly service start
+    {{ dim "# Run as a background service (uses ./hookly.yaml)" }}
+    {{ dim "$" }} hookly install
 
     {{ dim "# Connect to a custom edge server" }}
     {{ dim "$" }} hookly login --edge-url https://hooks.example.com
@@ -254,6 +257,8 @@ func main() {
 				Description: "Interactively creates a hookly.yaml config file.\nIf logged in, lets you select from your existing endpoints\nor create a new one.",
 				Action:      runInit,
 			},
+			installCommand(),
+			uninstallCommand(),
 			serviceCommand(),
 		},
 	}

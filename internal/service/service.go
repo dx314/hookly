@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"sync"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/kardianos/service"
 
+	clicmd "hooks.dx314.com/internal/cli"
 	"hooks.dx314.com/internal/config"
 	"hooks.dx314.com/internal/relay"
 )
@@ -38,6 +40,21 @@ func (p *Program) Start(s service.Service) error {
 	if err != nil {
 		return err
 	}
+
+	// The relay authenticates with the token saved by `hookly login`, for the
+	// user the service runs as.
+	credsMgr, err := clicmd.NewCredentialsManager()
+	if err != nil {
+		return fmt.Errorf("init credentials manager: %w", err)
+	}
+	creds, err := credsMgr.Load()
+	if err != nil {
+		return fmt.Errorf("load credentials (%s): %w", credsMgr.Path(), err)
+	}
+	if creds == nil {
+		return fmt.Errorf("not logged in: no credentials at %s - run 'hookly login' as the user the service runs as", credsMgr.Path())
+	}
+	hooklyCfg.Token = creds.APIToken
 
 	ctx, cancel := context.WithCancel(context.Background())
 	p.cancel = cancel

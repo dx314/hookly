@@ -94,6 +94,8 @@ That's it. Webhooks flow to your local service.
 | `hookly whoami` | Show current user |
 | `hookly status` | Show connection and config status |
 | `hookly init` | Create hookly.yaml interactively |
+| `hookly install` | Install and start a user service for `./hookly.yaml` (no sudo; `hookly uninstall` removes it) |
+| `hookly version` | Print the version and exact build |
 | `hookly service install` | Install as system service |
 | `hookly service start` | Start the service |
 | `hookly service stop` | Stop the service |
