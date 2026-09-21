@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"runtime"
+	"runtime/debug"
 	"strings"
 	"syscall"
 	"text/template"
@@ -196,7 +198,7 @@ func main() {
 	app := &cli.App{
 		Name:                 "hookly",
 		Usage:                "Relay webhooks from the public internet to your local network",
-		Version:              version,
+		Version:              fullVersion(),
 		Action:               runRelay,
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
@@ -206,6 +208,15 @@ func main() {
 			},
 		},
 		Commands: []*cli.Command{
+			{
+				Name:  "version",
+				Usage: "Print the hookly version and build",
+				Action: func(c *cli.Context) error {
+					fmt.Printf("hookly %s\n", fullVersion())
+					fmt.Printf("%s %s/%s\n", runtime.Version(), runtime.GOOS, runtime.GOARCH)
+					return nil
+				},
+			},
 			{
 				Name:        "login",
 				Usage:       "Authenticate with the hookly edge server",
@@ -614,4 +625,36 @@ func getServiceConfigPath() string {
 	}
 	// Default to system config path
 	return "/etc/hookly/hookly.yaml"
+}
+
+// fullVersion is the release version plus the exact build: the module version
+// for `go install hooks.dx314.com/hookly@...` builds (a pseudo-version ending
+// in the commit), or the VCS revision for builds from a checkout.
+func fullVersion() string {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return version
+	}
+	if v := info.Main.Version; v != "" && v != "(devel)" {
+		return version + " (" + v + ")"
+	}
+
+	var revision, modified string
+	for _, setting := range info.Settings {
+		switch setting.Key {
+		case "vcs.revision":
+			revision = setting.Value
+		case "vcs.modified":
+			if setting.Value == "true" {
+				modified = "-dirty"
+			}
+		}
+	}
+	if revision == "" {
+		return version
+	}
+	if len(revision) > 12 {
+		revision = revision[:12]
+	}
+	return version + " (" + revision + modified + ")"
 }
