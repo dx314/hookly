@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hookly/v1/relay.proto.
  */
 export const file_hookly_v1_relay: GenFile = /*@__PURE__*/
-  fileDesc("ChVob29rbHkvdjEvcmVsYXkucHJvdG8SCWhvb2tseS52MSKaAQoNU3RyZWFtUmVxdWVzdBIsCgdjb25uZWN0GAEgASgLMhkuaG9va2x5LnYxLkNvbm5lY3RSZXF1ZXN0SAASJQoDYWNrGAIgASgLMhYuaG9va2x5LnYxLkRlbGl2ZXJ5QWNrSAASKQoJaGVhcnRiZWF0GAMgASgLMhQuaG9va2x5LnYxLkhlYXJ0YmVhdEgAQgkKB21lc3NhZ2UirQEKDlN0cmVhbVJlc3BvbnNlEjYKEGNvbm5lY3RfcmVzcG9uc2UYASABKAsyGi5ob29rbHkudjEuQ29ubmVjdFJlc3BvbnNlSAASLQoHd2ViaG9vaxgCIAEoCzIaLmhvb2tseS52MS5XZWJob29rRW52ZWxvcGVIABIpCgloZWFydGJlYXQYAyABKAsyFC5ob29rbHkudjEuSGVhcnRiZWF0SABCCQoHbWVzc2FnZSJbCg5Db25uZWN0UmVxdWVzdBIOCgZodWJfaWQYASABKAkSDQoFdG9rZW4YAiABKAkSFAoMZW5kcG9pbnRfaWRzGAMgAygJEhQKDGNhcGFiaWxpdGllcxgFIAMoCSIxCg9Db25uZWN0UmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCBINCgVlcnJvchgCIAEoCSIeCglIZWFydGJlYXQSEQoJdGltZXN0YW1wGAEgASgDIuwCCg9XZWJob29rRW52ZWxvcGUSCgoCaWQYASABKAkSEwoLZW5kcG9pbnRfaWQYAiABKAkSFwoPZGVzdGluYXRpb25fdXJsGAMgASgJEi8KC3JlY2VpdmVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI4CgdoZWFkZXJzGAUgAygLMicuaG9va2x5LnYxLldlYmhvb2tFbnZlbG9wZS5IZWFkZXJzRW50cnkSDwoHcGF5bG9hZBgGIAEoDBIPCgdhdHRlbXB0GAcgASgFEhMKC2RlbGl2ZXJ5X2lkGAggASgJEhYKDmRlc3RpbmF0aW9uX2lkGAkgASgJEhgKEGRlc3RpbmF0aW9uX25hbWUYCiABKAkSGwoTZGVzdGluYXRpb25fcHJpbWFyeRgLIAEoCBouCgxIZWFkZXJzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASKmAQoLRGVsaXZlcnlBY2sSEgoKd2ViaG9va19pZBgBIAEoCRIPCgdzdWNjZXNzGAIgASgIEhMKC3N0YXR1c19jb2RlGAMgASgFEhUKDWVycm9yX21lc3NhZ2UYBCABKAkSGQoRcGVybWFuZW50X2ZhaWx1cmUYBSABKAgSEwoLZGVsaXZlcnlfaWQYBiABKAkSFgoOZGVzdGluYXRpb25faWQYByABKAkyUQoMUmVsYXlTZXJ2aWNlEkEKBlN0cmVhbRIYLmhvb2tseS52MS5TdHJlYW1SZXF1ZXN0GhkuaG9va2x5LnYxLlN0cmVhbVJlc3BvbnNlKAEwAUKRAQoNY29tLmhvb2tseS52MUIKUmVsYXlQcm90b1ABWi9ob29rcy5keDMxNC5jb20vaW50ZXJuYWwvYXBpL2hvb2tseS92MTtob29rbHl2MaICA0hYWKoCCUhvb2tseS5WMcoCCUhvb2tseVxWMeICFUhvb2tseVxWMVxHUEJNZXRhZGF0YeoCCkhvb2tseTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChVob29rbHkvdjEvcmVsYXkucHJvdG8SCWhvb2tseS52MSLMAQoNU3RyZWFtUmVxdWVzdBIsCgdjb25uZWN0GAEgASgLMhkuaG9va2x5LnYxLkNvbm5lY3RSZXF1ZXN0SAASJQoDYWNrGAIgASgLMhYuaG9va2x5LnYxLkRlbGl2ZXJ5QWNrSAASKQoJaGVhcnRiZWF0GAMgASgLMhQuaG9va2x5LnYxLkhlYXJ0YmVhdEgAEjAKDWh0dHBfcmVzcG9uc2UYBCABKAsyFy5ob29rbHkudjEuSHR0cFJlc3BvbnNlSABCCQoHbWVzc2FnZSLdAQoOU3RyZWFtUmVzcG9uc2USNgoQY29ubmVjdF9yZXNwb25zZRgBIAEoCzIaLmhvb2tseS52MS5Db25uZWN0UmVzcG9uc2VIABItCgd3ZWJob29rGAIgASgLMhouaG9va2x5LnYxLldlYmhvb2tFbnZlbG9wZUgAEikKCWhlYXJ0YmVhdBgDIAEoCzIULmhvb2tseS52MS5IZWFydGJlYXRIABIuCgxodHRwX3JlcXVlc3QYBCABKAsyFi5ob29rbHkudjEuSHR0cFJlcXVlc3RIAEIJCgdtZXNzYWdlImwKDkNvbm5lY3RSZXF1ZXN0Eg4KBmh1Yl9pZBgBIAEoCRINCgV0b2tlbhgCIAEoCRIUCgxlbmRwb2ludF9pZHMYAyADKAkSFAoMY2FwYWJpbGl0aWVzGAUgAygJEg8KB3Byb3hpZXMYBiADKAkiMQoPQ29ubmVjdFJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSDQoFZXJyb3IYAiABKAkiHgoJSGVhcnRiZWF0EhEKCXRpbWVzdGFtcBgBIAEoAyLsAgoPV2ViaG9va0VudmVsb3BlEgoKAmlkGAEgASgJEhMKC2VuZHBvaW50X2lkGAIgASgJEhcKD2Rlc3RpbmF0aW9uX3VybBgDIAEoCRIvCgtyZWNlaXZlZF9hdBgEIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASOAoHaGVhZGVycxgFIAMoCzInLmhvb2tseS52MS5XZWJob29rRW52ZWxvcGUuSGVhZGVyc0VudHJ5Eg8KB3BheWxvYWQYBiABKAwSDwoHYXR0ZW1wdBgHIAEoBRITCgtkZWxpdmVyeV9pZBgIIAEoCRIWCg5kZXN0aW5hdGlvbl9pZBgJIAEoCRIYChBkZXN0aW5hdGlvbl9uYW1lGAogASgJEhsKE2Rlc3RpbmF0aW9uX3ByaW1hcnkYCyABKAgaLgoMSGVhZGVyc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEipgEKC0RlbGl2ZXJ5QWNrEhIKCndlYmhvb2tfaWQYASABKAkSDwoHc3VjY2VzcxgCIAEoCBITCgtzdGF0dXNfY29kZRgDIAEoBRIVCg1lcnJvcl9tZXNzYWdlGAQgASgJEhkKEXBlcm1hbmVudF9mYWlsdXJlGAUgASgIEhMKC2RlbGl2ZXJ5X2lkGAYgASgJEhYKDmRlc3RpbmF0aW9uX2lkGAcgASgJIikKCkh0dHBIZWFkZXISDAoEbmFtZRgBIAEoCRINCgV2YWx1ZRgCIAEoCSKXAQoLSHR0cFJlcXVlc3QSEgoKcmVxdWVzdF9pZBgBIAEoCRINCgVwcm94eRgCIAEoCRIOCgZtZXRob2QYAyABKAkSDAoEcGF0aBgEIAEoCRIRCglyYXdfcXVlcnkYBSABKAkSJgoHaGVhZGVycxgGIAMoCzIVLmhvb2tseS52MS5IdHRwSGVhZGVyEgwKBGJvZHkYByABKAwidwoMSHR0cFJlc3BvbnNlEhIKCnJlcXVlc3RfaWQYASABKAkSDgoGc3RhdHVzGAIgASgFEiYKB2hlYWRlcnMYAyADKAsyFS5ob29rbHkudjEuSHR0cEhlYWRlchIMCgRib2R5GAQgASgMEg0KBWVycm9yGAUgASgJMlEKDFJlbGF5U2VydmljZRJBCgZTdHJlYW0SGC5ob29rbHkudjEuU3RyZWFtUmVxdWVzdBoZLmhvb2tseS52MS5TdHJlYW1SZXNwb25zZSgBMAFCkQEKDWNvbS5ob29rbHkudjFCClJlbGF5UHJvdG9QAVovaG9va3MuZHgzMTQuY29tL2ludGVybmFsL2FwaS9ob29rbHkvdjE7aG9va2x5djGiAgNIWFiqAglIb29rbHkuVjHKAglIb29rbHlcVjHiAhVIb29rbHlcVjFcR1BCTWV0YWRhdGHqAgpIb29rbHk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * Messages from home-hub to edge
@@ -41,6 +41,14 @@ export type StreamRequest = Message<"hookly.v1.StreamRequest"> & {
      */
     value: Heartbeat;
     case: "heartbeat";
+  } | {
+    /**
+     * Answer to an HttpRequest (proxy)
+     *
+     * @generated from field: hookly.v1.HttpResponse http_response = 4;
+     */
+    value: HttpResponse;
+    case: "httpResponse";
   } | { case: undefined; value?: undefined };
 };
 
@@ -78,6 +86,14 @@ export type StreamResponse = Message<"hookly.v1.StreamResponse"> & {
      */
     value: Heartbeat;
     case: "heartbeat";
+  } | {
+    /**
+     * Only sent to hubs with the "proxy" capability
+     *
+     * @generated from field: hookly.v1.HttpRequest http_request = 4;
+     */
+    value: HttpRequest;
+    case: "httpRequest";
   } | { case: undefined; value?: undefined };
 };
 
@@ -116,12 +132,22 @@ export type ConnectRequest = Message<"hookly.v1.ConnectRequest"> & {
   /**
    * Optional features this hub understands. Hubs that predate a feature omit it.
    *   "fanout" - one envelope per (webhook, destination); acks echo delivery_id.
+   *   "proxy"  - understands HttpRequest / HttpResponse (reverse proxy).
    * Hubs without "fanout" are only sent each endpoint's primary destination.
    * (4 is skipped: it was endpoint_ids before bearer-token auth.)
    *
    * @generated from field: repeated string capabilities = 5;
    */
   capabilities: string[];
+
+  /**
+   * Names of the local services this hub reverse-proxies (the `proxies:`
+   * section of hookly.yaml). The edge serves /p/{hub_id}/{name}/* for each
+   * and never sends an HttpRequest for a name that is not listed here.
+   *
+   * @generated from field: repeated string proxies = 6;
+   */
+  proxies: string[];
 };
 
 /**
@@ -305,6 +331,130 @@ export type DeliveryAck = Message<"hookly.v1.DeliveryAck"> & {
  */
 export const DeliveryAckSchema: GenMessage<DeliveryAck> = /*@__PURE__*/
   messageDesc(file_hookly_v1_relay, 6);
+
+/**
+ * HttpHeader is one header line. Headers repeat (Set-Cookie), so this is a
+ * list rather than a map.
+ *
+ * @generated from message hookly.v1.HttpHeader
+ */
+export type HttpHeader = Message<"hookly.v1.HttpHeader"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string value = 2;
+   */
+  value: string;
+};
+
+/**
+ * Describes the message hookly.v1.HttpHeader.
+ * Use `create(HttpHeaderSchema)` to create a new message.
+ */
+export const HttpHeaderSchema: GenMessage<HttpHeader> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_relay, 7);
+
+/**
+ * HttpRequest is a synchronous HTTP request the edge received at
+ * /p/{hub_id}/{proxy}/... and forwards to the hub's local service. The hub
+ * answers with an HttpResponse carrying the same request_id.
+ *
+ * @generated from message hookly.v1.HttpRequest
+ */
+export type HttpRequest = Message<"hookly.v1.HttpRequest"> & {
+  /**
+   * @generated from field: string request_id = 1;
+   */
+  requestId: string;
+
+  /**
+   * Name from ConnectRequest.proxies
+   *
+   * @generated from field: string proxy = 2;
+   */
+  proxy: string;
+
+  /**
+   * @generated from field: string method = 3;
+   */
+  method: string;
+
+  /**
+   * Already stripped of /p/{hub_id}/{proxy}; starts with "/"
+   *
+   * @generated from field: string path = 4;
+   */
+  path: string;
+
+  /**
+   * Without the "?"
+   *
+   * @generated from field: string raw_query = 5;
+   */
+  rawQuery: string;
+
+  /**
+   * Hop-by-hop headers removed; X-Forwarded-* added
+   *
+   * @generated from field: repeated hookly.v1.HttpHeader headers = 6;
+   */
+  headers: HttpHeader[];
+
+  /**
+   * @generated from field: bytes body = 7;
+   */
+  body: Uint8Array;
+};
+
+/**
+ * Describes the message hookly.v1.HttpRequest.
+ * Use `create(HttpRequestSchema)` to create a new message.
+ */
+export const HttpRequestSchema: GenMessage<HttpRequest> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_relay, 8);
+
+/**
+ * HttpResponse is the local service's answer to an HttpRequest. When error is
+ * set the other fields are ignored and the edge answers 502.
+ *
+ * @generated from message hookly.v1.HttpResponse
+ */
+export type HttpResponse = Message<"hookly.v1.HttpResponse"> & {
+  /**
+   * @generated from field: string request_id = 1;
+   */
+  requestId: string;
+
+  /**
+   * @generated from field: int32 status = 2;
+   */
+  status: number;
+
+  /**
+   * @generated from field: repeated hookly.v1.HttpHeader headers = 3;
+   */
+  headers: HttpHeader[];
+
+  /**
+   * @generated from field: bytes body = 4;
+   */
+  body: Uint8Array;
+
+  /**
+   * @generated from field: string error = 5;
+   */
+  error: string;
+};
+
+/**
+ * Describes the message hookly.v1.HttpResponse.
+ * Use `create(HttpResponseSchema)` to create a new message.
+ */
+export const HttpResponseSchema: GenMessage<HttpResponse> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_relay, 9);
 
 /**
  * RelayService handles communication between edge and home-hub.

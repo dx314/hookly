@@ -122,6 +122,7 @@ endpoints:
 		for _, d := range cfg.Destinations {
 			fmt.Fprintf(&b, "      %q: %q\n", d.Name, d.URL)
 		}
+		b.WriteString(proxiesExample)
 		return b.String()
 	}
 
@@ -132,8 +133,19 @@ edge_url: "%s"
 endpoints:
   - id: "%s"
     destination: "%s"
-`, cfg.EdgeURL, cfg.EndpointID, cfg.Destination)
+`, cfg.EdgeURL, cfg.EndpointID, cfg.Destination) + proxiesExample
 }
+
+// proxiesExample documents the optional reverse-proxy section.
+const proxiesExample = `
+# Optional: reverse-proxy a local web service through the relay. It becomes
+# reachable at <edge_url>/p/<hub_id>/<name>/... for the listed path prefixes
+# only (anything else answers 404). It must do its own authentication.
+# proxies:
+#   - name: "homeboy"
+#     url: "http://127.0.0.1:8790"
+#     paths: ["/app/"]
+`
 
 // readLine reads a line from stdin, trimming whitespace.
 func readLine() string {

@@ -115,6 +115,9 @@ Route webhooks from external providers (Stripe, GitHub, Telegram, etc.) to servi
 ### Webhook Ingestion (public, no auth)
 - `POST /h/{endpoint-id}` — receive webhook
 
+### Reverse Proxy (public, no auth at the edge)
+- `ANY /p/{hub-id}/{name}/*` — forwarded through the hub's stream to the local service it lists as `{name}` under `proxies:` in `hookly.yaml`, prefix stripped. Synchronous: the edge waits for the hub's `HttpResponse` (`PROXY_TIMEOUT`, default 45s) and answers `502` (no such hub/proxy connected, or the stream dropped), `503` (hub has 128 requests in flight), `504` (timeout). Not stored, not verified: the local service authenticates its callers.
+
 ### MCP Tools
 - `hookly_list_endpoints` — list all endpoints
 - `hookly_get_endpoint` — get endpoint details
@@ -217,6 +220,20 @@ message WebhookEnvelope {
 Hubs without the `fanout` capability are only sent each endpoint's primary destination and
 their acks (webhook ID only) resolve to the webhook's first pending delivery.
 
+### Reverse proxy over the stream (protobuf)
+```
+StreamResponse.http_request = 4  (edge → hub)   HttpRequest  { request_id, proxy, method, path, raw_query, repeated HttpHeader headers, body }
+StreamRequest.http_response = 4  (hub → edge)   HttpResponse { request_id, status, repeated HttpHeader headers, body, error }
+ConnectRequest.proxies = 6                      names the hub serves; capability "proxy"
+```
+Headers are a repeated name/value list (Set-Cookie repeats), without hop-by-hop headers.
+The edge only sends `http_request` to a hub that advertised `"proxy"` and the name. Several
+requests are in flight at once on one stream, matched by `request_id`; the edge's send loop
+interleaves them with webhook envelopes without reordering deliveries, and the hub handles
+each in its own goroutine (64 at once) beside its per-destination webhook workers. When the
+stream drops, every pending request fails with 502. Bodies are buffered (10 MiB cap); no
+streaming or WebSockets.
+
 ---
 
 ## Security
@@ -281,6 +298,7 @@ HOME_HUB_SECRET=<pre-shared-secret>
 # Server
 PORT=8080
 BASE_URL=https://hooks.dx314.com
+PROXY_TIMEOUT=45s                  # Optional: how long /p/ waits for the hub (min 35s)
 ```
 
 ---
@@ -368,3 +386,4 @@ services:
 | 37 | Late destinations: **No back-fill; removal abandons** | A destination added later only sees new webhooks (explicit replay can target it). Removing one deletes its deliveries; the last destination can't be removed. |
 | 38 | Disabled destination: **Paused** | Skipped for new webhooks, pending deliveries held, excluded from the derived status. At least one destination must stay enabled (mute the endpoint instead). |
 | 39 | Hub overrides: **Per destination name; legacy `destination:` = primary only** | A per-endpoint override must never capture a second destination's traffic. |
+| 40 | Reverse proxy: **`/p/{hub_id}/{name}/*` over the existing stream, opt-in per hub via `proxies:`** | A Telegram Mini App (homeboy) needs a public HTTPS origin without exposing the home network. Same stream, new oneof fields + `proxy` capability; the CLI forwards only to configured names under allowed path prefixes; the edge stores and verifies nothing, the app authenticates. Buffered, synchronous, timeouts sized for long-polling (edge 45s configurable, hub 40s, 64 concurrent). |

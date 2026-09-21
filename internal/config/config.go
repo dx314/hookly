@@ -7,8 +7,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"hooks.dx314.com/internal/crypto"
+	"hooks.dx314.com/internal/proxy"
 
 	"github.com/joho/godotenv"
 )
@@ -25,6 +27,9 @@ type Config struct {
 	GitHubAllowedUsers []string
 	TelegramBotToken   string
 	TelegramChatID     string
+	// ProxyTimeout is how long /p/ waits for a hub's response (PROXY_TIMEOUT,
+	// a Go duration such as "45s"; at least 35s so long-polls fit).
+	ProxyTimeout time.Duration
 }
 
 // Load loads configuration from environment variables.
@@ -65,6 +70,19 @@ func Load() (*Config, error) {
 	// Telegram notifications (optional)
 	cfg.TelegramBotToken = os.Getenv("TELEGRAM_BOT_TOKEN")
 	cfg.TelegramChatID = os.Getenv("TELEGRAM_CHAT_ID")
+
+	// Reverse proxy (/p/): wait for the hub at least as long as a long-poll
+	cfg.ProxyTimeout = proxy.DefaultTimeout
+	if v := os.Getenv("PROXY_TIMEOUT"); v != "" {
+		d, err := time.ParseDuration(v)
+		if err != nil {
+			return nil, fmt.Errorf("invalid PROXY_TIMEOUT %q: %w", v, err)
+		}
+		if d < proxy.MinTimeout {
+			return nil, fmt.Errorf("PROXY_TIMEOUT %s is below the minimum %s", d, proxy.MinTimeout)
+		}
+		cfg.ProxyTimeout = d
+	}
 
 	return cfg, nil
 }

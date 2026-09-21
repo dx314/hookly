@@ -12,3 +12,12 @@ func NewEndpointID() string {
 	id, _ := gonanoid.New(EndpointIDLength)
 	return id
 }
+
+// RequestIDLength is the length of proxied-request IDs (matched on the stream only).
+const RequestIDLength = 21
+
+// NewRequestID generates an ID for one proxied HTTP request.
+func NewRequestID() string {
+	id, _ := gonanoid.New(RequestIDLength)
+	return id
+}

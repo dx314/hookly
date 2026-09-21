@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"hooks.dx314.com/internal/proxy"
 )
 
 // HooklyConfig holds configuration for the hookly CLI.
@@ -14,8 +16,21 @@ type HooklyConfig struct {
 	EdgeURL   string           `yaml:"edge_url"`
 	HubID     string           `yaml:"hub_id,omitempty"` // Optional, auto-generated from hostname if empty
 	Endpoints []EndpointConfig `yaml:"endpoints"`
+	// Proxies are local services reachable from the edge at
+	// /p/{hub_id}/{name}/... (reverse proxy through the stream). Optional:
+	// without it nothing is ever proxied.
+	Proxies []ProxyConfig `yaml:"proxies,omitempty"`
 	// Token is loaded from credentials, not from YAML
 	Token string `yaml:"-"`
+}
+
+// ProxyConfig is one local service the relay reverse-proxies.
+type ProxyConfig struct {
+	Name string `yaml:"name"` // Second segment of the public URL, /p/{hub_id}/{name}/
+	URL  string `yaml:"url"`  // Local base URL, e.g. http://127.0.0.1:8790
+	// Only requests under these path prefixes are forwarded (e.g. ["/app/"]);
+	// anything else answers 404. Paths reach the service unchanged.
+	Paths []string `yaml:"paths"`
 }
 
 // EndpointConfig defines an endpoint this hub handles.
@@ -51,8 +66,8 @@ func (c *HooklyConfig) Validate() error {
 	if c.EdgeURL == "" {
 		return errors.New("edge_url is required")
 	}
-	if len(c.Endpoints) == 0 {
-		return errors.New("at least one endpoint is required")
+	if len(c.Endpoints) == 0 && len(c.Proxies) == 0 {
+		return errors.New("at least one endpoint (or proxy) is required")
 	}
 
 	for i, ep := range c.Endpoints {
@@ -61,7 +76,32 @@ func (c *HooklyConfig) Validate() error {
 		}
 	}
 
+	seen := make(map[string]bool, len(c.Proxies))
+	for i, p := range c.Proxies {
+		if err := proxy.ValidateUpstream(p.Upstream()); err != nil {
+			return fmt.Errorf("proxy %d: %w", i, err)
+		}
+		if seen[p.Name] {
+			return fmt.Errorf("proxy %d: name %q is listed twice", i, p.Name)
+		}
+		seen[p.Name] = true
+	}
+
 	return nil
+}
+
+// Upstream is the proxy package's view of this entry.
+func (p ProxyConfig) Upstream() proxy.Upstream {
+	return proxy.Upstream{Name: p.Name, URL: p.URL, Paths: p.Paths}
+}
+
+// ProxyUpstreams lists the configured proxies for proxy.NewForwarder.
+func (c *HooklyConfig) ProxyUpstreams() []proxy.Upstream {
+	ups := make([]proxy.Upstream, 0, len(c.Proxies))
+	for _, p := range c.Proxies {
+		ups = append(ups, p.Upstream())
+	}
+	return ups
 }
 
 // GetHubID returns the hub ID, auto-generating from hostname if not set.
@@ -140,5 +180,14 @@ endpoints:
     destinations:
       otto: "http://localhost:8788/telegram"
       schoolboy: "http://localhost:8789/telegram"
+
+# Optional: reverse-proxy local web services through the relay. Each is
+# reachable at https://hooks.example.com/p/<hub_id>/<name>/... and only the
+# listed path prefixes are forwarded (everything else answers 404). The
+# service does its own authentication; the edge verifies nothing.
+# proxies:
+#   - name: "homeboy"
+#     url: "http://127.0.0.1:8790"
+#     paths: ["/app/"]
 `
 }

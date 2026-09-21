@@ -305,6 +305,7 @@ func runRelay(c *cli.Context) error {
 		"edge_url", cfg.EdgeURL,
 		"hub_id", cfg.GetHubID(),
 		"endpoints", len(cfg.Endpoints),
+		"proxies", len(cfg.Proxies),
 	)
 
 	// Create relay client
@@ -522,8 +523,11 @@ func runStatus(c *cli.Context) error {
 			fmt.Printf("Config:    hookly.yaml (error: %v)\n", err)
 		} else {
 			fmt.Printf("Config:    hookly.yaml\n")
-			fmt.Printf("Hub ID:    %s\n", cfg.HubID)
+			fmt.Printf("Hub ID:    %s\n", cfg.GetHubID())
 			fmt.Printf("Endpoints: %d\n", len(cfg.Endpoints))
+			for _, p := range cfg.Proxies {
+				fmt.Printf("Proxy:     %s/p/%s/%s%s -> %s\n", strings.TrimSuffix(cfg.EdgeURL, "/"), cfg.GetHubID(), p.Name, strings.Join(p.Paths, ","), p.URL)
+			}
 		}
 	} else {
 		fmt.Println("Config:    Not found (run 'hookly init')")

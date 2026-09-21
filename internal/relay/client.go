@@ -18,6 +18,7 @@ import (
 	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
 	"hooks.dx314.com/internal/api/hookly/v1/hooklyv1connect"
 	"hooks.dx314.com/internal/config"
+	"hooks.dx314.com/internal/proxy"
 	"hooks.dx314.com/internal/webhook"
 )
 
@@ -43,15 +44,28 @@ var (
 type Client struct {
 	config     *config.HooklyConfig
 	forwarder  *webhook.Forwarder
-	httpClient *http.Client // nil: HTTP/2 over TLS with keepalives (see connect)
+	proxy      *proxy.Forwarder // local services under `proxies:`; empty when none
+	httpClient *http.Client     // nil: HTTP/2 over TLS with keepalives (see connect)
 }
 
 // NewClient creates a new relay client from HooklyConfig.
 func NewClient(cfg *config.HooklyConfig) *Client {
+	fwd, err := proxy.NewForwarder(cfg.ProxyUpstreams())
+	if err != nil {
+		// Validate already rejected this; serve no proxies rather than a wrong one
+		slog.Error("proxies not served", "error", err)
+		fwd, _ = proxy.NewForwarder(nil)
+	}
 	return &Client{
 		config:    cfg,
 		forwarder: webhook.NewForwarder(),
+		proxy:     fwd,
 	}
+}
+
+// Proxy exposes the local forwarder (used by tests).
+func (c *Client) Proxy() *proxy.Forwarder {
+	return c.proxy
 }
 
 // SetHTTPClient replaces the HTTP client used to reach the edge (used by tests).
@@ -171,7 +185,8 @@ func (c *Client) connect(ctx context.Context) error {
 				HubId:        hubID,
 				Token:        c.config.Token,
 				EndpointIds:  c.config.EndpointIDs(),
-				Capabilities: []string{CapabilityFanout},
+				Capabilities: []string{CapabilityFanout, CapabilityProxy},
+				Proxies:      c.proxy.Names(),
 			},
 		},
 	}); err != nil {
@@ -195,9 +210,10 @@ func (c *Client) connect(ctx context.Context) error {
 	}
 
 	slog.Debug("auth succeeded")
-	slog.Info("connected to edge", "endpoints", c.config.EndpointIDs())
+	slog.Info("connected to edge", "endpoints", c.config.EndpointIDs(), "proxies", c.proxy.Names())
 
-	// Sends come from the heartbeat goroutine and the destination workers
+	// Sends come from the heartbeat goroutine, the destination workers and
+	// the proxy goroutines
 	var sendMu sync.Mutex
 	send := func(req *hooklyv1.StreamRequest) error {
 		sendMu.Lock()
@@ -210,6 +226,10 @@ func (c *Client) connect(ctx context.Context) error {
 	connCtx, cancelWorkers := context.WithCancel(ctx)
 	defer cancelWorkers()
 	workers := make(map[string]chan *hooklyv1.WebhookEnvelope)
+
+	// Proxied requests each get a goroutine (a long-poll may hold one for
+	// ~25s), bounded by this semaphore. They never touch the webhook workers.
+	proxySem := make(chan struct{}, proxy.MaxConcurrent)
 
 	// Start heartbeat sender
 	heartbeatDone := make(chan struct{})
@@ -285,6 +305,8 @@ func (c *Client) connect(ctx context.Context) error {
 					"destination", m.Webhook.DestinationName,
 				)
 			}
+		case *hooklyv1.StreamResponse_HttpRequest:
+			go c.handleHTTPRequest(connCtx, send, proxySem, m.HttpRequest)
 		case *hooklyv1.StreamResponse_Heartbeat:
 			slog.Debug("heartbeat from edge", "timestamp", m.Heartbeat.Timestamp)
 		default:
@@ -337,6 +359,28 @@ func (c *Client) handleWebhook(ctx context.Context, send func(*hooklyv1.StreamRe
 		},
 	}); err != nil {
 		slog.Error("failed to send ACK", "webhook_id", envelope.Id, "error", err)
+	}
+}
+
+// handleHTTPRequest forwards one proxied request to its local service and
+// sends the response back. It waits for a semaphore slot first, so at most
+// proxy.MaxConcurrent requests are upstream at once.
+func (c *Client) handleHTTPRequest(ctx context.Context, send func(*hooklyv1.StreamRequest) error, sem chan struct{}, req *hooklyv1.HttpRequest) {
+	select {
+	case sem <- struct{}{}:
+		defer func() { <-sem }()
+	case <-ctx.Done():
+		return
+	}
+
+	resp := c.proxy.Handle(ctx, req)
+	if ctx.Err() != nil {
+		return // stream gone; the edge already failed the request
+	}
+	if err := send(&hooklyv1.StreamRequest{
+		Message: &hooklyv1.StreamRequest_HttpResponse{HttpResponse: resp},
+	}); err != nil {
+		slog.Error("failed to send proxy response", "request_id", req.RequestId, "error", err)
 	}
 }
 

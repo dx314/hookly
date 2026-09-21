@@ -144,6 +144,23 @@ endpoints:
       schoolboy: "http://localhost:8789/telegram"
 ```
 
+### Reverse proxy (`proxies:`)
+
+The relay can also serve a local web app to the internet through the same stream, like a small Cloudflare Tunnel. Add to `hookly.yaml`:
+
+```yaml
+proxies:
+  - name: "homeboy"
+    url: "http://127.0.0.1:8790"
+    paths: ["/app/"]   # only these prefixes are forwarded; anything else answers 404
+```
+
+The app is then reachable at `https://hooks.dx314.com/p/<hub_id>/homeboy/app/...` for any HTTP method. The `/p/<hub_id>/homeboy` prefix is stripped, so the app sees `/app/...`; it also gets `X-Forwarded-For`, `-Proto`, `-Host` and `X-Forwarded-Prefix`. Hop-by-hop headers are dropped both ways, redirects are passed back as-is, and request and response bodies are capped at 10 MiB. Without a `proxies:` section nothing is ever proxied; the request can never pick the upstream host, and `..` (encoded or not) is rejected at both ends.
+
+The edge verifies nothing and stores nothing for these requests: **the app must do its own authentication** (a Telegram Mini App verifies `initData`). The edge answers `502` when that hub is not connected, `504` when the app does not answer within `PROXY_TIMEOUT` (default 45s, so a long-poll of ~25s fits) and `503` when the hub already has 128 requests in flight. The CLI forwards up to 64 requests at once, independently of webhook delivery. Streaming responses and WebSockets are not supported.
+
+**Upgrading**: deploy the edge first, then the CLI. An older CLI simply never advertises the `proxy` capability and is never sent a request; an older edge ignores the `proxies:` list.
+
 ### Multiple destinations
 
 An endpoint starts with one destination and can have more (UI: endpoint → Edit → Destinations; API: `AddDestination` / `UpdateDestination` / `RemoveDestination`; MCP: `hookly_add_destination` etc.).
@@ -163,7 +180,7 @@ An endpoint starts with one destination and can have more (UI: endpoint → Edit
 | Path | Description |
 |------|-------------|
 | `~/.config/hookly/credentials.json` | Encrypted auth credentials |
-| `./hookly.yaml` | Endpoint configuration |
+| `./hookly.yaml` | Endpoint (and proxy) configuration |
 
 ## Signature Verification
 

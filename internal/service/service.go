@@ -81,6 +81,7 @@ func (p *Program) Start(s service.Service) error {
 		"edge_url", hooklyCfg.EdgeURL,
 		"hub_id", hooklyCfg.GetHubID(),
 		"endpoints", len(hooklyCfg.Endpoints),
+		"proxies", len(hooklyCfg.Proxies),
 	)
 
 	return nil

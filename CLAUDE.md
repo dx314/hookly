@@ -20,6 +20,8 @@ External → edge-gateway (public) ←gRPC stream← hookly CLI (private) → lo
 
 **Data flow**: POST `/h/{id}` → verify sig → store + one delivery per destination → 200 → push each delivery to CLI → forward → ACK per delivery
 
+**Reverse proxy** (`/p/{hub_id}/{name}/*`, any method): the edge turns the request into an `HttpRequest` on the same stream, the CLI forwards it to the local service named under `proxies:` in `hookly.yaml` (only its `paths` prefixes; the `/p/{hub_id}/{name}` prefix is stripped) and returns an `HttpResponse`. Nothing is verified or stored at the edge; the service does its own auth. Only hubs advertising the `proxy` capability and the name are sent requests; 502 if none is connected, 504 after `PROXY_TIMEOUT` (default 45s, min 35s: long-polls), bodies capped at 10 MiB. `internal/proxy/` holds both ends and the shared header/path rules; pending requests live on `relay.HubConnection` and fail on disconnect.
+
 **Fan-out**: endpoint → 1..N `destinations`; `deliveries` (webhook × destination) hold status/attempts/backoff. `webhooks.status` etc. are a derived rollup (`db.Rollup`). All multi-row changes go through `db.Store` (`internal/db/store.go`), not raw queries. `endpoints.destination_url` is a legacy column mirroring the primary (first) destination. CLIs advertise the `fanout` capability; CLIs without it only get primary destinations.
 
 ## Key Files
@@ -31,6 +33,7 @@ External → edge-gateway (public) ←gRPC stream← hookly CLI (private) → lo
 | **Schema** | `sql/schema.sql`, `sql/queries/*.sql`, `internal/db/migrations/*.sql`, `internal/db/{store,rollup}.go` |
 | **Webhook** | `internal/webhook/{handler,verify,forwarder,scheduler,backoff}.go` |
 | **Relay** | `internal/relay/{handler,client,dispatcher,manager}.go` |
+| **Proxy** | `internal/proxy/{headers,local,edge}.go` (shared rules, CLI forwarder, edge `/p/` handler) |
 | **Auth** | `internal/auth/{github,session,authorize,handlers}.go` |
 | **API** | `internal/service/edge/service.go` (ConnectRPC) |
 | **Config** | `internal/config/{config,hookly}.go` |
@@ -67,11 +70,11 @@ Migrations run automatically on startup. Files in `internal/db/migrations/`.
 
 ## Env Vars
 
-**Edge**: `DATABASE_PATH`, `ENCRYPTION_KEY`, `PORT`, `BASE_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_ORG`, `GITHUB_ALLOWED_USERS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
+**Edge**: `DATABASE_PATH`, `ENCRYPTION_KEY`, `PORT`, `BASE_URL`, `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, `GITHUB_ORG`, `GITHUB_ALLOWED_USERS`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `PROXY_TIMEOUT` (optional, default `45s`)
 
 **MCP**: Uses CLI credentials from `hookly login`. Optional: `DATABASE_PATH`, `ENCRYPTION_KEY`, `BASE_URL`.
 
-**CLI**: Uses bearer token auth (from `hookly login`). Config: `hookly.yaml`, creds: `~/.config/hookly/credentials.json`
+**CLI**: Uses bearer token auth (from `hookly login`). Config: `hookly.yaml` (`endpoints:`, optional `proxies:`), creds: `~/.config/hookly/credentials.json`
 
 ## CLI
 

@@ -72,10 +72,11 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 		return h.sendConnectError(stream, connect.CodeUnauthenticated, "AUTH_FAILED", "authentication failed")
 	}
 
-	// Verify user owns the requested endpoints
+	// Verify user owns the requested endpoints. A hub may also connect for
+	// its proxies alone.
 	endpointIDs := connectReq.EndpointIds
-	if len(endpointIDs) == 0 {
-		return h.sendConnectError(stream, connect.CodeInvalidArgument, "NO_ENDPOINTS", "no endpoints specified in hookly.yaml")
+	if len(endpointIDs) == 0 && len(connectReq.Proxies) == 0 {
+		return h.sendConnectError(stream, connect.CodeInvalidArgument, "NO_ENDPOINTS", "no endpoints or proxies specified in hookly.yaml")
 	}
 
 	for _, epID := range endpointIDs {
@@ -95,7 +96,7 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 	hubID := connectReq.HubId
 
 	// Register connection with endpoints, unless another live relay has them
-	conn, conflict := h.manager.TryAddConnection(hubID, endpointIDs, connectReq.Capabilities, staleTimeout)
+	conn, conflict := h.manager.TryAddConnection(hubID, endpointIDs, connectReq.Capabilities, connectReq.Proxies, staleTimeout)
 	if conflict != nil {
 		slog.Warn("endpoint already relayed by another hub",
 			"hub_id", hubID, "endpoint_id", conflict.EndpointID, "holder", conflict.HubID)
@@ -145,6 +146,8 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 				h.handleAck(ctx, conn, m.Ack)
 			case *hooklyv1.StreamRequest_Heartbeat:
 				h.manager.UpdateHeartbeat(hubID)
+			case *hooklyv1.StreamRequest_HttpResponse:
+				conn.ResolveProxy(m.HttpResponse)
 			}
 		}
 	}()
@@ -157,8 +160,10 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 	staleTicker := time.NewTicker(10 * time.Second)
 	defer staleTicker.Stop()
 
-	// Main loop: send webhooks and heartbeats
+	// Main loop: the only writer to the stream. Webhooks, proxied requests
+	// and heartbeats each have their own channel, so none holds up another.
 	sendCh := conn.SendCh()
+	proxyCh := conn.ProxyCh()
 	for {
 		select {
 		case <-ctx.Done():
@@ -177,6 +182,11 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 					Webhook: webhook,
 				},
 			}); err != nil {
+				return err
+			}
+
+		case msg := <-proxyCh:
+			if err := stream.Send(msg); err != nil {
 				return err
 			}
 

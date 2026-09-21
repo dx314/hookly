@@ -18,6 +18,7 @@ import (
 	"hooks.dx314.com/internal/config"
 	"hooks.dx314.com/internal/db"
 	"hooks.dx314.com/internal/notify"
+	"hooks.dx314.com/internal/proxy"
 	"hooks.dx314.com/internal/relay"
 	"hooks.dx314.com/internal/server"
 	"hooks.dx314.com/internal/service/edge"
@@ -85,6 +86,9 @@ func run() error {
 	// Webhook ingestion (no auth required)
 	webhookHandler := webhook.NewHandler(store, secretManager)
 	r.Post("/h/{endpointID}", webhookHandler.ServeHTTP)
+
+	// Reverse proxy to a hub's local service (no auth here: the service does its own)
+	r.Handle("/p/*", proxy.NewHandler(connMgr, cfg.ProxyTimeout))
 
 	// Authentication
 	var sessionManager *auth.SessionManager
@@ -200,6 +204,7 @@ func run() error {
 		"base_url", cfg.BaseURL,
 		"github_auth", cfg.GitHubAuthEnabled(),
 		"telegram", cfg.TelegramEnabled(),
+		"proxy_timeout", cfg.ProxyTimeout.String(),
 	)
 
 	// Wait for shutdown signal

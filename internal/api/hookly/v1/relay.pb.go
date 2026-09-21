@@ -30,6 +30,7 @@ type StreamRequest struct {
 	//	*StreamRequest_Connect
 	//	*StreamRequest_Ack
 	//	*StreamRequest_Heartbeat
+	//	*StreamRequest_HttpResponse
 	Message       isStreamRequest_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -99,6 +100,15 @@ func (x *StreamRequest) GetHeartbeat() *Heartbeat {
 	return nil
 }
 
+func (x *StreamRequest) GetHttpResponse() *HttpResponse {
+	if x != nil {
+		if x, ok := x.Message.(*StreamRequest_HttpResponse); ok {
+			return x.HttpResponse
+		}
+	}
+	return nil
+}
+
 type isStreamRequest_Message interface {
 	isStreamRequest_Message()
 }
@@ -115,11 +125,17 @@ type StreamRequest_Heartbeat struct {
 	Heartbeat *Heartbeat `protobuf:"bytes,3,opt,name=heartbeat,proto3,oneof"`
 }
 
+type StreamRequest_HttpResponse struct {
+	HttpResponse *HttpResponse `protobuf:"bytes,4,opt,name=http_response,json=httpResponse,proto3,oneof"` // Answer to an HttpRequest (proxy)
+}
+
 func (*StreamRequest_Connect) isStreamRequest_Message() {}
 
 func (*StreamRequest_Ack) isStreamRequest_Message() {}
 
 func (*StreamRequest_Heartbeat) isStreamRequest_Message() {}
+
+func (*StreamRequest_HttpResponse) isStreamRequest_Message() {}
 
 // Messages from edge to home-hub
 type StreamResponse struct {
@@ -129,6 +145,7 @@ type StreamResponse struct {
 	//	*StreamResponse_ConnectResponse
 	//	*StreamResponse_Webhook
 	//	*StreamResponse_Heartbeat
+	//	*StreamResponse_HttpRequest
 	Message       isStreamResponse_Message `protobuf_oneof:"message"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -198,6 +215,15 @@ func (x *StreamResponse) GetHeartbeat() *Heartbeat {
 	return nil
 }
 
+func (x *StreamResponse) GetHttpRequest() *HttpRequest {
+	if x != nil {
+		if x, ok := x.Message.(*StreamResponse_HttpRequest); ok {
+			return x.HttpRequest
+		}
+	}
+	return nil
+}
+
 type isStreamResponse_Message interface {
 	isStreamResponse_Message()
 }
@@ -214,11 +240,17 @@ type StreamResponse_Heartbeat struct {
 	Heartbeat *Heartbeat `protobuf:"bytes,3,opt,name=heartbeat,proto3,oneof"`
 }
 
+type StreamResponse_HttpRequest struct {
+	HttpRequest *HttpRequest `protobuf:"bytes,4,opt,name=http_request,json=httpRequest,proto3,oneof"` // Only sent to hubs with the "proxy" capability
+}
+
 func (*StreamResponse_ConnectResponse) isStreamResponse_Message() {}
 
 func (*StreamResponse_Webhook) isStreamResponse_Message() {}
 
 func (*StreamResponse_Heartbeat) isStreamResponse_Message() {}
+
+func (*StreamResponse_HttpRequest) isStreamResponse_Message() {}
 
 // Initial connection request with authentication
 type ConnectRequest struct {
@@ -229,10 +261,15 @@ type ConnectRequest struct {
 	// Optional features this hub understands. Hubs that predate a feature omit it.
 	//
 	//	"fanout" - one envelope per (webhook, destination); acks echo delivery_id.
+	//	"proxy"  - understands HttpRequest / HttpResponse (reverse proxy).
 	//
 	// Hubs without "fanout" are only sent each endpoint's primary destination.
 	// (4 is skipped: it was endpoint_ids before bearer-token auth.)
-	Capabilities  []string `protobuf:"bytes,5,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
+	Capabilities []string `protobuf:"bytes,5,rep,name=capabilities,proto3" json:"capabilities,omitempty"`
+	// Names of the local services this hub reverse-proxies (the `proxies:`
+	// section of hookly.yaml). The edge serves /p/{hub_id}/{name}/* for each
+	// and never sends an HttpRequest for a name that is not listed here.
+	Proxies       []string `protobuf:"bytes,6,rep,name=proxies,proto3" json:"proxies,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -291,6 +328,13 @@ func (x *ConnectRequest) GetEndpointIds() []string {
 func (x *ConnectRequest) GetCapabilities() []string {
 	if x != nil {
 		return x.Capabilities
+	}
+	return nil
+}
+
+func (x *ConnectRequest) GetProxies() []string {
+	if x != nil {
+		return x.Proxies
 	}
 	return nil
 }
@@ -615,26 +659,256 @@ func (x *DeliveryAck) GetDestinationId() string {
 	return ""
 }
 
+// HttpHeader is one header line. Headers repeat (Set-Cookie), so this is a
+// list rather than a map.
+type HttpHeader struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HttpHeader) Reset() {
+	*x = HttpHeader{}
+	mi := &file_hookly_v1_relay_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HttpHeader) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HttpHeader) ProtoMessage() {}
+
+func (x *HttpHeader) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_relay_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HttpHeader.ProtoReflect.Descriptor instead.
+func (*HttpHeader) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_relay_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *HttpHeader) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *HttpHeader) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+// HttpRequest is a synchronous HTTP request the edge received at
+// /p/{hub_id}/{proxy}/... and forwards to the hub's local service. The hub
+// answers with an HttpResponse carrying the same request_id.
+type HttpRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Proxy         string                 `protobuf:"bytes,2,opt,name=proxy,proto3" json:"proxy,omitempty"` // Name from ConnectRequest.proxies
+	Method        string                 `protobuf:"bytes,3,opt,name=method,proto3" json:"method,omitempty"`
+	Path          string                 `protobuf:"bytes,4,opt,name=path,proto3" json:"path,omitempty"`                         // Already stripped of /p/{hub_id}/{proxy}; starts with "/"
+	RawQuery      string                 `protobuf:"bytes,5,opt,name=raw_query,json=rawQuery,proto3" json:"raw_query,omitempty"` // Without the "?"
+	Headers       []*HttpHeader          `protobuf:"bytes,6,rep,name=headers,proto3" json:"headers,omitempty"`                   // Hop-by-hop headers removed; X-Forwarded-* added
+	Body          []byte                 `protobuf:"bytes,7,opt,name=body,proto3" json:"body,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HttpRequest) Reset() {
+	*x = HttpRequest{}
+	mi := &file_hookly_v1_relay_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HttpRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HttpRequest) ProtoMessage() {}
+
+func (x *HttpRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_relay_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HttpRequest.ProtoReflect.Descriptor instead.
+func (*HttpRequest) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_relay_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *HttpRequest) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *HttpRequest) GetProxy() string {
+	if x != nil {
+		return x.Proxy
+	}
+	return ""
+}
+
+func (x *HttpRequest) GetMethod() string {
+	if x != nil {
+		return x.Method
+	}
+	return ""
+}
+
+func (x *HttpRequest) GetPath() string {
+	if x != nil {
+		return x.Path
+	}
+	return ""
+}
+
+func (x *HttpRequest) GetRawQuery() string {
+	if x != nil {
+		return x.RawQuery
+	}
+	return ""
+}
+
+func (x *HttpRequest) GetHeaders() []*HttpHeader {
+	if x != nil {
+		return x.Headers
+	}
+	return nil
+}
+
+func (x *HttpRequest) GetBody() []byte {
+	if x != nil {
+		return x.Body
+	}
+	return nil
+}
+
+// HttpResponse is the local service's answer to an HttpRequest. When error is
+// set the other fields are ignored and the edge answers 502.
+type HttpResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RequestId     string                 `protobuf:"bytes,1,opt,name=request_id,json=requestId,proto3" json:"request_id,omitempty"`
+	Status        int32                  `protobuf:"varint,2,opt,name=status,proto3" json:"status,omitempty"`
+	Headers       []*HttpHeader          `protobuf:"bytes,3,rep,name=headers,proto3" json:"headers,omitempty"`
+	Body          []byte                 `protobuf:"bytes,4,opt,name=body,proto3" json:"body,omitempty"`
+	Error         string                 `protobuf:"bytes,5,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HttpResponse) Reset() {
+	*x = HttpResponse{}
+	mi := &file_hookly_v1_relay_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HttpResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HttpResponse) ProtoMessage() {}
+
+func (x *HttpResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_hookly_v1_relay_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HttpResponse.ProtoReflect.Descriptor instead.
+func (*HttpResponse) Descriptor() ([]byte, []int) {
+	return file_hookly_v1_relay_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *HttpResponse) GetRequestId() string {
+	if x != nil {
+		return x.RequestId
+	}
+	return ""
+}
+
+func (x *HttpResponse) GetStatus() int32 {
+	if x != nil {
+		return x.Status
+	}
+	return 0
+}
+
+func (x *HttpResponse) GetHeaders() []*HttpHeader {
+	if x != nil {
+		return x.Headers
+	}
+	return nil
+}
+
+func (x *HttpResponse) GetBody() []byte {
+	if x != nil {
+		return x.Body
+	}
+	return nil
+}
+
+func (x *HttpResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
 var File_hookly_v1_relay_proto protoreflect.FileDescriptor
 
 const file_hookly_v1_relay_proto_rawDesc = "" +
 	"\n" +
-	"\x15hookly/v1/relay.proto\x12\thookly.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb3\x01\n" +
+	"\x15hookly/v1/relay.proto\x12\thookly.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf3\x01\n" +
 	"\rStreamRequest\x125\n" +
 	"\aconnect\x18\x01 \x01(\v2\x19.hookly.v1.ConnectRequestH\x00R\aconnect\x12*\n" +
 	"\x03ack\x18\x02 \x01(\v2\x16.hookly.v1.DeliveryAckH\x00R\x03ack\x124\n" +
-	"\theartbeat\x18\x03 \x01(\v2\x14.hookly.v1.HeartbeatH\x00R\theartbeatB\t\n" +
-	"\amessage\"\xd2\x01\n" +
+	"\theartbeat\x18\x03 \x01(\v2\x14.hookly.v1.HeartbeatH\x00R\theartbeat\x12>\n" +
+	"\rhttp_response\x18\x04 \x01(\v2\x17.hookly.v1.HttpResponseH\x00R\fhttpResponseB\t\n" +
+	"\amessage\"\x8f\x02\n" +
 	"\x0eStreamResponse\x12G\n" +
 	"\x10connect_response\x18\x01 \x01(\v2\x1a.hookly.v1.ConnectResponseH\x00R\x0fconnectResponse\x126\n" +
 	"\awebhook\x18\x02 \x01(\v2\x1a.hookly.v1.WebhookEnvelopeH\x00R\awebhook\x124\n" +
-	"\theartbeat\x18\x03 \x01(\v2\x14.hookly.v1.HeartbeatH\x00R\theartbeatB\t\n" +
-	"\amessage\"\x84\x01\n" +
+	"\theartbeat\x18\x03 \x01(\v2\x14.hookly.v1.HeartbeatH\x00R\theartbeat\x12;\n" +
+	"\fhttp_request\x18\x04 \x01(\v2\x16.hookly.v1.HttpRequestH\x00R\vhttpRequestB\t\n" +
+	"\amessage\"\x9e\x01\n" +
 	"\x0eConnectRequest\x12\x15\n" +
 	"\x06hub_id\x18\x01 \x01(\tR\x05hubId\x12\x14\n" +
 	"\x05token\x18\x02 \x01(\tR\x05token\x12!\n" +
 	"\fendpoint_ids\x18\x03 \x03(\tR\vendpointIds\x12\"\n" +
-	"\fcapabilities\x18\x05 \x03(\tR\fcapabilities\"A\n" +
+	"\fcapabilities\x18\x05 \x03(\tR\fcapabilities\x12\x18\n" +
+	"\aproxies\x18\x06 \x03(\tR\aproxies\"A\n" +
 	"\x0fConnectResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x14\n" +
 	"\x05error\x18\x02 \x01(\tR\x05error\")\n" +
@@ -669,7 +943,27 @@ const file_hookly_v1_relay_proto_rawDesc = "" +
 	"\x11permanent_failure\x18\x05 \x01(\bR\x10permanentFailure\x12\x1f\n" +
 	"\vdelivery_id\x18\x06 \x01(\tR\n" +
 	"deliveryId\x12%\n" +
-	"\x0edestination_id\x18\a \x01(\tR\rdestinationId2Q\n" +
+	"\x0edestination_id\x18\a \x01(\tR\rdestinationId\"6\n" +
+	"\n" +
+	"HttpHeader\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\"\xd0\x01\n" +
+	"\vHttpRequest\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x14\n" +
+	"\x05proxy\x18\x02 \x01(\tR\x05proxy\x12\x16\n" +
+	"\x06method\x18\x03 \x01(\tR\x06method\x12\x12\n" +
+	"\x04path\x18\x04 \x01(\tR\x04path\x12\x1b\n" +
+	"\traw_query\x18\x05 \x01(\tR\brawQuery\x12/\n" +
+	"\aheaders\x18\x06 \x03(\v2\x15.hookly.v1.HttpHeaderR\aheaders\x12\x12\n" +
+	"\x04body\x18\a \x01(\fR\x04body\"\xa0\x01\n" +
+	"\fHttpResponse\x12\x1d\n" +
+	"\n" +
+	"request_id\x18\x01 \x01(\tR\trequestId\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\x05R\x06status\x12/\n" +
+	"\aheaders\x18\x03 \x03(\v2\x15.hookly.v1.HttpHeaderR\aheaders\x12\x12\n" +
+	"\x04body\x18\x04 \x01(\fR\x04body\x12\x14\n" +
+	"\x05error\x18\x05 \x01(\tR\x05error2Q\n" +
 	"\fRelayService\x12A\n" +
 	"\x06Stream\x12\x18.hookly.v1.StreamRequest\x1a\x19.hookly.v1.StreamResponse(\x010\x01B\x91\x01\n" +
 	"\rcom.hookly.v1B\n" +
@@ -688,7 +982,7 @@ func file_hookly_v1_relay_proto_rawDescGZIP() []byte {
 	return file_hookly_v1_relay_proto_rawDescData
 }
 
-var file_hookly_v1_relay_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_hookly_v1_relay_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_hookly_v1_relay_proto_goTypes = []any{
 	(*StreamRequest)(nil),         // 0: hookly.v1.StreamRequest
 	(*StreamResponse)(nil),        // 1: hookly.v1.StreamResponse
@@ -697,25 +991,32 @@ var file_hookly_v1_relay_proto_goTypes = []any{
 	(*Heartbeat)(nil),             // 4: hookly.v1.Heartbeat
 	(*WebhookEnvelope)(nil),       // 5: hookly.v1.WebhookEnvelope
 	(*DeliveryAck)(nil),           // 6: hookly.v1.DeliveryAck
-	nil,                           // 7: hookly.v1.WebhookEnvelope.HeadersEntry
-	(*timestamppb.Timestamp)(nil), // 8: google.protobuf.Timestamp
+	(*HttpHeader)(nil),            // 7: hookly.v1.HttpHeader
+	(*HttpRequest)(nil),           // 8: hookly.v1.HttpRequest
+	(*HttpResponse)(nil),          // 9: hookly.v1.HttpResponse
+	nil,                           // 10: hookly.v1.WebhookEnvelope.HeadersEntry
+	(*timestamppb.Timestamp)(nil), // 11: google.protobuf.Timestamp
 }
 var file_hookly_v1_relay_proto_depIdxs = []int32{
-	2, // 0: hookly.v1.StreamRequest.connect:type_name -> hookly.v1.ConnectRequest
-	6, // 1: hookly.v1.StreamRequest.ack:type_name -> hookly.v1.DeliveryAck
-	4, // 2: hookly.v1.StreamRequest.heartbeat:type_name -> hookly.v1.Heartbeat
-	3, // 3: hookly.v1.StreamResponse.connect_response:type_name -> hookly.v1.ConnectResponse
-	5, // 4: hookly.v1.StreamResponse.webhook:type_name -> hookly.v1.WebhookEnvelope
-	4, // 5: hookly.v1.StreamResponse.heartbeat:type_name -> hookly.v1.Heartbeat
-	8, // 6: hookly.v1.WebhookEnvelope.received_at:type_name -> google.protobuf.Timestamp
-	7, // 7: hookly.v1.WebhookEnvelope.headers:type_name -> hookly.v1.WebhookEnvelope.HeadersEntry
-	0, // 8: hookly.v1.RelayService.Stream:input_type -> hookly.v1.StreamRequest
-	1, // 9: hookly.v1.RelayService.Stream:output_type -> hookly.v1.StreamResponse
-	9, // [9:10] is the sub-list for method output_type
-	8, // [8:9] is the sub-list for method input_type
-	8, // [8:8] is the sub-list for extension type_name
-	8, // [8:8] is the sub-list for extension extendee
-	0, // [0:8] is the sub-list for field type_name
+	2,  // 0: hookly.v1.StreamRequest.connect:type_name -> hookly.v1.ConnectRequest
+	6,  // 1: hookly.v1.StreamRequest.ack:type_name -> hookly.v1.DeliveryAck
+	4,  // 2: hookly.v1.StreamRequest.heartbeat:type_name -> hookly.v1.Heartbeat
+	9,  // 3: hookly.v1.StreamRequest.http_response:type_name -> hookly.v1.HttpResponse
+	3,  // 4: hookly.v1.StreamResponse.connect_response:type_name -> hookly.v1.ConnectResponse
+	5,  // 5: hookly.v1.StreamResponse.webhook:type_name -> hookly.v1.WebhookEnvelope
+	4,  // 6: hookly.v1.StreamResponse.heartbeat:type_name -> hookly.v1.Heartbeat
+	8,  // 7: hookly.v1.StreamResponse.http_request:type_name -> hookly.v1.HttpRequest
+	11, // 8: hookly.v1.WebhookEnvelope.received_at:type_name -> google.protobuf.Timestamp
+	10, // 9: hookly.v1.WebhookEnvelope.headers:type_name -> hookly.v1.WebhookEnvelope.HeadersEntry
+	7,  // 10: hookly.v1.HttpRequest.headers:type_name -> hookly.v1.HttpHeader
+	7,  // 11: hookly.v1.HttpResponse.headers:type_name -> hookly.v1.HttpHeader
+	0,  // 12: hookly.v1.RelayService.Stream:input_type -> hookly.v1.StreamRequest
+	1,  // 13: hookly.v1.RelayService.Stream:output_type -> hookly.v1.StreamResponse
+	13, // [13:14] is the sub-list for method output_type
+	12, // [12:13] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_hookly_v1_relay_proto_init() }
@@ -727,11 +1028,13 @@ func file_hookly_v1_relay_proto_init() {
 		(*StreamRequest_Connect)(nil),
 		(*StreamRequest_Ack)(nil),
 		(*StreamRequest_Heartbeat)(nil),
+		(*StreamRequest_HttpResponse)(nil),
 	}
 	file_hookly_v1_relay_proto_msgTypes[1].OneofWrappers = []any{
 		(*StreamResponse_ConnectResponse)(nil),
 		(*StreamResponse_Webhook)(nil),
 		(*StreamResponse_Heartbeat)(nil),
+		(*StreamResponse_HttpRequest)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -739,7 +1042,7 @@ func file_hookly_v1_relay_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_hookly_v1_relay_proto_rawDesc), len(file_hookly_v1_relay_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

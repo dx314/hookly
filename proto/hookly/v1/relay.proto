@@ -19,6 +19,7 @@ message StreamRequest {
     ConnectRequest connect = 1;
     DeliveryAck ack = 2;
     Heartbeat heartbeat = 3;
+    HttpResponse http_response = 4;  // Answer to an HttpRequest (proxy)
   }
 }
 
@@ -28,6 +29,7 @@ message StreamResponse {
     ConnectResponse connect_response = 1;
     WebhookEnvelope webhook = 2;
     Heartbeat heartbeat = 3;
+    HttpRequest http_request = 4;  // Only sent to hubs with the "proxy" capability
   }
 }
 
@@ -38,9 +40,14 @@ message ConnectRequest {
   repeated string endpoint_ids = 3;  // Endpoints this hub handles
   // Optional features this hub understands. Hubs that predate a feature omit it.
   //   "fanout" - one envelope per (webhook, destination); acks echo delivery_id.
+  //   "proxy"  - understands HttpRequest / HttpResponse (reverse proxy).
   // Hubs without "fanout" are only sent each endpoint's primary destination.
   // (4 is skipped: it was endpoint_ids before bearer-token auth.)
   repeated string capabilities = 5;
+  // Names of the local services this hub reverse-proxies (the `proxies:`
+  // section of hookly.yaml). The edge serves /p/{hub_id}/{name}/* for each
+  // and never sends an HttpRequest for a name that is not listed here.
+  repeated string proxies = 6;
 }
 
 // Connection response
@@ -82,4 +89,34 @@ message DeliveryAck {
   // the edge falls back to the webhook's primary (or only pending) delivery.
   string delivery_id = 6;
   string destination_id = 7;
+}
+
+// HttpHeader is one header line. Headers repeat (Set-Cookie), so this is a
+// list rather than a map.
+message HttpHeader {
+  string name = 1;
+  string value = 2;
+}
+
+// HttpRequest is a synchronous HTTP request the edge received at
+// /p/{hub_id}/{proxy}/... and forwards to the hub's local service. The hub
+// answers with an HttpResponse carrying the same request_id.
+message HttpRequest {
+  string request_id = 1;
+  string proxy = 2;                 // Name from ConnectRequest.proxies
+  string method = 3;
+  string path = 4;                  // Already stripped of /p/{hub_id}/{proxy}; starts with "/"
+  string raw_query = 5;             // Without the "?"
+  repeated HttpHeader headers = 6;  // Hop-by-hop headers removed; X-Forwarded-* added
+  bytes body = 7;
+}
+
+// HttpResponse is the local service's answer to an HttpRequest. When error is
+// set the other fields are ignored and the edge answers 502.
+message HttpResponse {
+  string request_id = 1;
+  int32 status = 2;
+  repeated HttpHeader headers = 3;
+  bytes body = 4;
+  string error = 5;
 }

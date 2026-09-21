@@ -1,21 +1,32 @@
 package relay
 
 import (
+	"context"
 	"log/slog"
 	"slices"
 	"sync"
 	"time"
 
 	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
+	"hooks.dx314.com/internal/proxy"
 )
 
 // CapabilityFanout is advertised by hubs that understand one envelope per
 // (webhook, destination) and echo delivery_id in their acks.
 const CapabilityFanout = "fanout"
 
+// CapabilityProxy is advertised by hubs that answer HttpRequest with
+// HttpResponse (reverse proxy for the names in ConnectRequest.proxies).
+const CapabilityProxy = proxy.Capability
+
 // inFlightTimeout is how long a sent delivery is considered in flight without
 // an ack before it may be sent again (forward timeout is 30s).
 const inFlightTimeout = 90 * time.Second
+
+// maxPendingProxy caps the proxied requests one hub may have in flight.
+// Long-polls hold a slot for ~25s each, so it is well above the number of
+// phones a household has open at once.
+const maxPendingProxy = 128
 
 // ConnectionManager manages multiple home-hub connections with endpoint routing.
 type ConnectionManager struct {
@@ -29,11 +40,21 @@ type HubConnection struct {
 	hubID         string
 	endpointIDs   []string
 	capabilities  []string
+	proxies       []string
 	lastHeartbeat time.Time
 	sendCh        chan *hooklyv1.WebhookEnvelope
 
 	inFlightMu sync.Mutex
 	inFlight   map[string]time.Time // deliveryID → sent at, until acked
+
+	// Reverse proxy: requests wait here for the hub's response. proxyCh is
+	// drained by the stream's send loop next to sendCh, so proxied requests
+	// interleave with webhooks without reordering them.
+	proxyCh   chan *hooklyv1.StreamResponse
+	pendingMu sync.Mutex
+	pending   map[string]chan *hooklyv1.HttpResponse // requestID → waiter
+	closed    bool                                   // stream gone: fail every waiter
+	done      chan struct{}                          // closed with the connection
 }
 
 // NewConnectionManager creates a new connection manager.
@@ -63,7 +84,10 @@ func (m *ConnectionManager) AddConnection(hubID string, endpointIDs []string, ca
 // (heartbeat within staleAfter) already relays one of its endpoints: each
 // endpoint goes to one hub, so a second relay for it would silently take all
 // its deliveries. A reconnect from the same hub ID replaces the old connection.
-func (m *ConnectionManager) TryAddConnection(hubID string, endpointIDs []string, capabilities []string, staleAfter time.Duration) (*HubConnection, *EndpointConflict) {
+//
+// proxies are the names the hub reverse-proxies (only honoured with the
+// "proxy" capability).
+func (m *ConnectionManager) TryAddConnection(hubID string, endpointIDs []string, capabilities []string, proxies []string, staleAfter time.Duration) (*HubConnection, *EndpointConflict) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -76,7 +100,9 @@ func (m *ConnectionManager) TryAddConnection(hubID string, endpointIDs []string,
 			return nil, &EndpointConflict{EndpointID: epID, HubID: holder}
 		}
 	}
-	return m.addLocked(hubID, endpointIDs, capabilities), nil
+	conn := m.addLocked(hubID, endpointIDs, capabilities)
+	conn.proxies = proxies
+	return conn, nil
 }
 
 func (m *ConnectionManager) addLocked(hubID string, endpointIDs []string, capabilities []string) *HubConnection {
@@ -84,6 +110,7 @@ func (m *ConnectionManager) addLocked(hubID string, endpointIDs []string, capabi
 	if old, exists := m.connections[hubID]; exists {
 		m.unrouteLocked(old)
 		close(old.sendCh)
+		old.close()
 	}
 
 	conn := &HubConnection{
@@ -93,6 +120,9 @@ func (m *ConnectionManager) addLocked(hubID string, endpointIDs []string, capabi
 		lastHeartbeat: time.Now(),
 		sendCh:        make(chan *hooklyv1.WebhookEnvelope, 1000),
 		inFlight:      make(map[string]time.Time),
+		proxyCh:       make(chan *hooklyv1.StreamResponse, maxPendingProxy),
+		pending:       make(map[string]chan *hooklyv1.HttpResponse),
+		done:          make(chan struct{}),
 	}
 
 	m.connections[hubID] = conn
@@ -125,6 +155,7 @@ func (m *ConnectionManager) RemoveConnection(conn *HubConnection) {
 
 	m.unrouteLocked(conn)
 	delete(m.connections, hubID)
+	conn.close()
 
 	slog.Info("hub disconnected",
 		"hub_id", hubID,
@@ -154,6 +185,19 @@ func (m *ConnectionManager) GetHubForEndpoint(endpointID string) *HubConnection 
 	}
 
 	return m.connections[hubID]
+}
+
+// FindProxy returns the live connection of hubID if it advertised the proxy
+// capability and serves name, else nil. It satisfies proxy.HubFinder.
+func (m *ConnectionManager) FindProxy(hubID, name string) proxy.Hub {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	conn, exists := m.connections[hubID]
+	if !exists || !conn.SupportsProxy() || !slices.Contains(conn.proxies, name) {
+		return nil
+	}
+	return conn
 }
 
 // IsAnyConnected returns true if at least one hub is connected.
@@ -216,6 +260,106 @@ func (c *HubConnection) Send(webhook *hooklyv1.WebhookEnvelope) bool {
 // Hubs that don't are only sent each endpoint's primary destination.
 func (c *HubConnection) SupportsFanout() bool {
 	return slices.Contains(c.capabilities, CapabilityFanout)
+}
+
+// SupportsProxy reports whether the hub answers HttpRequests.
+func (c *HubConnection) SupportsProxy() bool {
+	return slices.Contains(c.capabilities, CapabilityProxy)
+}
+
+// Proxies lists the names the hub reverse-proxies.
+func (c *HubConnection) Proxies() []string {
+	return c.proxies
+}
+
+// Proxy queues req for the hub and waits for the HttpResponse with the same
+// request ID, or until ctx ends (the caller's timeout) or the stream drops
+// (proxy.ErrDisconnected). More than maxPendingProxy waiters is proxy.ErrBusy.
+func (c *HubConnection) Proxy(ctx context.Context, req *hooklyv1.HttpRequest) (*hooklyv1.HttpResponse, error) {
+	waiter := make(chan *hooklyv1.HttpResponse, 1)
+
+	c.pendingMu.Lock()
+	if c.closed {
+		c.pendingMu.Unlock()
+		return nil, proxy.ErrDisconnected
+	}
+	if len(c.pending) >= maxPendingProxy {
+		c.pendingMu.Unlock()
+		return nil, proxy.ErrBusy
+	}
+	c.pending[req.RequestId] = waiter
+	c.pendingMu.Unlock()
+	defer c.forget(req.RequestId)
+
+	msg := &hooklyv1.StreamResponse{
+		Message: &hooklyv1.StreamResponse_HttpRequest{HttpRequest: req},
+	}
+	select {
+	case c.proxyCh <- msg:
+	case <-c.done:
+		return nil, proxy.ErrDisconnected
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
+	select {
+	case resp, ok := <-waiter:
+		if !ok {
+			return nil, proxy.ErrDisconnected
+		}
+		return resp, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+}
+
+// ProxyCh returns the proxied requests waiting to go down the stream.
+func (c *HubConnection) ProxyCh() <-chan *hooklyv1.StreamResponse {
+	return c.proxyCh
+}
+
+// ResolveProxy hands the hub's response to the waiting request. Responses
+// for unknown or already timed-out requests are dropped.
+func (c *HubConnection) ResolveProxy(resp *hooklyv1.HttpResponse) {
+	c.pendingMu.Lock()
+	waiter, ok := c.pending[resp.RequestId]
+	if ok {
+		delete(c.pending, resp.RequestId)
+	}
+	c.pendingMu.Unlock()
+	if ok {
+		waiter <- resp // buffered: never blocks the receive loop
+	} else {
+		slog.Debug("proxy response for unknown request", "hub_id", c.hubID, "request_id", resp.RequestId)
+	}
+}
+
+// PendingProxy is how many proxied requests await a response.
+func (c *HubConnection) PendingProxy() int {
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	return len(c.pending)
+}
+
+func (c *HubConnection) forget(requestID string) {
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	delete(c.pending, requestID)
+}
+
+// close fails every waiting proxied request: the stream is gone.
+func (c *HubConnection) close() {
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	if c.closed {
+		return
+	}
+	c.closed = true
+	close(c.done)
+	for id, waiter := range c.pending {
+		close(waiter)
+		delete(c.pending, id)
+	}
 }
 
 // MarkInFlight records that a delivery was sent and is awaiting its ack.

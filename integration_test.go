@@ -36,6 +36,7 @@ import (
 	"hooks.dx314.com/internal/config"
 	"hooks.dx314.com/internal/crypto"
 	"hooks.dx314.com/internal/db"
+	"hooks.dx314.com/internal/proxy"
 	"hooks.dx314.com/internal/relay"
 	"hooks.dx314.com/internal/webhook"
 )
@@ -538,5 +539,170 @@ func TestIntegrationFanout(t *testing.T) {
 				t.Errorf("webhook %s → otto: %d attempts, want 1", wh.ID, d.Attempts)
 			}
 		}
+	}
+}
+
+// TestIntegrationProxy serves a local web app through a real edge (/p/ route +
+// relay) and a real hookly client with a `proxies:` entry: requests under the
+// allowed prefix reach the app with the prefix stripped, several long-polls
+// run at once, and anything else is refused.
+func TestIntegrationProxy(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test in short mode")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// The Mini App on the home network
+	var seen sync.Mutex
+	var seenReqs []*http.Request
+	var seenBodies []string
+	app := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		seen.Lock()
+		seenReqs = append(seenReqs, r)
+		seenBodies = append(seenBodies, string(body))
+		seen.Unlock()
+		if r.URL.Path == "/app/poll" {
+			time.Sleep(400 * time.Millisecond) // a short long-poll
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Add("Set-Cookie", "a=1")
+		w.Header().Add("Set-Cookie", "b=2")
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprintf(w, `{"path":%q,"query":%q}`, r.URL.Path, r.URL.RawQuery)
+	}))
+	defer app.Close()
+
+	// Edge
+	const userID = "user-1"
+	conn, err := db.Open(ctx, filepath.Join(t.TempDir(), "edge.db"))
+	if err != nil {
+		t.Fatalf("open database: %v", err)
+	}
+	defer conn.Close()
+	store := db.NewStore(conn)
+
+	tokenManager := auth.NewTokenManager(store.Queries)
+	hubToken, _, err := tokenManager.GenerateToken(ctx, userID, "alex", "test-hub")
+	if err != nil {
+		t.Fatalf("generate token: %v", err)
+	}
+
+	connMgr := relay.NewConnectionManager()
+	r := chi.NewRouter()
+	r.Handle("/p/*", proxy.NewHandler(connMgr, 0))
+	relayPath, relayHandler := hooklyv1connect.NewRelayServiceHandler(relay.NewHandler(tokenManager, connMgr, store, nil))
+	r.Mount(relayPath, relayHandler)
+
+	edgeSrv := httptest.NewUnstartedServer(r)
+	edgeSrv.EnableHTTP2 = true
+	edgeSrv.StartTLS()
+	defer edgeSrv.Close()
+	defer edgeSrv.CloseClientConnections()
+	defer cancel()
+
+	// Home-hub with a proxy and no endpoints
+	hub := relay.NewClient(&config.HooklyConfig{
+		EdgeURL: edgeSrv.URL,
+		Token:   hubToken,
+		HubID:   "infocube",
+		Proxies: []config.ProxyConfig{{Name: "homeboy", URL: app.URL, Paths: []string{"/app/"}}},
+	})
+	hub.SetHTTPClient(edgeSrv.Client())
+	go hub.Run(ctx)
+
+	client := edgeSrv.Client()
+	get := func(path string) (*http.Response, string) {
+		t.Helper()
+		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, edgeSrv.URL+path, nil)
+		resp, err := client.Do(req)
+		if err != nil {
+			t.Fatalf("GET %s: %v", path, err)
+		}
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		return resp, string(body)
+	}
+
+	// Wait for the hub to connect: until then the edge answers 502
+	deadline := time.Now().Add(10 * time.Second)
+	var resp *http.Response
+	var body string
+	for {
+		resp, body = get("/p/infocube/homeboy/app/hello?x=1")
+		if resp.StatusCode != http.StatusBadGateway || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET through the proxy: %d %s", resp.StatusCode, body)
+	}
+	if body != `{"path":"/app/hello","query":"x=1"}` {
+		t.Errorf("app saw %s, want the prefix stripped and the query kept", body)
+	}
+	if c := resp.Header.Values("Set-Cookie"); len(c) != 2 {
+		t.Errorf("Set-Cookie = %v, want both", c)
+	}
+	seen.Lock()
+	first := seenReqs[0]
+	seen.Unlock()
+	if first.Header.Get("X-Forwarded-Proto") != "https" || first.Header.Get("X-Forwarded-Host") == "" || first.Header.Get("X-Forwarded-Prefix") != "/p/infocube/homeboy" {
+		t.Errorf("app got forwarded headers %v", first.Header)
+	}
+
+	// POST with a body and an app-level auth header
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, edgeSrv.URL+"/p/infocube/homeboy/app/api/items", bytes.NewReader([]byte(`{"name":"milk"}`)))
+	req.Header.Set("Authorization", "tma init-data")
+	postResp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	postResp.Body.Close()
+	if postResp.StatusCode != http.StatusOK {
+		t.Errorf("POST: %d", postResp.StatusCode)
+	}
+	seen.Lock()
+	last := seenReqs[len(seenReqs)-1]
+	lastBody := seenBodies[len(seenBodies)-1]
+	seen.Unlock()
+	if last.Method != http.MethodPost || last.URL.Path != "/app/api/items" || lastBody != `{"name":"milk"}` || last.Header.Get("Authorization") != "tma init-data" {
+		t.Errorf("app saw %s %s body %q auth %q", last.Method, last.URL.Path, lastBody, last.Header.Get("Authorization"))
+	}
+
+	// Outside the allow-list, unknown proxy, traversal
+	if resp, _ := get("/p/infocube/homeboy/admin"); resp.StatusCode != http.StatusNotFound {
+		t.Errorf("path outside the allow-list: %d, want 404", resp.StatusCode)
+	}
+	if resp, _ := get("/p/infocube/schoolboy/app/"); resp.StatusCode != http.StatusBadGateway {
+		t.Errorf("unknown proxy name: %d, want 502", resp.StatusCode)
+	}
+	if resp, _ := get("/p/infocube/homeboy/app/%2e%2e/admin"); resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("traversal: %d, want 400", resp.StatusCode)
+	}
+
+	// Several long-polls at once complete in parallel, not one after another
+	const polls = 8
+	var wg sync.WaitGroup
+	start := time.Now()
+	codes := make([]int, polls)
+	for i := 0; i < polls; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			resp, _ := get("/p/infocube/homeboy/app/poll")
+			codes[i] = resp.StatusCode
+		}(i)
+	}
+	wg.Wait()
+	for i, code := range codes {
+		if code != http.StatusOK {
+			t.Errorf("poll %d: %d", i, code)
+		}
+	}
+	if elapsed := time.Since(start); elapsed > 1500*time.Millisecond {
+		t.Errorf("%d long-polls took %v, they must run concurrently", polls, elapsed)
 	}
 }
