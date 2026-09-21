@@ -36,6 +36,11 @@ message ConnectRequest {
   string hub_id = 1;
   string token = 2;  // Bearer token from CLI login
   repeated string endpoint_ids = 3;  // Endpoints this hub handles
+  // Optional features this hub understands. Hubs that predate a feature omit it.
+  //   "fanout" - one envelope per (webhook, destination); acks echo delivery_id.
+  // Hubs without "fanout" are only sent each endpoint's primary destination.
+  // (4 is skipped: it was endpoint_ids before bearer-token auth.)
+  repeated string capabilities = 5;
 }
 
 // Connection response
@@ -58,6 +63,12 @@ message WebhookEnvelope {
   map<string, string> headers = 5;
   bytes payload = 6;
   int32 attempt = 7;
+  // Fan-out: one envelope is sent per (webhook, destination). Older edges leave
+  // these empty, older hubs ignore them.
+  string delivery_id = 8;          // Echo in DeliveryAck.delivery_id
+  string destination_id = 9;
+  string destination_name = 10;    // Key for per-destination overrides in hookly.yaml
+  bool destination_primary = 11;   // True for the endpoint's first destination
 }
 
 // Delivery acknowledgment from home-hub
@@ -67,4 +78,8 @@ message DeliveryAck {
   int32 status_code = 3;
   string error_message = 4;
   bool permanent_failure = 5; // true for 4xx, don't retry
+  // Echoed from WebhookEnvelope. Hubs that predate fan-out leave these empty and
+  // the edge falls back to the webhook's primary (or only pending) delivery.
+  string delivery_id = 6;
+  string destination_id = 7;
 }

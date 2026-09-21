@@ -45,6 +45,11 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 		return fmt.Errorf("run migrations: %w", err)
 	}
 
+	// Adopt rows written by a binary that predates multi-destination fan-out
+	if err := adoptLegacyRows(ctx, db); err != nil {
+		return fmt.Errorf("adopt legacy rows: %w", err)
+	}
+
 	// Log current version
 	version, err := goose.GetDBVersionContext(ctx, db)
 	if err != nil {
@@ -53,6 +58,17 @@ func Migrate(ctx context.Context, db *sql.DB) error {
 
 	slog.Info("database migrations complete", "version", version)
 	return nil
+}
+
+// MigrateTo migrates a database up to a specific version (used by tests to
+// build a database as an older release left it).
+func MigrateTo(ctx context.Context, db *sql.DB, version int64) error {
+	goose.SetBaseFS(migrations)
+	goose.SetLogger(goose.NopLogger())
+	if err := goose.SetDialect("sqlite3"); err != nil {
+		return err
+	}
+	return goose.UpToContext(ctx, db, "migrations", version)
 }
 
 // MigrateStatus returns the current migration status.
@@ -118,4 +134,51 @@ func autoBaseline(ctx context.Context, db *sql.DB) error {
 
 	slog.Info("database baselined to version 2")
 	return nil
+}
+
+// adoptLegacyRows keeps a rollback to a pre-fan-out binary safe. Migration 007
+// back-fills destinations and deliveries once; anything an older binary writes
+// afterwards (endpoints without destinations, pending webhooks without
+// deliveries) is picked up here on the next start. Idempotent, and a no-op in
+// normal operation: endpoints always have a destination and new webhooks always
+// get deliveries. Finished webhooks are never re-fanned out.
+func adoptLegacyRows(ctx context.Context, db *sql.DB) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	res, err := tx.ExecContext(ctx, `
+		INSERT INTO destinations (id, endpoint_id, name, url, enabled, position, created_at, updated_at)
+		SELECT 'dst_' || lower(hex(randomblob(12))), e.id, ?, e.destination_url, 1, 0, e.created_at, e.updated_at
+		FROM endpoints e
+		WHERE NOT EXISTS (SELECT 1 FROM destinations d WHERE d.endpoint_id = e.id)`,
+		DefaultDestinationName)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		slog.Info("created destinations from legacy destination_url", "endpoints", n)
+	}
+
+	res, err = tx.ExecContext(ctx, `
+		INSERT INTO deliveries (id, webhook_id, destination_id, status, attempts, last_attempt_at,
+		                        error_message, notification_sent, created_at)
+		SELECT 'dl_' || lower(hex(randomblob(12))), w.id,
+		       (SELECT d.id FROM destinations d WHERE d.endpoint_id = w.endpoint_id
+		        ORDER BY d.position ASC, d.created_at ASC, d.id ASC LIMIT 1),
+		       'pending', w.attempts, w.last_attempt_at, w.error_message, w.notification_sent, w.received_at
+		FROM webhooks w
+		WHERE w.status = 'pending'
+		  AND NOT EXISTS (SELECT 1 FROM deliveries dl WHERE dl.webhook_id = w.id)
+		ORDER BY w.received_at ASC, w.rowid ASC`)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n > 0 {
+		slog.Info("created deliveries for pending webhooks without any", "deliveries", n)
+	}
+
+	return tx.Commit()
 }

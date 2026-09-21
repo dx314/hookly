@@ -147,14 +147,95 @@
 			</div>
 			<dl class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
 				<div>
-					<dt class="text-[var(--color-muted-foreground)]">Destination URL</dt>
-					<dd class="font-mono mt-1">{endpoint.destinationUrl}</dd>
+					<dt class="text-[var(--color-muted-foreground)]">Destinations</dt>
+					<dd class="mt-1">
+						{endpoint.destinations.filter((dest) => dest.enabled).length} enabled of {endpoint.destinations.length}
+					</dd>
 				</div>
 				<div>
 					<dt class="text-[var(--color-muted-foreground)]">Created</dt>
 					<dd class="mt-1">{formatDate(endpoint.createdAt)}</dd>
 				</div>
 			</dl>
+		</div>
+
+		<!-- Destinations -->
+		<div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] overflow-hidden">
+			<div class="px-6 py-4 border-b border-[var(--color-border)]">
+				<div class="flex items-center justify-between">
+					<div>
+						<h2 class="text-lg font-semibold text-[var(--color-foreground)]">Destinations</h2>
+						<p class="text-sm text-[var(--color-muted-foreground)]">
+							Each webhook is delivered to every enabled destination independently
+						</p>
+					</div>
+					<a href="/endpoints/{endpoint.id}/edit" class="text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)]">
+						Manage →
+					</a>
+				</div>
+			</div>
+			{#if endpoint.destinations.length === 0}
+				<div class="p-6 text-sm">
+					<span class="text-[var(--color-muted-foreground)]">Destination URL</span>
+					<span class="font-mono ml-2">{endpoint.destinationUrl}</span>
+				</div>
+			{:else}
+				<div class="overflow-x-auto">
+					<table class="w-full">
+						<thead class="bg-[var(--color-muted)]">
+							<tr>
+								<th class="text-left px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Destination</th>
+								<th class="text-left px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Status</th>
+								<th class="text-right px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Pending</th>
+								<th class="text-right px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Delivered</th>
+								<th class="text-right px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Failed</th>
+								<th class="text-right px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Dead Letter</th>
+								<th class="text-left px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Last Delivered</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-[var(--color-border)]">
+							{#each endpoint.destinations as dest, i (dest.id)}
+								<tr class="hover:bg-[var(--color-muted)]/50 align-top">
+									<td class="px-4 py-2">
+										<div class="flex items-center gap-2">
+											<span class="text-sm font-medium text-[var(--color-foreground)]">{dest.name}</span>
+											{#if i === 0}
+												<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border border-[var(--color-border)] text-[var(--color-muted-foreground)]">
+													Primary
+												</span>
+											{/if}
+										</div>
+										<div class="font-mono text-xs text-[var(--color-muted-foreground)] mt-1 break-all">{dest.url}</div>
+										{#if dest.stats?.lastError}
+											<div class="text-xs text-[var(--color-destructive)] mt-1 break-words">
+												Last error: {dest.stats.lastError}
+											</div>
+										{/if}
+									</td>
+									<td class="px-4 py-2">
+										{#if dest.enabled}
+											<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+												Enabled
+											</span>
+										{:else}
+											<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-[var(--color-muted)] text-[var(--color-muted-foreground)]">
+												Disabled
+											</span>
+										{/if}
+									</td>
+									<td class="px-4 py-2 text-sm text-right tabular-nums">{dest.stats?.pendingCount ?? 0}</td>
+									<td class="px-4 py-2 text-sm text-right tabular-nums">{dest.stats?.deliveredCount ?? 0}</td>
+									<td class="px-4 py-2 text-sm text-right tabular-nums">{dest.stats?.failedCount ?? 0}</td>
+									<td class="px-4 py-2 text-sm text-right tabular-nums">{dest.stats?.deadLetterCount ?? 0}</td>
+									<td class="px-4 py-2 text-sm text-[var(--color-muted-foreground)] whitespace-nowrap">
+										{dest.stats?.lastDeliveredAt ? formatDate(dest.stats.lastDeliveredAt) : 'Never'}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/if}
 		</div>
 
 		<!-- Recent Webhooks -->

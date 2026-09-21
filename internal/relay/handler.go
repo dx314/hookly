@@ -25,19 +25,19 @@ const (
 type Handler struct {
 	tokenMgr *auth.TokenManager
 	manager  *ConnectionManager
-	queries  *db.Queries
+	store    *db.Store
 	notifier notify.Notifier
 }
 
 // NewHandler creates a new relay handler.
-func NewHandler(tokenMgr *auth.TokenManager, manager *ConnectionManager, queries *db.Queries, notifier notify.Notifier) *Handler {
+func NewHandler(tokenMgr *auth.TokenManager, manager *ConnectionManager, store *db.Store, notifier notify.Notifier) *Handler {
 	if notifier == nil {
 		notifier = notify.NopNotifier{}
 	}
 	return &Handler{
 		tokenMgr: tokenMgr,
 		manager:  manager,
-		queries:  queries,
+		store:    store,
 		notifier: notifier,
 	}
 }
@@ -79,7 +79,7 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 	}
 
 	for _, epID := range endpointIDs {
-		ep, err := h.queries.GetEndpointByID(ctx, epID)
+		ep, err := h.store.GetEndpointByID(ctx, epID)
 		if err != nil {
 			slog.Warn("endpoint not found", "endpoint_id", epID, "user_id", token.UserID)
 			return h.sendConnectError(stream, connect.CodeNotFound, "ENDPOINT_NOT_FOUND",
@@ -106,8 +106,8 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 	hubID := connectReq.HubId
 
 	// Register connection with endpoints
-	conn := h.manager.AddConnection(hubID, endpointIDs)
-	defer h.manager.RemoveConnection(hubID)
+	conn := h.manager.AddConnection(hubID, endpointIDs, connectReq.Capabilities)
+	defer h.manager.RemoveConnection(conn)
 
 	// Create channels for coordination
 	errCh := make(chan error, 2)
@@ -135,7 +135,7 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 
 			switch m := msg.Message.(type) {
 			case *hooklyv1.StreamRequest_Ack:
-				h.handleAck(ctx, m.Ack)
+				h.handleAck(ctx, conn, m.Ack)
 			case *hooklyv1.StreamRequest_Heartbeat:
 				h.manager.UpdateHeartbeat(hubID)
 			}
@@ -160,7 +160,11 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 		case err := <-errCh:
 			return err
 
-		case webhook := <-sendCh:
+		case webhook, ok := <-sendCh:
+			if !ok {
+				// Replaced by a newer connection from the same hub
+				return nil
+			}
 			if err := stream.Send(&hooklyv1.StreamResponse{
 				Message: &hooklyv1.StreamResponse_Webhook{
 					Webhook: webhook,
@@ -189,49 +193,57 @@ func (h *Handler) Stream(ctx context.Context, stream *connect.BidiStream[hooklyv
 	}
 }
 
-func (h *Handler) handleAck(ctx context.Context, ack *hooklyv1.DeliveryAck) {
+func (h *Handler) handleAck(ctx context.Context, conn *HubConnection, ack *hooklyv1.DeliveryAck) {
 	slog.Info("received delivery ack",
 		"webhook_id", ack.WebhookId,
+		"delivery_id", ack.DeliveryId,
 		"success", ack.Success,
 		"status_code", ack.StatusCode,
 	)
 
-	var err error
-	if ack.Success {
-		// Successfully delivered
-		_, err = h.queries.MarkWebhookDelivered(ctx, ack.WebhookId)
-	} else if ack.PermanentFailure {
-		// Permanent failure (4xx) - stop retrying
-		_, err = h.queries.MarkWebhookFailed(ctx, db.MarkWebhookFailedParams{
-			ErrorMessage: stringToNullString(ack.ErrorMessage),
-			ID:           ack.WebhookId,
-		})
-		if err == nil {
-			// Send failure notification (fire and forget)
-			go h.sendFailureNotification(ctx, ack.WebhookId, ack.ErrorMessage)
-		}
-	} else {
-		// Transient failure (5xx or network error) - stay pending for retry
-		_, err = h.queries.RecordWebhookAttempt(ctx, db.RecordWebhookAttemptParams{
-			ErrorMessage: stringToNullString(ack.ErrorMessage),
-			ID:           ack.WebhookId,
-		})
-		slog.Info("webhook will be retried after backoff",
+	// Hubs that predate fan-out ack by webhook ID only
+	deliveryID, err := h.store.ResolveAckDelivery(ctx, ack.WebhookId, ack.DeliveryId)
+	if err != nil {
+		slog.Warn("ack does not match a pending delivery", "webhook_id", ack.WebhookId, "error", err)
+		return
+	}
+	conn.ClearInFlight(deliveryID)
+
+	// success → delivered, permanent failure (4xx) → failed, otherwise stays
+	// pending for retry after backoff. Other destinations are unaffected.
+	_, err = h.store.ApplyDeliveryOutcome(ctx, deliveryID, db.DeliveryOutcome{
+		Success:          ack.Success,
+		PermanentFailure: ack.PermanentFailure,
+		ErrorMessage:     ack.ErrorMessage,
+	})
+	if errors.Is(err, db.ErrDeliveryNotPending) || errors.Is(err, sql.ErrNoRows) {
+		slog.Debug("ignoring ack for delivery that is not pending", "delivery_id", deliveryID)
+		return
+	}
+	if err != nil {
+		slog.Error("failed to update delivery status", "delivery_id", deliveryID, "error", err)
+		return
+	}
+
+	switch {
+	case ack.Success:
+	case ack.PermanentFailure:
+		// Send failure notification (fire and forget)
+		go h.sendFailureNotification(ctx, deliveryID, ack.ErrorMessage)
+	default:
+		slog.Info("delivery will be retried after backoff",
 			"webhook_id", ack.WebhookId,
+			"delivery_id", deliveryID,
 			"error", ack.ErrorMessage,
 		)
 	}
-
-	if err != nil {
-		slog.Error("failed to update webhook status", "webhook_id", ack.WebhookId, "error", err)
-	}
 }
 
-func (h *Handler) sendFailureNotification(ctx context.Context, webhookID, errorMsg string) {
-	// Get webhook with endpoint info (system query, no user filter)
-	row, err := h.queries.GetWebhookWithEndpointByID(ctx, webhookID)
+func (h *Handler) sendFailureNotification(ctx context.Context, deliveryID, errorMsg string) {
+	// Get delivery with endpoint and destination info
+	row, err := h.store.GetDeliveryForNotification(ctx, deliveryID)
 	if err != nil {
-		slog.Error("failed to get webhook for notification", "webhook_id", webhookID, "error", err)
+		slog.Error("failed to get delivery for notification", "delivery_id", deliveryID, "error", err)
 		return
 	}
 
@@ -244,13 +256,14 @@ func (h *Handler) sendFailureNotification(ctx context.Context, webhookID, errorM
 	receivedAt, _ := time.Parse("2006-01-02 15:04:05", row.ReceivedAt)
 
 	info := notify.WebhookInfo{
-		ID:             row.ID,
-		EndpointID:     row.EndpointID,
-		EndpointName:   row.EndpointName,
-		DestinationURL: row.EndpointDestinationUrl,
-		Attempts:       int(row.Attempts),
-		Error:          errorMsg,
-		ReceivedAt:     receivedAt,
+		ID:              row.WebhookID,
+		EndpointID:      row.EndpointID,
+		EndpointName:    row.EndpointName,
+		DestinationName: row.DestinationName,
+		DestinationURL:  row.DestinationUrl,
+		Attempts:        int(row.Attempts),
+		Error:           errorMsg,
+		ReceivedAt:      receivedAt,
 	}
 
 	if err := h.notifier.NotifyDeliveryFailure(ctx, info); err != nil {
@@ -259,16 +272,9 @@ func (h *Handler) sendFailureNotification(ctx context.Context, webhookID, errorM
 	}
 
 	// Mark as notified
-	if err := h.queries.MarkNotificationSent(ctx, webhookID); err != nil {
-		slog.Error("failed to mark notification sent", "webhook_id", webhookID, "error", err)
+	if err := h.store.MarkDeliveryNotificationSent(ctx, deliveryID); err != nil {
+		slog.Error("failed to mark notification sent", "delivery_id", deliveryID, "error", err)
 	}
-}
-
-func stringToNullString(s string) sql.NullString {
-	if s == "" {
-		return sql.NullString{Valid: false}
-	}
-	return sql.NullString{String: s, Valid: true}
 }
 
 // sendConnectError sends an error response and returns the appropriate connect error.

@@ -6,15 +6,17 @@ import (
 	"time"
 )
 
-// WebhookInfo contains information about a webhook for notifications.
+// WebhookInfo contains information about a webhook delivery for notifications.
+// Deliveries fail per destination, so a notification is about one destination.
 type WebhookInfo struct {
-	ID             string
-	EndpointID     string
-	EndpointName   string
-	DestinationURL string
-	Attempts       int
-	Error          string
-	ReceivedAt     time.Time
+	ID              string
+	EndpointID      string
+	EndpointName    string
+	DestinationName string
+	DestinationURL  string
+	Attempts        int
+	Error           string
+	ReceivedAt      time.Time
 }
 
 // Notifier sends notifications for webhook events.

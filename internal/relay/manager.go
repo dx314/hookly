@@ -2,25 +2,38 @@ package relay
 
 import (
 	"log/slog"
+	"slices"
 	"sync"
 	"time"
 
 	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
 )
 
+// CapabilityFanout is advertised by hubs that understand one envelope per
+// (webhook, destination) and echo delivery_id in their acks.
+const CapabilityFanout = "fanout"
+
+// inFlightTimeout is how long a sent delivery is considered in flight without
+// an ack before it may be sent again (forward timeout is 30s).
+const inFlightTimeout = 90 * time.Second
+
 // ConnectionManager manages multiple home-hub connections with endpoint routing.
 type ConnectionManager struct {
 	mu          sync.RWMutex
-	connections map[string]*HubConnection  // hubID → connection
-	endpoints   map[string]string          // endpointID → hubID (routing table)
+	connections map[string]*HubConnection // hubID → connection
+	endpoints   map[string]string         // endpointID → hubID (routing table)
 }
 
 // HubConnection represents a single hub's connection state.
 type HubConnection struct {
 	hubID         string
 	endpointIDs   []string
+	capabilities  []string
 	lastHeartbeat time.Time
 	sendCh        chan *hooklyv1.WebhookEnvelope
+
+	inFlightMu sync.Mutex
+	inFlight   map[string]time.Time // deliveryID → sent at, until acked
 }
 
 // NewConnectionManager creates a new connection manager.
@@ -33,7 +46,7 @@ func NewConnectionManager() *ConnectionManager {
 
 // AddConnection registers a new hub connection with its endpoints.
 // Returns the HubConnection for sending webhooks.
-func (m *ConnectionManager) AddConnection(hubID string, endpointIDs []string) *HubConnection {
+func (m *ConnectionManager) AddConnection(hubID string, endpointIDs []string, capabilities []string) *HubConnection {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -48,8 +61,10 @@ func (m *ConnectionManager) AddConnection(hubID string, endpointIDs []string) *H
 	conn := &HubConnection{
 		hubID:         hubID,
 		endpointIDs:   endpointIDs,
+		capabilities:  capabilities,
 		lastHeartbeat: time.Now(),
 		sendCh:        make(chan *hooklyv1.WebhookEnvelope, 1000),
+		inFlight:      make(map[string]time.Time),
 	}
 
 	m.connections[hubID] = conn
@@ -62,19 +77,21 @@ func (m *ConnectionManager) AddConnection(hubID string, endpointIDs []string) *H
 	slog.Info("hub connected",
 		"hub_id", hubID,
 		"endpoints", endpointIDs,
+		"capabilities", capabilities,
 		"total_hubs", len(m.connections),
 	)
 
 	return conn
 }
 
-// RemoveConnection removes a hub and its endpoint mappings.
-func (m *ConnectionManager) RemoveConnection(hubID string) {
+// RemoveConnection removes a hub connection and its endpoint mappings.
+// It is a no-op if the hub has already been replaced by a newer connection.
+func (m *ConnectionManager) RemoveConnection(conn *HubConnection) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	conn, exists := m.connections[hubID]
-	if !exists {
+	hubID := conn.hubID
+	if current, exists := m.connections[hubID]; !exists || current != conn {
 		return
 	}
 
@@ -159,6 +176,39 @@ func (c *HubConnection) Send(webhook *hooklyv1.WebhookEnvelope) bool {
 		)
 		return false
 	}
+}
+
+// SupportsFanout reports whether the hub understands per-destination envelopes.
+// Hubs that don't are only sent each endpoint's primary destination.
+func (c *HubConnection) SupportsFanout() bool {
+	return slices.Contains(c.capabilities, CapabilityFanout)
+}
+
+// MarkInFlight records that a delivery was sent and is awaiting its ack.
+func (c *HubConnection) MarkInFlight(deliveryID string) {
+	c.inFlightMu.Lock()
+	defer c.inFlightMu.Unlock()
+	c.inFlight[deliveryID] = time.Now()
+}
+
+// IsInFlight reports whether a delivery was sent and has not been acked yet.
+// Deliveries unacked for longer than inFlightTimeout are no longer in flight.
+func (c *HubConnection) IsInFlight(deliveryID string) bool {
+	c.inFlightMu.Lock()
+	defer c.inFlightMu.Unlock()
+	sentAt, ok := c.inFlight[deliveryID]
+	if ok && time.Since(sentAt) > inFlightTimeout {
+		delete(c.inFlight, deliveryID)
+		return false
+	}
+	return ok
+}
+
+// ClearInFlight is called when a delivery has been acked (or could not be queued).
+func (c *HubConnection) ClearInFlight(deliveryID string) {
+	c.inFlightMu.Lock()
+	defer c.inFlightMu.Unlock()
+	delete(c.inFlight, deliveryID)
 }
 
 // SendCh returns the channel for sending webhooks to this hub.

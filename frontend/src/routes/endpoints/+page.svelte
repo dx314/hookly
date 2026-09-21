@@ -116,6 +116,7 @@
 						<th class="text-left px-4 py-3 text-sm font-medium text-[var(--color-muted-foreground)]">Name</th>
 						<th class="text-left px-4 py-3 text-sm font-medium text-[var(--color-muted-foreground)]">Provider</th>
 						<th class="text-left px-4 py-3 text-sm font-medium text-[var(--color-muted-foreground)]">Webhook URL</th>
+						<th class="text-left px-4 py-3 text-sm font-medium text-[var(--color-muted-foreground)]">Destination</th>
 						<th class="text-left px-4 py-3 text-sm font-medium text-[var(--color-muted-foreground)]">Status</th>
 						<th class="text-right px-4 py-3 text-sm font-medium text-[var(--color-muted-foreground)]">Actions</th>
 					</tr>
@@ -144,6 +145,21 @@
 									>
 										{copiedId === endpoint.id ? '✓' : 'Copy'}
 									</button>
+								</div>
+							</td>
+							<td class="px-4 py-3">
+								<div class="flex items-center gap-2">
+									<span class="text-xs font-mono text-[var(--color-muted-foreground)] truncate max-w-[240px]" title={endpoint.destinationUrl}>
+										{endpoint.destinationUrl}
+									</span>
+									{#if endpoint.destinations.length > 1}
+										<span
+											class="text-xs text-[var(--color-muted-foreground)] whitespace-nowrap"
+											title={endpoint.destinations.map((dest) => `${dest.name}: ${dest.url}`).join('\n')}
+										>
+											+{endpoint.destinations.length - 1} more
+										</span>
+									{/if}
 								</div>
 							</td>
 							<td class="px-4 py-3">

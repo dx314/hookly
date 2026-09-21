@@ -19,16 +19,16 @@ import (
 // Server is the MCP server for Hookly.
 type Server struct {
 	mcpServer     *server.MCPServer
-	queries       *db.Queries
+	store         *db.Store
 	secretManager *db.SecretManager
 	baseURL       string
 	userID        string
 }
 
 // NewServer creates a new Hookly MCP server.
-func NewServer(queries *db.Queries, secretManager *db.SecretManager, baseURL, userID string) *Server {
+func NewServer(store *db.Store, secretManager *db.SecretManager, baseURL, userID string) *Server {
 	s := &Server{
-		queries:       queries,
+		store:         store,
 		secretManager: secretManager,
 		baseURL:       baseURL,
 		userID:        userID,
@@ -56,15 +56,18 @@ func (s *Server) registerTools() {
 	tools := defineTools()
 
 	handlers := map[string]server.ToolHandlerFunc{
-		"hookly_list_endpoints":  s.handleListEndpoints,
-		"hookly_get_endpoint":    s.handleGetEndpoint,
-		"hookly_create_endpoint": s.handleCreateEndpoint,
-		"hookly_delete_endpoint": s.handleDeleteEndpoint,
-		"hookly_mute_endpoint":   s.handleMuteEndpoint,
-		"hookly_list_webhooks":   s.handleListWebhooks,
-		"hookly_get_webhook":     s.handleGetWebhook,
-		"hookly_replay_webhook":  s.handleReplayWebhook,
-		"hookly_get_status":      s.handleGetStatus,
+		"hookly_list_endpoints":     s.handleListEndpoints,
+		"hookly_get_endpoint":       s.handleGetEndpoint,
+		"hookly_create_endpoint":    s.handleCreateEndpoint,
+		"hookly_delete_endpoint":    s.handleDeleteEndpoint,
+		"hookly_mute_endpoint":      s.handleMuteEndpoint,
+		"hookly_add_destination":    s.handleAddDestination,
+		"hookly_update_destination": s.handleUpdateDestination,
+		"hookly_remove_destination": s.handleRemoveDestination,
+		"hookly_list_webhooks":      s.handleListWebhooks,
+		"hookly_get_webhook":        s.handleGetWebhook,
+		"hookly_replay_webhook":     s.handleReplayWebhook,
+		"hookly_get_status":         s.handleGetStatus,
 	}
 
 	for _, tool := range tools {
@@ -75,7 +78,7 @@ func (s *Server) registerTools() {
 }
 
 func (s *Server) handleListEndpoints(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	endpoints, err := s.queries.ListEndpoints(ctx, db.ListEndpointsParams{
+	endpoints, err := s.store.ListEndpoints(ctx, db.ListEndpointsParams{
 		UserID: s.userID,
 		Limit:  1000,
 		Offset: 0,
@@ -85,22 +88,28 @@ func (s *Server) handleListEndpoints(ctx context.Context, req mcp.CallToolReques
 	}
 
 	type endpointResult struct {
-		ID             string `json:"id"`
-		Name           string `json:"name"`
-		ProviderType   string `json:"provider_type"`
-		DestinationURL string `json:"destination_url"`
-		Muted          bool   `json:"muted"`
-		WebhookURL     string `json:"webhook_url"`
-		CreatedAt      string `json:"created_at"`
+		ID             string              `json:"id"`
+		Name           string              `json:"name"`
+		ProviderType   string              `json:"provider_type"`
+		DestinationURL string              `json:"destination_url"` // primary destination
+		Destinations   []destinationResult `json:"destinations"`
+		Muted          bool                `json:"muted"`
+		WebhookURL     string              `json:"webhook_url"`
+		CreatedAt      string              `json:"created_at"`
 	}
 
 	results := make([]endpointResult, len(endpoints))
 	for i, e := range endpoints {
+		destinations, err := s.destinations(ctx, e.ID)
+		if err != nil {
+			return mcp.NewToolResultError(fmt.Sprintf("Failed to list destinations: %v", err)), nil
+		}
 		results[i] = endpointResult{
 			ID:             e.ID,
 			Name:           e.Name,
 			ProviderType:   e.ProviderType,
-			DestinationURL: e.DestinationUrl,
+			DestinationURL: primaryURL(destinations, e.DestinationUrl),
+			Destinations:   destinations,
 			Muted:          e.Muted != 0,
 			WebhookURL:     fmt.Sprintf("%s/h/%s", s.baseURL, e.ID),
 			CreatedAt:      e.CreatedAt,
@@ -117,7 +126,7 @@ func (s *Server) handleGetEndpoint(ctx context.Context, req mcp.CallToolRequest)
 		return mcp.NewToolResultError("endpoint_id is required"), nil
 	}
 
-	endpoint, err := s.queries.GetEndpoint(ctx, db.GetEndpointParams{
+	endpoint, err := s.store.GetEndpoint(ctx, db.GetEndpointParams{
 		ID:     endpointID,
 		UserID: s.userID,
 	})
@@ -128,11 +137,17 @@ func (s *Server) handleGetEndpoint(ctx context.Context, req mcp.CallToolRequest)
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to get endpoint: %v", err)), nil
 	}
 
+	destinations, err := s.destinations(ctx, endpoint.ID)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to list destinations: %v", err)), nil
+	}
+
 	result := map[string]any{
 		"id":              endpoint.ID,
 		"name":            endpoint.Name,
 		"provider_type":   endpoint.ProviderType,
-		"destination_url": endpoint.DestinationUrl,
+		"destination_url": primaryURL(destinations, endpoint.DestinationUrl),
+		"destinations":    destinations,
 		"muted":           endpoint.Muted != 0,
 		"webhook_url":     fmt.Sprintf("%s/h/%s", s.baseURL, endpoint.ID),
 		"created_at":      endpoint.CreatedAt,
@@ -149,8 +164,20 @@ func (s *Server) handleCreateEndpoint(ctx context.Context, req mcp.CallToolReque
 	signatureSecret := mcp.ParseString(req, "signature_secret", "")
 	destinationURL := mcp.ParseString(req, "destination_url", "")
 
-	if name == "" || providerType == "" || signatureSecret == "" || destinationURL == "" {
-		return mcp.NewToolResultError("name, provider_type, signature_secret, and destination_url are required"), nil
+	if name == "" || providerType == "" || signatureSecret == "" {
+		return mcp.NewToolResultError("name, provider_type, and signature_secret are required"), nil
+	}
+
+	// destination_url is shorthand for a single destination named "default"
+	specs, err := parseDestinationSpecs(req)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
+	if len(specs) == 0 {
+		if destinationURL == "" {
+			return mcp.NewToolResultError("destination_url or destinations is required"), nil
+		}
+		specs = []db.DestinationSpec{{Name: db.DefaultDestinationName, URL: destinationURL, Enabled: true}}
 	}
 
 	// Validate provider type
@@ -220,17 +247,21 @@ func (s *Server) handleCreateEndpoint(ctx context.Context, req mcp.CallToolReque
 	}
 
 	// Create endpoint
-	endpoint, err := s.queries.CreateEndpoint(ctx, db.CreateEndpointParams{
+	endpoint, err := s.store.CreateEndpointWithDestinations(ctx, db.CreateEndpointParams{
 		ID:                          endpointID,
 		UserID:                      s.userID,
 		Name:                        name,
 		ProviderType:                providerType,
 		SignatureSecretEncrypted:    encrypted,
 		VerificationConfigEncrypted: encryptedVerificationConfig,
-		DestinationUrl:              destinationURL,
-	})
+	}, specs)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to create endpoint: %v", err)), nil
+	}
+
+	destinations, err := s.destinations(ctx, endpoint.ID)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to list destinations: %v", err)), nil
 	}
 
 	result := map[string]any{
@@ -238,6 +269,7 @@ func (s *Server) handleCreateEndpoint(ctx context.Context, req mcp.CallToolReque
 		"name":            endpoint.Name,
 		"provider_type":   endpoint.ProviderType,
 		"destination_url": endpoint.DestinationUrl,
+		"destinations":    destinations,
 		"webhook_url":     fmt.Sprintf("%s/h/%s", s.baseURL, endpoint.ID),
 		"created_at":      endpoint.CreatedAt,
 	}
@@ -253,7 +285,7 @@ func (s *Server) handleDeleteEndpoint(ctx context.Context, req mcp.CallToolReque
 	}
 
 	// Check if endpoint exists and belongs to user
-	_, err := s.queries.GetEndpoint(ctx, db.GetEndpointParams{
+	_, err := s.store.GetEndpoint(ctx, db.GetEndpointParams{
 		ID:     endpointID,
 		UserID: s.userID,
 	})
@@ -265,7 +297,7 @@ func (s *Server) handleDeleteEndpoint(ctx context.Context, req mcp.CallToolReque
 	}
 
 	// Delete endpoint
-	err = s.queries.DeleteEndpoint(ctx, db.DeleteEndpointParams{
+	err = s.store.DeleteEndpoint(ctx, db.DeleteEndpointParams{
 		ID:     endpointID,
 		UserID: s.userID,
 	})
@@ -289,7 +321,7 @@ func (s *Server) handleMuteEndpoint(ctx context.Context, req mcp.CallToolRequest
 		mutedInt = 1
 	}
 
-	endpoint, err := s.queries.UpdateEndpoint(ctx, db.UpdateEndpointParams{
+	endpoint, err := s.store.UpdateEndpoint(ctx, db.UpdateEndpointParams{
 		ID:     endpointID,
 		UserID: s.userID,
 		Muted:  sql.NullInt64{Int64: mutedInt, Valid: true},
@@ -321,7 +353,7 @@ func (s *Server) handleListWebhooks(ctx context.Context, req mcp.CallToolRequest
 		statusVal = status
 	}
 
-	webhooks, err := s.queries.ListWebhooks(ctx, db.ListWebhooksParams{
+	webhooks, err := s.store.ListWebhooks(ctx, db.ListWebhooksParams{
 		UserID:     s.userID,
 		EndpointID: endpointIDVal,
 		Status:     statusVal,
@@ -376,7 +408,7 @@ func (s *Server) handleGetWebhook(ctx context.Context, req mcp.CallToolRequest) 
 		return mcp.NewToolResultError("webhook_id is required"), nil
 	}
 
-	webhook, err := s.queries.GetWebhook(ctx, db.GetWebhookParams{
+	webhook, err := s.store.GetWebhook(ctx, db.GetWebhookParams{
 		ID:     webhookID,
 		UserID: s.userID,
 	})
@@ -413,6 +445,33 @@ func (s *Server) handleGetWebhook(ctx context.Context, req mcp.CallToolRequest) 
 		result["error_message"] = webhook.ErrorMessage.String
 	}
 
+	// Per-destination delivery state (the webhook's status above is derived from these)
+	deliveries, err := s.store.ListDeliveriesByWebhook(ctx, webhookID)
+	if err != nil {
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to list deliveries: %v", err)), nil
+	}
+	deliveryResults := make([]map[string]any, len(deliveries))
+	for i, d := range deliveries {
+		dr := map[string]any{
+			"destination_id":   d.DestinationID,
+			"destination_name": d.DestinationName,
+			"destination_url":  d.DestinationUrl,
+			"status":           d.Status,
+			"attempts":         d.Attempts,
+		}
+		if d.LastAttemptAt.Valid {
+			dr["last_attempt_at"] = d.LastAttemptAt.String
+		}
+		if d.DeliveredAt.Valid {
+			dr["delivered_at"] = d.DeliveredAt.String
+		}
+		if d.ErrorMessage.Valid {
+			dr["error_message"] = d.ErrorMessage.String
+		}
+		deliveryResults[i] = dr
+	}
+	result["deliveries"] = deliveryResults
+
 	data, _ := json.MarshalIndent(result, "", "  ")
 	return mcp.NewToolResultText(string(data)), nil
 }
@@ -423,27 +482,171 @@ func (s *Server) handleReplayWebhook(ctx context.Context, req mcp.CallToolReques
 		return mcp.NewToolResultError("webhook_id is required"), nil
 	}
 
-	webhook, err := s.queries.ResetWebhookForReplay(ctx, db.ResetWebhookForReplayParams{
-		ID:     webhookID,
-		UserID: s.userID,
-	})
+	// Optional: replay to a single destination instead of all of them
+	destinationID := mcp.ParseString(req, "destination_id", "")
+
+	webhook, err := s.store.ReplayWebhook(ctx, s.userID, webhookID, destinationID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return mcp.NewToolResultError("Webhook not found"), nil
+			return mcp.NewToolResultError("Webhook or destination not found"), nil
 		}
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to replay webhook: %v", err)), nil
 	}
 
-	return mcp.NewToolResultText(fmt.Sprintf("Webhook %s reset for replay (status: %s, attempts: %d)", webhook.ID, webhook.Status, webhook.Attempts)), nil
+	target := "all destinations"
+	if destinationID != "" {
+		target = "destination " + destinationID
+	}
+	return mcp.NewToolResultText(fmt.Sprintf("Webhook %s reset for replay to %s (status: %s, attempts: %d)", webhook.ID, target, webhook.Status, webhook.Attempts)), nil
+}
+
+func (s *Server) handleAddDestination(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	endpointID := mcp.ParseString(req, "endpoint_id", "")
+	name := mcp.ParseString(req, "name", "")
+	url := mcp.ParseString(req, "url", "")
+
+	if endpointID == "" || name == "" || url == "" {
+		return mcp.NewToolResultError("endpoint_id, name, and url are required"), nil
+	}
+
+	dest, err := s.store.AddDestination(ctx, s.userID, endpointID, db.DestinationSpec{
+		Name:    name,
+		URL:     url,
+		Enabled: mcp.ParseBoolean(req, "enabled", true),
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return mcp.NewToolResultError("Endpoint not found"), nil
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to add destination: %v", err)), nil
+	}
+
+	data, _ := json.MarshalIndent(toDestinationResult(dest), "", "  ")
+	return mcp.NewToolResultText(string(data)), nil
+}
+
+func (s *Server) handleUpdateDestination(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	destinationID := mcp.ParseString(req, "destination_id", "")
+	if destinationID == "" {
+		return mcp.NewToolResultError("destination_id is required"), nil
+	}
+
+	// Only fields that are present are changed
+	args := req.GetArguments()
+	var name, url *string
+	var enabled *bool
+	if _, ok := args["name"]; ok {
+		v := mcp.ParseString(req, "name", "")
+		name = &v
+	}
+	if _, ok := args["url"]; ok {
+		v := mcp.ParseString(req, "url", "")
+		url = &v
+	}
+	if _, ok := args["enabled"]; ok {
+		v := mcp.ParseBoolean(req, "enabled", true)
+		enabled = &v
+	}
+
+	dest, err := s.store.UpdateDestination(ctx, s.userID, destinationID, name, url, enabled)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return mcp.NewToolResultError("Destination not found"), nil
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to update destination: %v", err)), nil
+	}
+
+	data, _ := json.MarshalIndent(toDestinationResult(dest), "", "  ")
+	return mcp.NewToolResultText(string(data)), nil
+}
+
+func (s *Server) handleRemoveDestination(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	destinationID := mcp.ParseString(req, "destination_id", "")
+	if destinationID == "" {
+		return mcp.NewToolResultError("destination_id is required"), nil
+	}
+
+	endpointID, err := s.store.RemoveDestination(ctx, s.userID, destinationID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return mcp.NewToolResultError("Destination not found"), nil
+		}
+		return mcp.NewToolResultError(fmt.Sprintf("Failed to remove destination: %v", err)), nil
+	}
+
+	return mcp.NewToolResultText(fmt.Sprintf("Destination %s removed from endpoint %s (its pending deliveries were abandoned)", destinationID, endpointID)), nil
+}
+
+// destinationResult is the JSON shape of a destination in tool results.
+type destinationResult struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	URL     string `json:"url"`
+	Enabled bool   `json:"enabled"`
+}
+
+func toDestinationResult(d db.Destination) destinationResult {
+	return destinationResult{ID: d.ID, Name: d.Name, URL: d.Url, Enabled: d.Enabled != 0}
+}
+
+// destinations returns an endpoint's destinations, primary first.
+func (s *Server) destinations(ctx context.Context, endpointID string) ([]destinationResult, error) {
+	dests, err := s.store.ListDestinationsByEndpoint(ctx, endpointID)
+	if err != nil {
+		return nil, err
+	}
+	results := make([]destinationResult, len(dests))
+	for i, d := range dests {
+		results[i] = toDestinationResult(d)
+	}
+	return results, nil
+}
+
+func primaryURL(destinations []destinationResult, fallback string) string {
+	if len(destinations) > 0 {
+		return destinations[0].URL
+	}
+	return fallback
+}
+
+// parseDestinationSpecs reads the optional "destinations" array of {name, url, enabled}.
+func parseDestinationSpecs(req mcp.CallToolRequest) ([]db.DestinationSpec, error) {
+	raw, ok := req.GetArguments()["destinations"]
+	if !ok || raw == nil {
+		return nil, nil
+	}
+	items, ok := raw.([]any)
+	if !ok {
+		return nil, fmt.Errorf("destinations must be an array of {name, url} objects")
+	}
+
+	specs := make([]db.DestinationSpec, 0, len(items))
+	for _, item := range items {
+		obj, ok := item.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("destinations must be an array of {name, url} objects")
+		}
+		spec := db.DestinationSpec{Enabled: true}
+		spec.Name, _ = obj["name"].(string)
+		spec.URL, _ = obj["url"].(string)
+		if enabled, ok := obj["enabled"].(bool); ok {
+			spec.Enabled = enabled
+		}
+		if spec.Name == "" || spec.URL == "" {
+			return nil, fmt.Errorf("each destination needs a name and a url")
+		}
+		specs = append(specs, spec)
+	}
+	return specs, nil
 }
 
 func (s *Server) handleGetStatus(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	stats, err := s.queries.GetQueueStats(ctx, s.userID)
+	stats, err := s.store.GetQueueStats(ctx, s.userID)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to get stats: %v", err)), nil
 	}
 
-	endpointCount, err := s.queries.CountEndpoints(ctx, s.userID)
+	endpointCount, err := s.store.CountEndpoints(ctx, s.userID)
 	if err != nil {
 		return mcp.NewToolResultError(fmt.Sprintf("Failed to count endpoints: %v", err)), nil
 	}

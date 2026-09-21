@@ -14,6 +14,11 @@ service EdgeService {
   rpc UpdateEndpoint(UpdateEndpointRequest) returns (UpdateEndpointResponse);
   rpc DeleteEndpoint(DeleteEndpointRequest) returns (DeleteEndpointResponse);
 
+  // Destination management (an endpoint fans out to 1..N destinations)
+  rpc AddDestination(AddDestinationRequest) returns (AddDestinationResponse);
+  rpc UpdateDestination(UpdateDestinationRequest) returns (UpdateDestinationResponse);
+  rpc RemoveDestination(RemoveDestinationRequest) returns (RemoveDestinationResponse);
+
   // Webhook management
   rpc GetWebhook(GetWebhookRequest) returns (GetWebhookResponse);
   rpc ListWebhooks(ListWebhooksRequest) returns (ListWebhooksResponse);
@@ -37,9 +42,18 @@ message CreateEndpointRequest {
   string name = 1;
   ProviderType provider_type = 2;
   string signature_secret = 3;
+  // Shorthand for a single destination named "default". Ignored when
+  // destinations is set.
   string destination_url = 4;
   // Custom verification config (required for PROVIDER_TYPE_CUSTOM)
   VerificationConfig verification_config = 5;
+  repeated DestinationInput destinations = 6;
+}
+
+message DestinationInput {
+  string name = 1;
+  string url = 2;
+  optional bool enabled = 3; // Defaults to true
 }
 
 message CreateEndpointResponse {
@@ -69,7 +83,7 @@ message UpdateEndpointRequest {
   string id = 1;
   optional string name = 2;
   optional string signature_secret = 3;
-  optional string destination_url = 4;
+  optional string destination_url = 4; // Updates the primary destination's URL
   optional bool muted = 5;
   // Custom verification config (only for PROVIDER_TYPE_CUSTOM endpoints)
   VerificationConfig verification_config = 6;
@@ -84,6 +98,40 @@ message DeleteEndpointRequest {
 }
 
 message DeleteEndpointResponse {}
+
+// Destination requests/responses
+
+message AddDestinationRequest {
+  string endpoint_id = 1;
+  string name = 2;
+  string url = 3;
+  optional bool enabled = 4; // Defaults to true
+}
+
+message AddDestinationResponse {
+  Destination destination = 1;
+  Endpoint endpoint = 2;
+}
+
+message UpdateDestinationRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string url = 3;
+  optional bool enabled = 4;
+}
+
+message UpdateDestinationResponse {
+  Destination destination = 1;
+  Endpoint endpoint = 2;
+}
+
+message RemoveDestinationRequest {
+  string id = 1;
+}
+
+message RemoveDestinationResponse {
+  Endpoint endpoint = 1;
+}
 
 // Webhook requests/responses
 
@@ -108,6 +156,9 @@ message ListWebhooksResponse {
 
 message ReplayWebhookRequest {
   string id = 1;
+  // Replay to a single destination. Unset replays to every destination the
+  // webhook was originally fanned out to.
+  optional string destination_id = 2;
 }
 
 message ReplayWebhookResponse {

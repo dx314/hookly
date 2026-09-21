@@ -19,6 +19,31 @@ type ApiToken struct {
 	Revoked    int64          `json:"revoked"`
 }
 
+type Delivery struct {
+	Seq              int64          `json:"seq"`
+	ID               string         `json:"id"`
+	WebhookID        string         `json:"webhook_id"`
+	DestinationID    string         `json:"destination_id"`
+	Status           string         `json:"status"`
+	Attempts         int64          `json:"attempts"`
+	LastAttemptAt    sql.NullString `json:"last_attempt_at"`
+	DeliveredAt      sql.NullString `json:"delivered_at"`
+	ErrorMessage     sql.NullString `json:"error_message"`
+	NotificationSent int64          `json:"notification_sent"`
+	CreatedAt        string         `json:"created_at"`
+}
+
+type Destination struct {
+	ID         string `json:"id"`
+	EndpointID string `json:"endpoint_id"`
+	Name       string `json:"name"`
+	Url        string `json:"url"`
+	Enabled    int64  `json:"enabled"`
+	Position   int64  `json:"position"`
+	CreatedAt  string `json:"created_at"`
+	UpdatedAt  string `json:"updated_at"`
+}
+
 type Endpoint struct {
 	ID                          string `json:"id"`
 	UserID                      string `json:"user_id"`

@@ -17,14 +17,14 @@ const maxPayloadSize = 100 * 1024 * 1024 // 100MB
 
 // Handler handles webhook ingestion.
 type Handler struct {
-	queries       *db.Queries
+	store         *db.Store
 	secretManager *db.SecretManager
 }
 
 // NewHandler creates a new webhook handler.
-func NewHandler(queries *db.Queries, secretManager *db.SecretManager) *Handler {
+func NewHandler(store *db.Store, secretManager *db.SecretManager) *Handler {
 	return &Handler{
-		queries:       queries,
+		store:         store,
 		secretManager: secretManager,
 	}
 }
@@ -45,7 +45,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// Look up endpoint
-	endpoint, err := h.queries.GetEndpointByID(ctx, endpointID)
+	endpoint, err := h.store.GetEndpointByID(ctx, endpointID)
 	if err != nil {
 		slog.Debug("endpoint not found", "endpoint_id", endpointID, "error", err)
 		http.Error(w, "Not found", http.StatusNotFound)
@@ -125,7 +125,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	// Store webhook
+	// Store webhook and fan it out to the endpoint's destinations. The response
+	// never waits for delivery: providers get their 200 as soon as it is stored.
 	webhookID, err := h.storeWebhook(ctx, endpointID, headers, payload, signatureValid)
 	if err != nil {
 		slog.Error("failed to store webhook", "error", err)
@@ -159,7 +160,7 @@ func (h *Handler) storeWebhook(ctx context.Context, endpointID string, headers m
 		sigValid = 1
 	}
 
-	_, err = h.queries.CreateWebhook(ctx, db.CreateWebhookParams{
+	_, err = h.store.CreateWebhookWithDeliveries(ctx, db.CreateWebhookParams{
 		ID:             webhookID,
 		EndpointID:     endpointID,
 		Headers:        string(headersJSON),

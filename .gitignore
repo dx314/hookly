@@ -33,3 +33,6 @@ gen/
 .env.local
 hookly.yaml
 /hookly-cli
+
+# Local build output (make all)
+/bin/

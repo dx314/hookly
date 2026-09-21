@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hookly/v1/relay.proto.
  */
 export const file_hookly_v1_relay: GenFile = /*@__PURE__*/
-  fileDesc("ChVob29rbHkvdjEvcmVsYXkucHJvdG8SCWhvb2tseS52MSKaAQoNU3RyZWFtUmVxdWVzdBIsCgdjb25uZWN0GAEgASgLMhkuaG9va2x5LnYxLkNvbm5lY3RSZXF1ZXN0SAASJQoDYWNrGAIgASgLMhYuaG9va2x5LnYxLkRlbGl2ZXJ5QWNrSAASKQoJaGVhcnRiZWF0GAMgASgLMhQuaG9va2x5LnYxLkhlYXJ0YmVhdEgAQgkKB21lc3NhZ2UirQEKDlN0cmVhbVJlc3BvbnNlEjYKEGNvbm5lY3RfcmVzcG9uc2UYASABKAsyGi5ob29rbHkudjEuQ29ubmVjdFJlc3BvbnNlSAASLQoHd2ViaG9vaxgCIAEoCzIaLmhvb2tseS52MS5XZWJob29rRW52ZWxvcGVIABIpCgloZWFydGJlYXQYAyABKAsyFC5ob29rbHkudjEuSGVhcnRiZWF0SABCCQoHbWVzc2FnZSJFCg5Db25uZWN0UmVxdWVzdBIOCgZodWJfaWQYASABKAkSDQoFdG9rZW4YAiABKAkSFAoMZW5kcG9pbnRfaWRzGAMgAygJIjEKD0Nvbm5lY3RSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEg0KBWVycm9yGAIgASgJIh4KCUhlYXJ0YmVhdBIRCgl0aW1lc3RhbXAYASABKAMiiAIKD1dlYmhvb2tFbnZlbG9wZRIKCgJpZBgBIAEoCRITCgtlbmRwb2ludF9pZBgCIAEoCRIXCg9kZXN0aW5hdGlvbl91cmwYAyABKAkSLwoLcmVjZWl2ZWRfYXQYBCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjgKB2hlYWRlcnMYBSADKAsyJy5ob29rbHkudjEuV2ViaG9va0VudmVsb3BlLkhlYWRlcnNFbnRyeRIPCgdwYXlsb2FkGAYgASgMEg8KB2F0dGVtcHQYByABKAUaLgoMSGVhZGVyc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEieQoLRGVsaXZlcnlBY2sSEgoKd2ViaG9va19pZBgBIAEoCRIPCgdzdWNjZXNzGAIgASgIEhMKC3N0YXR1c19jb2RlGAMgASgFEhUKDWVycm9yX21lc3NhZ2UYBCABKAkSGQoRcGVybWFuZW50X2ZhaWx1cmUYBSABKAgyUQoMUmVsYXlTZXJ2aWNlEkEKBlN0cmVhbRIYLmhvb2tseS52MS5TdHJlYW1SZXF1ZXN0GhkuaG9va2x5LnYxLlN0cmVhbVJlc3BvbnNlKAEwAUKRAQoNY29tLmhvb2tseS52MUIKUmVsYXlQcm90b1ABWi9ob29rcy5keDMxNC5jb20vaW50ZXJuYWwvYXBpL2hvb2tseS92MTtob29rbHl2MaICA0hYWKoCCUhvb2tseS5WMcoCCUhvb2tseVxWMeICFUhvb2tseVxWMVxHUEJNZXRhZGF0YeoCCkhvb2tseTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
+  fileDesc("ChVob29rbHkvdjEvcmVsYXkucHJvdG8SCWhvb2tseS52MSKaAQoNU3RyZWFtUmVxdWVzdBIsCgdjb25uZWN0GAEgASgLMhkuaG9va2x5LnYxLkNvbm5lY3RSZXF1ZXN0SAASJQoDYWNrGAIgASgLMhYuaG9va2x5LnYxLkRlbGl2ZXJ5QWNrSAASKQoJaGVhcnRiZWF0GAMgASgLMhQuaG9va2x5LnYxLkhlYXJ0YmVhdEgAQgkKB21lc3NhZ2UirQEKDlN0cmVhbVJlc3BvbnNlEjYKEGNvbm5lY3RfcmVzcG9uc2UYASABKAsyGi5ob29rbHkudjEuQ29ubmVjdFJlc3BvbnNlSAASLQoHd2ViaG9vaxgCIAEoCzIaLmhvb2tseS52MS5XZWJob29rRW52ZWxvcGVIABIpCgloZWFydGJlYXQYAyABKAsyFC5ob29rbHkudjEuSGVhcnRiZWF0SABCCQoHbWVzc2FnZSJbCg5Db25uZWN0UmVxdWVzdBIOCgZodWJfaWQYASABKAkSDQoFdG9rZW4YAiABKAkSFAoMZW5kcG9pbnRfaWRzGAMgAygJEhQKDGNhcGFiaWxpdGllcxgFIAMoCSIxCg9Db25uZWN0UmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCBINCgVlcnJvchgCIAEoCSIeCglIZWFydGJlYXQSEQoJdGltZXN0YW1wGAEgASgDIuwCCg9XZWJob29rRW52ZWxvcGUSCgoCaWQYASABKAkSEwoLZW5kcG9pbnRfaWQYAiABKAkSFwoPZGVzdGluYXRpb25fdXJsGAMgASgJEi8KC3JlY2VpdmVkX2F0GAQgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBI4CgdoZWFkZXJzGAUgAygLMicuaG9va2x5LnYxLldlYmhvb2tFbnZlbG9wZS5IZWFkZXJzRW50cnkSDwoHcGF5bG9hZBgGIAEoDBIPCgdhdHRlbXB0GAcgASgFEhMKC2RlbGl2ZXJ5X2lkGAggASgJEhYKDmRlc3RpbmF0aW9uX2lkGAkgASgJEhgKEGRlc3RpbmF0aW9uX25hbWUYCiABKAkSGwoTZGVzdGluYXRpb25fcHJpbWFyeRgLIAEoCBouCgxIZWFkZXJzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASKmAQoLRGVsaXZlcnlBY2sSEgoKd2ViaG9va19pZBgBIAEoCRIPCgdzdWNjZXNzGAIgASgIEhMKC3N0YXR1c19jb2RlGAMgASgFEhUKDWVycm9yX21lc3NhZ2UYBCABKAkSGQoRcGVybWFuZW50X2ZhaWx1cmUYBSABKAgSEwoLZGVsaXZlcnlfaWQYBiABKAkSFgoOZGVzdGluYXRpb25faWQYByABKAkyUQoMUmVsYXlTZXJ2aWNlEkEKBlN0cmVhbRIYLmhvb2tseS52MS5TdHJlYW1SZXF1ZXN0GhkuaG9va2x5LnYxLlN0cmVhbVJlc3BvbnNlKAEwAUKRAQoNY29tLmhvb2tseS52MUIKUmVsYXlQcm90b1ABWi9ob29rcy5keDMxNC5jb20vaW50ZXJuYWwvYXBpL2hvb2tseS92MTtob29rbHl2MaICA0hYWKoCCUhvb2tseS5WMcoCCUhvb2tseVxWMeICFUhvb2tseVxWMVxHUEJNZXRhZGF0YeoCCkhvb2tseTo6VjFiBnByb3RvMw", [file_google_protobuf_timestamp]);
 
 /**
  * Messages from home-hub to edge
@@ -112,6 +112,16 @@ export type ConnectRequest = Message<"hookly.v1.ConnectRequest"> & {
    * @generated from field: repeated string endpoint_ids = 3;
    */
   endpointIds: string[];
+
+  /**
+   * Optional features this hub understands. Hubs that predate a feature omit it.
+   *   "fanout" - one envelope per (webhook, destination); acks echo delivery_id.
+   * Hubs without "fanout" are only sent each endpoint's primary destination.
+   * (4 is skipped: it was endpoint_ids before bearer-token auth.)
+   *
+   * @generated from field: repeated string capabilities = 5;
+   */
+  capabilities: string[];
 };
 
 /**
@@ -204,6 +214,35 @@ export type WebhookEnvelope = Message<"hookly.v1.WebhookEnvelope"> & {
    * @generated from field: int32 attempt = 7;
    */
   attempt: number;
+
+  /**
+   * Fan-out: one envelope is sent per (webhook, destination). Older edges leave
+   * these empty, older hubs ignore them.
+   *
+   * Echo in DeliveryAck.delivery_id
+   *
+   * @generated from field: string delivery_id = 8;
+   */
+  deliveryId: string;
+
+  /**
+   * @generated from field: string destination_id = 9;
+   */
+  destinationId: string;
+
+  /**
+   * Key for per-destination overrides in hookly.yaml
+   *
+   * @generated from field: string destination_name = 10;
+   */
+  destinationName: string;
+
+  /**
+   * True for the endpoint's first destination
+   *
+   * @generated from field: bool destination_primary = 11;
+   */
+  destinationPrimary: boolean;
 };
 
 /**
@@ -245,6 +284,19 @@ export type DeliveryAck = Message<"hookly.v1.DeliveryAck"> & {
    * @generated from field: bool permanent_failure = 5;
    */
   permanentFailure: boolean;
+
+  /**
+   * Echoed from WebhookEnvelope. Hubs that predate fan-out leave these empty and
+   * the edge falls back to the webhook's primary (or only pending) delivery.
+   *
+   * @generated from field: string delivery_id = 6;
+   */
+  deliveryId: string;
+
+  /**
+   * @generated from field: string destination_id = 7;
+   */
+  destinationId: string;
 };
 
 /**

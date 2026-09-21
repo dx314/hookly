@@ -20,8 +20,11 @@ type HooklyConfig struct {
 
 // EndpointConfig defines an endpoint this hub handles.
 type EndpointConfig struct {
-	ID          string `yaml:"id"`
-	Destination string `yaml:"destination,omitempty"` // Optional override
+	ID string `yaml:"id"`
+	// Optional override for the endpoint's primary (first) destination.
+	Destination string `yaml:"destination,omitempty"`
+	// Optional overrides per destination, keyed by the destination's name on the edge.
+	Destinations map[string]string `yaml:"destinations,omitempty"`
 }
 
 // LoadHooklyYAML loads configuration from a YAML file.
@@ -91,12 +94,23 @@ func (c *HooklyConfig) EndpointIDs() []string {
 	return ids
 }
 
-// GetDestination returns the destination URL for an endpoint.
-// If the endpoint has a destination override, it's returned.
-// Otherwise, defaultDest is returned.
-func (c *HooklyConfig) GetDestination(endpointID, defaultDest string) string {
+// GetDestination returns the URL to forward to for one destination of an endpoint.
+//
+// An override under `destinations:` for destinationName wins. The legacy
+// `destination:` override only applies to the endpoint's primary destination,
+// so it can never redirect a second destination's traffic. An edge that
+// predates fan-out sends no destination name and has a single destination per
+// endpoint, which is treated as primary. Otherwise defaultDest (the URL
+// configured on the edge) is returned.
+func (c *HooklyConfig) GetDestination(endpointID, destinationName string, primary bool, defaultDest string) string {
 	for _, ep := range c.Endpoints {
-		if ep.ID == endpointID && ep.Destination != "" {
+		if ep.ID != endpointID {
+			continue
+		}
+		if override := ep.Destinations[destinationName]; destinationName != "" && override != "" {
+			return override
+		}
+		if ep.Destination != "" && (primary || destinationName == "") {
 			return ep.Destination
 		}
 	}
@@ -114,6 +128,12 @@ endpoints:
   - id: "ep_abc123"
     destination: "http://localhost:3000/webhooks/stripe"
   - id: "ep_def456"
-    # Uses edge-configured destination (no override)
+    # Uses edge-configured destinations (no override)
+  - id: "ep_ghi789"
+    # Endpoint with several destinations: override by destination name.
+    # "destination" above only ever overrides the primary (first) destination.
+    destinations:
+      otto: "http://localhost:8788/telegram"
+      schoolboy: "http://localhost:8789/telegram"
 `
 }

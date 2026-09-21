@@ -18,7 +18,9 @@ hookly login && hookly  # run CLI relay
 External → edge-gateway (public) ←gRPC stream← hookly CLI (private) → local services
 ```
 
-**Data flow**: POST `/h/{id}` → verify sig → store → push to CLI → forward → ACK
+**Data flow**: POST `/h/{id}` → verify sig → store + one delivery per destination → 200 → push each delivery to CLI → forward → ACK per delivery
+
+**Fan-out**: endpoint → 1..N `destinations`; `deliveries` (webhook × destination) hold status/attempts/backoff. `webhooks.status` etc. are a derived rollup (`db.Rollup`). All multi-row changes go through `db.Store` (`internal/db/store.go`), not raw queries. `endpoints.destination_url` is a legacy column mirroring the primary (first) destination. CLIs advertise the `fanout` capability; CLIs without it only get primary destinations.
 
 ## Key Files
 
@@ -26,7 +28,7 @@ External → edge-gateway (public) ←gRPC stream← hookly CLI (private) → lo
 |------|-------|
 | **Entrypoints** | `cmd/edge-gateway/main.go`, `hookly/main.go` (CLI), `cmd/hookly-mcp/main.go` |
 | **Proto** | `proto/hookly/v1/{common,edge,relay}.proto` |
-| **Schema** | `sql/schema.sql`, `sql/queries/*.sql`, `internal/db/migrations/*.sql` |
+| **Schema** | `sql/schema.sql`, `sql/queries/*.sql`, `internal/db/migrations/*.sql`, `internal/db/{store,rollup}.go` |
 | **Webhook** | `internal/webhook/{handler,verify,forwarder,scheduler,backoff}.go` |
 | **Relay** | `internal/relay/{handler,client,dispatcher,manager}.go` |
 | **Auth** | `internal/auth/{github,session,authorize,handlers}.go` |
@@ -58,7 +60,9 @@ Migrations run automatically on startup. Files in `internal/db/migrations/`.
 - **Router**: chi/v5
 - **API**: ConnectRPC + protobuf
 - **Auth**: GitHub OAuth, bearer tokens, org/user allowlist
-- **Retry**: exponential backoff 1s→1h, dead-letter after 7d
+- **Retry**: exponential backoff 1s→1h, dead-letter after 7d — per destination
+- **Ordering**: in-order per (endpoint, destination); one in-flight delivery per destination
+- **SQL params**: don't mix `sqlc.narg()` with bare `?` in one query (SQLite numbers them wrongly) — use `sqlc.arg()`
 - **Verification**: Stripe, GitHub, Telegram built-in + custom schemes
 
 ## Env Vars

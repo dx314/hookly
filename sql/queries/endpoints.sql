@@ -36,3 +36,7 @@ WHERE id = ?;
 -- name: GetEndpointsByIDs :many
 -- Get endpoints by list of IDs for a specific user
 SELECT id, name FROM endpoints WHERE user_id = ? AND id IN (sqlc.slice('ids'));
+
+-- name: SetEndpointLegacyDestinationURL :exec
+-- System query: mirror the primary destination's URL into the legacy endpoints.destination_url column.
+UPDATE endpoints SET destination_url = ? WHERE id = ?;

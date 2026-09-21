@@ -5,7 +5,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-// Define all 9 tools for the Hookly MCP server.
+// Define all 12 tools for the Hookly MCP server.
 func defineTools() []mcp.Tool {
 	return []mcp.Tool{
 		mcp.NewTool("hookly_list_endpoints",
@@ -20,7 +20,19 @@ func defineTools() []mcp.Tool {
 			mcp.WithString("name", mcp.Required(), mcp.Description("Endpoint name")),
 			mcp.WithString("provider_type", mcp.Required(), mcp.Description("Provider type: stripe, github, telegram, generic, or custom")),
 			mcp.WithString("signature_secret", mcp.Required(), mcp.Description("Secret for signature verification")),
-			mcp.WithString("destination_url", mcp.Required(), mcp.Description("URL to forward webhooks to")),
+			mcp.WithString("destination_url", mcp.Description("URL to forward webhooks to (shorthand for a single destination named \"default\")")),
+			mcp.WithArray("destinations",
+				mcp.Description("Destinations to fan out to, each {name, url, enabled?}. Use instead of destination_url for more than one"),
+				mcp.Items(map[string]any{
+					"type": "object",
+					"properties": map[string]any{
+						"name":    map[string]any{"type": "string"},
+						"url":     map[string]any{"type": "string"},
+						"enabled": map[string]any{"type": "boolean"},
+					},
+					"required": []string{"name", "url"},
+				}),
+			),
 			// Custom verification config (required when provider_type is 'custom')
 			mcp.WithString("verification_method", mcp.Description("For custom provider: static, hmac_sha256, hmac_sha1, or timestamped_hmac")),
 			mcp.WithString("signature_header", mcp.Description("For custom provider: header containing the signature (e.g., X-Signature)")),
@@ -37,6 +49,24 @@ func defineTools() []mcp.Tool {
 			mcp.WithString("endpoint_id", mcp.Required(), mcp.Description("The endpoint ID")),
 			mcp.WithBoolean("muted", mcp.Required(), mcp.Description("Whether to mute (true) or unmute (false)")),
 		),
+		mcp.NewTool("hookly_add_destination",
+			mcp.WithDescription("Add a destination to an endpoint. It only receives webhooks that arrive after it was added"),
+			mcp.WithString("endpoint_id", mcp.Required(), mcp.Description("The endpoint ID")),
+			mcp.WithString("name", mcp.Required(), mcp.Description("Destination name, unique within the endpoint")),
+			mcp.WithString("url", mcp.Required(), mcp.Description("URL to forward webhooks to")),
+			mcp.WithBoolean("enabled", mcp.Description("Whether the destination receives webhooks (default true)")),
+		),
+		mcp.NewTool("hookly_update_destination",
+			mcp.WithDescription("Update a destination's name, URL or enabled flag"),
+			mcp.WithString("destination_id", mcp.Required(), mcp.Description("The destination ID")),
+			mcp.WithString("name", mcp.Description("New name")),
+			mcp.WithString("url", mcp.Description("New URL (pending deliveries follow it)")),
+			mcp.WithBoolean("enabled", mcp.Description("Enable or pause the destination")),
+		),
+		mcp.NewTool("hookly_remove_destination",
+			mcp.WithDescription("Remove a destination from an endpoint, abandoning its pending deliveries. The last destination cannot be removed"),
+			mcp.WithString("destination_id", mcp.Required(), mcp.Description("The destination ID to remove")),
+		),
 		mcp.NewTool("hookly_list_webhooks",
 			mcp.WithDescription("List webhooks with optional filters"),
 			mcp.WithString("endpoint_id", mcp.Description("Filter by endpoint ID")),
@@ -44,12 +74,13 @@ func defineTools() []mcp.Tool {
 			mcp.WithNumber("limit", mcp.Description("Maximum number of webhooks to return (default 50)")),
 		),
 		mcp.NewTool("hookly_get_webhook",
-			mcp.WithDescription("Get full webhook details including payload"),
+			mcp.WithDescription("Get full webhook details including payload and per-destination delivery status"),
 			mcp.WithString("webhook_id", mcp.Required(), mcp.Description("The webhook ID")),
 		),
 		mcp.NewTool("hookly_replay_webhook",
 			mcp.WithDescription("Replay a webhook for re-delivery"),
 			mcp.WithString("webhook_id", mcp.Required(), mcp.Description("The webhook ID to replay")),
+			mcp.WithString("destination_id", mcp.Description("Replay to this destination only (default: all destinations)")),
 		),
 		mcp.NewTool("hookly_get_status",
 			mcp.WithDescription("Get system status including queue depth"),

@@ -10,9 +10,9 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
-	"connectrpc.com/connect"
 	"golang.org/x/net/http2"
 
 	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
@@ -25,6 +25,8 @@ const (
 	initialBackoff  = 1 * time.Second
 	maxBackoff      = 60 * time.Second
 	clientHeartbeat = 15 * time.Second
+	// workerQueueSize bounds the webhooks waiting for one destination.
+	workerQueueSize = 1000
 )
 
 // Connection error types - permanent errors should not be retried
@@ -38,8 +40,9 @@ var (
 
 // Client connects to the edge relay service and handles webhooks.
 type Client struct {
-	config    *config.HooklyConfig
-	forwarder *webhook.Forwarder
+	config     *config.HooklyConfig
+	forwarder  *webhook.Forwarder
+	httpClient *http.Client // nil: HTTP/2 over TLS with keepalives (see connect)
 }
 
 // NewClient creates a new relay client from HooklyConfig.
@@ -48,6 +51,11 @@ func NewClient(cfg *config.HooklyConfig) *Client {
 		config:    cfg,
 		forwarder: webhook.NewForwarder(),
 	}
+}
+
+// SetHTTPClient replaces the HTTP client used to reach the edge (used by tests).
+func (c *Client) SetHTTPClient(httpClient *http.Client) {
+	c.httpClient = httpClient
 }
 
 // Run connects to the edge and processes webhooks until context is cancelled.
@@ -140,6 +148,10 @@ func (c *Client) connect(ctx context.Context) error {
 	}
 
 	// Create ConnectRPC client
+	if c.httpClient != nil {
+		httpClient = c.httpClient
+	}
+
 	client := hooklyv1connect.NewRelayServiceClient(
 		httpClient,
 		c.config.EdgeURL,
@@ -155,9 +167,10 @@ func (c *Client) connect(ctx context.Context) error {
 	if err := stream.Send(&hooklyv1.StreamRequest{
 		Message: &hooklyv1.StreamRequest_Connect{
 			Connect: &hooklyv1.ConnectRequest{
-				HubId:       hubID,
-				Token:       c.config.Token,
-				EndpointIds: c.config.EndpointIDs(),
+				HubId:        hubID,
+				Token:        c.config.Token,
+				EndpointIds:  c.config.EndpointIDs(),
+				Capabilities: []string{CapabilityFanout},
 			},
 		},
 	}); err != nil {
@@ -183,6 +196,20 @@ func (c *Client) connect(ctx context.Context) error {
 	slog.Debug("auth succeeded")
 	slog.Info("connected to edge", "endpoints", c.config.EndpointIDs())
 
+	// Sends come from the heartbeat goroutine and the destination workers
+	var sendMu sync.Mutex
+	send := func(req *hooklyv1.StreamRequest) error {
+		sendMu.Lock()
+		defer sendMu.Unlock()
+		return stream.Send(req)
+	}
+
+	// One worker per destination: a slow or dead destination never holds up
+	// another, while each destination still gets its webhooks in order.
+	connCtx, cancelWorkers := context.WithCancel(ctx)
+	defer cancelWorkers()
+	workers := make(map[string]chan *hooklyv1.WebhookEnvelope)
+
 	// Start heartbeat sender
 	heartbeatDone := make(chan struct{})
 	go func() {
@@ -196,7 +223,7 @@ func (c *Client) connect(ctx context.Context) error {
 				return
 			case <-ticker.C:
 				slog.Debug("sending heartbeat")
-				if err := stream.Send(&hooklyv1.StreamRequest{
+				if err := send(&hooklyv1.StreamRequest{
 					Message: &hooklyv1.StreamRequest_Heartbeat{
 						Heartbeat: &hooklyv1.Heartbeat{
 							Timestamp: time.Now().Unix(),
@@ -228,7 +255,35 @@ func (c *Client) connect(ctx context.Context) error {
 		switch m := msg.Message.(type) {
 		case *hooklyv1.StreamResponse_Webhook:
 			slog.Debug("received webhook message", "webhook_id", m.Webhook.Id)
-			c.handleWebhook(ctx, stream, m.Webhook)
+			// An edge that predates fan-out has one destination per endpoint
+			key := m.Webhook.DestinationId
+			if key == "" {
+				key = m.Webhook.EndpointId
+			}
+			queue, ok := workers[key]
+			if !ok {
+				queue = make(chan *hooklyv1.WebhookEnvelope, workerQueueSize)
+				workers[key] = queue
+				go func() {
+					for {
+						select {
+						case <-connCtx.Done():
+							return
+						case envelope := <-queue:
+							c.handleWebhook(connCtx, send, envelope)
+						}
+					}
+				}()
+			}
+			select {
+			case queue <- m.Webhook:
+			default:
+				// Not acked, so the edge sends it again later
+				slog.Warn("destination queue full, dropping webhook",
+					"webhook_id", m.Webhook.Id,
+					"destination", m.Webhook.DestinationName,
+				)
+			}
 		case *hooklyv1.StreamResponse_Heartbeat:
 			slog.Debug("heartbeat from edge", "timestamp", m.Heartbeat.Timestamp)
 		default:
@@ -237,13 +292,19 @@ func (c *Client) connect(ctx context.Context) error {
 	}
 }
 
-func (c *Client) handleWebhook(ctx context.Context, stream *connect.BidiStreamForClient[hooklyv1.StreamRequest, hooklyv1.StreamResponse], envelope *hooklyv1.WebhookEnvelope) {
+func (c *Client) handleWebhook(ctx context.Context, send func(*hooklyv1.StreamRequest) error, envelope *hooklyv1.WebhookEnvelope) {
 	// Get destination URL, allowing local override
-	destinationURL := c.config.GetDestination(envelope.EndpointId, envelope.DestinationUrl)
+	destinationURL := c.config.GetDestination(
+		envelope.EndpointId,
+		envelope.DestinationName,
+		envelope.DestinationPrimary,
+		envelope.DestinationUrl,
+	)
 
 	slog.Info("received webhook",
 		"webhook_id", envelope.Id,
 		"endpoint_id", envelope.EndpointId,
+		"destination_name", envelope.DestinationName,
 		"destination", destinationURL,
 		"attempt", envelope.Attempt,
 	)
@@ -258,16 +319,18 @@ func (c *Client) handleWebhook(ctx context.Context, stream *connect.BidiStreamFo
 		int(envelope.Attempt),
 	)
 
-	// Send ACK
+	// Send ACK, echoing which delivery it is for
 	ack := &hooklyv1.DeliveryAck{
 		WebhookId:        envelope.Id,
 		Success:          result.Success,
 		StatusCode:       int32(result.StatusCode),
 		ErrorMessage:     result.Error,
 		PermanentFailure: result.PermanentFailure,
+		DeliveryId:       envelope.DeliveryId,
+		DestinationId:    envelope.DestinationId,
 	}
 
-	if err := stream.Send(&hooklyv1.StreamRequest{
+	if err := send(&hooklyv1.StreamRequest{
 		Message: &hooklyv1.StreamRequest_Ack{
 			Ack: ack,
 		},

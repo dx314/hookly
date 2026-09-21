@@ -4,7 +4,7 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
-import type { Endpoint, PaginationRequest, PaginationResponse, ProviderType, SystemSettings, SystemStatus, ThemePreference, UserSettings, VerificationConfig, Webhook, WebhookStatus } from "./common_pb";
+import type { Destination, Endpoint, PaginationRequest, PaginationResponse, ProviderType, SystemSettings, SystemStatus, ThemePreference, UserSettings, VerificationConfig, Webhook, WebhookStatus } from "./common_pb";
 import { file_hookly_v1_common } from "./common_pb";
 import type { Message } from "@bufbuild/protobuf";
 
@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hookly/v1/edge.proto.
  */
 export const file_hookly_v1_edge: GenFile = /*@__PURE__*/
-  fileDesc("ChRob29rbHkvdjEvZWRnZS5wcm90bxIJaG9va2x5LnYxIsQBChVDcmVhdGVFbmRwb2ludFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIuCg1wcm92aWRlcl90eXBlGAIgASgOMhcuaG9va2x5LnYxLlByb3ZpZGVyVHlwZRIYChBzaWduYXR1cmVfc2VjcmV0GAMgASgJEhcKD2Rlc3RpbmF0aW9uX3VybBgEIAEoCRI6ChN2ZXJpZmljYXRpb25fY29uZmlnGAUgASgLMh0uaG9va2x5LnYxLlZlcmlmaWNhdGlvbkNvbmZpZyJUChZDcmVhdGVFbmRwb2ludFJlc3BvbnNlEiUKCGVuZHBvaW50GAEgASgLMhMuaG9va2x5LnYxLkVuZHBvaW50EhMKC3dlYmhvb2tfdXJsGAIgASgJIiAKEkdldEVuZHBvaW50UmVxdWVzdBIKCgJpZBgBIAEoCSJRChNHZXRFbmRwb2ludFJlc3BvbnNlEiUKCGVuZHBvaW50GAEgASgLMhMuaG9va2x5LnYxLkVuZHBvaW50EhMKC3dlYmhvb2tfdXJsGAIgASgJIkgKFExpc3RFbmRwb2ludHNSZXF1ZXN0EjAKCnBhZ2luYXRpb24YASABKAsyHC5ob29rbHkudjEuUGFnaW5hdGlvblJlcXVlc3QicgoVTGlzdEVuZHBvaW50c1Jlc3BvbnNlEiYKCWVuZHBvaW50cxgBIAMoCzITLmhvb2tseS52MS5FbmRwb2ludBIxCgpwYWdpbmF0aW9uGAIgASgLMh0uaG9va2x5LnYxLlBhZ2luYXRpb25SZXNwb25zZSL/AQoVVXBkYXRlRW5kcG9pbnRSZXF1ZXN0EgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARIdChBzaWduYXR1cmVfc2VjcmV0GAMgASgJSAGIAQESHAoPZGVzdGluYXRpb25fdXJsGAQgASgJSAKIAQESEgoFbXV0ZWQYBSABKAhIA4gBARI6ChN2ZXJpZmljYXRpb25fY29uZmlnGAYgASgLMh0uaG9va2x5LnYxLlZlcmlmaWNhdGlvbkNvbmZpZ0IHCgVfbmFtZUITChFfc2lnbmF0dXJlX3NlY3JldEISChBfZGVzdGluYXRpb25fdXJsQggKBl9tdXRlZCI/ChZVcGRhdGVFbmRwb2ludFJlc3BvbnNlEiUKCGVuZHBvaW50GAEgASgLMhMuaG9va2x5LnYxLkVuZHBvaW50IiMKFURlbGV0ZUVuZHBvaW50UmVxdWVzdBIKCgJpZBgBIAEoCSIYChZEZWxldGVFbmRwb2ludFJlc3BvbnNlIh8KEUdldFdlYmhvb2tSZXF1ZXN0EgoKAmlkGAEgASgJIjkKEkdldFdlYmhvb2tSZXNwb25zZRIjCgd3ZWJob29rGAEgASgLMhIuaG9va2x5LnYxLldlYmhvb2siqwEKE0xpc3RXZWJob29rc1JlcXVlc3QSGAoLZW5kcG9pbnRfaWQYASABKAlIAIgBARItCgZzdGF0dXMYAiABKA4yGC5ob29rbHkudjEuV2ViaG9va1N0YXR1c0gBiAEBEjAKCnBhZ2luYXRpb24YAyABKAsyHC5ob29rbHkudjEuUGFnaW5hdGlvblJlcXVlc3RCDgoMX2VuZHBvaW50X2lkQgkKB19zdGF0dXMibwoUTGlzdFdlYmhvb2tzUmVzcG9uc2USJAoId2ViaG9va3MYASADKAsyEi5ob29rbHkudjEuV2ViaG9vaxIxCgpwYWdpbmF0aW9uGAIgASgLMh0uaG9va2x5LnYxLlBhZ2luYXRpb25SZXNwb25zZSIiChRSZXBsYXlXZWJob29rUmVxdWVzdBIKCgJpZBgBIAEoCSI8ChVSZXBsYXlXZWJob29rUmVzcG9uc2USIwoHd2ViaG9vaxgBIAEoCzISLmhvb2tseS52MS5XZWJob29rIhIKEEdldFN0YXR1c1JlcXVlc3QiPAoRR2V0U3RhdHVzUmVzcG9uc2USJwoGc3RhdHVzGAEgASgLMhcuaG9va2x5LnYxLlN5c3RlbVN0YXR1cyIUChJHZXRTZXR0aW5nc1JlcXVlc3Qi7wEKE0dldFNldHRpbmdzUmVzcG9uc2USEAoIYmFzZV91cmwYASABKAkSGwoTZ2l0aHViX2F1dGhfZW5hYmxlZBgCIAEoCBImCh50ZWxlZ3JhbV9ub3RpZmljYXRpb25zX2VuYWJsZWQYAyABKAgSDwoHdXNlcl9pZBgEIAEoCRIQCgh1c2VybmFtZRgFIAEoCRISCgphdmF0YXJfdXJsGAYgASgJEjQKEHRoZW1lX3ByZWZlcmVuY2UYByABKA4yGi5ob29rbHkudjEuVGhlbWVQcmVmZXJlbmNlEhQKDGlzX3N1cGVydXNlchgIIAEoCCIYChZHZXRVc2VyU2V0dGluZ3NSZXF1ZXN0IkQKF0dldFVzZXJTZXR0aW5nc1Jlc3BvbnNlEikKCHNldHRpbmdzGAEgASgLMhcuaG9va2x5LnYxLlVzZXJTZXR0aW5ncyKLAgoZVXBkYXRlVXNlclNldHRpbmdzUmVxdWVzdBIfChJ0ZWxlZ3JhbV9ib3RfdG9rZW4YASABKAlIAIgBARIdChB0ZWxlZ3JhbV9jaGF0X2lkGAIgASgJSAGIAQESHQoQdGVsZWdyYW1fZW5hYmxlZBgDIAEoCEgCiAEBEjkKEHRoZW1lX3ByZWZlcmVuY2UYBCABKA4yGi5ob29rbHkudjEuVGhlbWVQcmVmZXJlbmNlSAOIAQFCFQoTX3RlbGVncmFtX2JvdF90b2tlbkITChFfdGVsZWdyYW1fY2hhdF9pZEITChFfdGVsZWdyYW1fZW5hYmxlZEITChFfdGhlbWVfcHJlZmVyZW5jZSJHChpVcGRhdGVVc2VyU2V0dGluZ3NSZXNwb25zZRIpCghzZXR0aW5ncxgBIAEoCzIXLmhvb2tseS52MS5Vc2VyU2V0dGluZ3MiGgoYR2V0U3lzdGVtU2V0dGluZ3NSZXF1ZXN0IkgKGUdldFN5c3RlbVNldHRpbmdzUmVzcG9uc2USKwoIc2V0dGluZ3MYASABKAsyGS5ob29rbHkudjEuU3lzdGVtU2V0dGluZ3My1wgKC0VkZ2VTZXJ2aWNlElUKDkNyZWF0ZUVuZHBvaW50EiAuaG9va2x5LnYxLkNyZWF0ZUVuZHBvaW50UmVxdWVzdBohLmhvb2tseS52MS5DcmVhdGVFbmRwb2ludFJlc3BvbnNlEkwKC0dldEVuZHBvaW50Eh0uaG9va2x5LnYxLkdldEVuZHBvaW50UmVxdWVzdBoeLmhvb2tseS52MS5HZXRFbmRwb2ludFJlc3BvbnNlElIKDUxpc3RFbmRwb2ludHMSHy5ob29rbHkudjEuTGlzdEVuZHBvaW50c1JlcXVlc3QaIC5ob29rbHkudjEuTGlzdEVuZHBvaW50c1Jlc3BvbnNlElUKDlVwZGF0ZUVuZHBvaW50EiAuaG9va2x5LnYxLlVwZGF0ZUVuZHBvaW50UmVxdWVzdBohLmhvb2tseS52MS5VcGRhdGVFbmRwb2ludFJlc3BvbnNlElUKDkRlbGV0ZUVuZHBvaW50EiAuaG9va2x5LnYxLkRlbGV0ZUVuZHBvaW50UmVxdWVzdBohLmhvb2tseS52MS5EZWxldGVFbmRwb2ludFJlc3BvbnNlEkkKCkdldFdlYmhvb2sSHC5ob29rbHkudjEuR2V0V2ViaG9va1JlcXVlc3QaHS5ob29rbHkudjEuR2V0V2ViaG9va1Jlc3BvbnNlEk8KDExpc3RXZWJob29rcxIeLmhvb2tseS52MS5MaXN0V2ViaG9va3NSZXF1ZXN0Gh8uaG9va2x5LnYxLkxpc3RXZWJob29rc1Jlc3BvbnNlElIKDVJlcGxheVdlYmhvb2sSHy5ob29rbHkudjEuUmVwbGF5V2ViaG9va1JlcXVlc3QaIC5ob29rbHkudjEuUmVwbGF5V2ViaG9va1Jlc3BvbnNlEkYKCUdldFN0YXR1cxIbLmhvb2tseS52MS5HZXRTdGF0dXNSZXF1ZXN0GhwuaG9va2x5LnYxLkdldFN0YXR1c1Jlc3BvbnNlEkwKC0dldFNldHRpbmdzEh0uaG9va2x5LnYxLkdldFNldHRpbmdzUmVxdWVzdBoeLmhvb2tseS52MS5HZXRTZXR0aW5nc1Jlc3BvbnNlElgKD0dldFVzZXJTZXR0aW5ncxIhLmhvb2tseS52MS5HZXRVc2VyU2V0dGluZ3NSZXF1ZXN0GiIuaG9va2x5LnYxLkdldFVzZXJTZXR0aW5nc1Jlc3BvbnNlEmEKElVwZGF0ZVVzZXJTZXR0aW5ncxIkLmhvb2tseS52MS5VcGRhdGVVc2VyU2V0dGluZ3NSZXF1ZXN0GiUuaG9va2x5LnYxLlVwZGF0ZVVzZXJTZXR0aW5nc1Jlc3BvbnNlEl4KEUdldFN5c3RlbVNldHRpbmdzEiMuaG9va2x5LnYxLkdldFN5c3RlbVNldHRpbmdzUmVxdWVzdBokLmhvb2tseS52MS5HZXRTeXN0ZW1TZXR0aW5nc1Jlc3BvbnNlQpABCg1jb20uaG9va2x5LnYxQglFZGdlUHJvdG9QAVovaG9va3MuZHgzMTQuY29tL2ludGVybmFsL2FwaS9ob29rbHkvdjE7aG9va2x5djGiAgNIWFiqAglIb29rbHkuVjHKAglIb29rbHlcVjHiAhVIb29rbHlcVjFcR1BCTWV0YWRhdGHqAgpIb29rbHk6OlYxYgZwcm90bzM", [file_hookly_v1_common]);
+  fileDesc("ChRob29rbHkvdjEvZWRnZS5wcm90bxIJaG9va2x5LnYxIvcBChVDcmVhdGVFbmRwb2ludFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIuCg1wcm92aWRlcl90eXBlGAIgASgOMhcuaG9va2x5LnYxLlByb3ZpZGVyVHlwZRIYChBzaWduYXR1cmVfc2VjcmV0GAMgASgJEhcKD2Rlc3RpbmF0aW9uX3VybBgEIAEoCRI6ChN2ZXJpZmljYXRpb25fY29uZmlnGAUgASgLMh0uaG9va2x5LnYxLlZlcmlmaWNhdGlvbkNvbmZpZxIxCgxkZXN0aW5hdGlvbnMYBiADKAsyGy5ob29rbHkudjEuRGVzdGluYXRpb25JbnB1dCJPChBEZXN0aW5hdGlvbklucHV0EgwKBG5hbWUYASABKAkSCwoDdXJsGAIgASgJEhQKB2VuYWJsZWQYAyABKAhIAIgBAUIKCghfZW5hYmxlZCJUChZDcmVhdGVFbmRwb2ludFJlc3BvbnNlEiUKCGVuZHBvaW50GAEgASgLMhMuaG9va2x5LnYxLkVuZHBvaW50EhMKC3dlYmhvb2tfdXJsGAIgASgJIiAKEkdldEVuZHBvaW50UmVxdWVzdBIKCgJpZBgBIAEoCSJRChNHZXRFbmRwb2ludFJlc3BvbnNlEiUKCGVuZHBvaW50GAEgASgLMhMuaG9va2x5LnYxLkVuZHBvaW50EhMKC3dlYmhvb2tfdXJsGAIgASgJIkgKFExpc3RFbmRwb2ludHNSZXF1ZXN0EjAKCnBhZ2luYXRpb24YASABKAsyHC5ob29rbHkudjEuUGFnaW5hdGlvblJlcXVlc3QicgoVTGlzdEVuZHBvaW50c1Jlc3BvbnNlEiYKCWVuZHBvaW50cxgBIAMoCzITLmhvb2tseS52MS5FbmRwb2ludBIxCgpwYWdpbmF0aW9uGAIgASgLMh0uaG9va2x5LnYxLlBhZ2luYXRpb25SZXNwb25zZSL/AQoVVXBkYXRlRW5kcG9pbnRSZXF1ZXN0EgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARIdChBzaWduYXR1cmVfc2VjcmV0GAMgASgJSAGIAQESHAoPZGVzdGluYXRpb25fdXJsGAQgASgJSAKIAQESEgoFbXV0ZWQYBSABKAhIA4gBARI6ChN2ZXJpZmljYXRpb25fY29uZmlnGAYgASgLMh0uaG9va2x5LnYxLlZlcmlmaWNhdGlvbkNvbmZpZ0IHCgVfbmFtZUITChFfc2lnbmF0dXJlX3NlY3JldEISChBfZGVzdGluYXRpb25fdXJsQggKBl9tdXRlZCI/ChZVcGRhdGVFbmRwb2ludFJlc3BvbnNlEiUKCGVuZHBvaW50GAEgASgLMhMuaG9va2x5LnYxLkVuZHBvaW50IiMKFURlbGV0ZUVuZHBvaW50UmVxdWVzdBIKCgJpZBgBIAEoCSIYChZEZWxldGVFbmRwb2ludFJlc3BvbnNlImkKFUFkZERlc3RpbmF0aW9uUmVxdWVzdBITCgtlbmRwb2ludF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEgsKA3VybBgDIAEoCRIUCgdlbmFibGVkGAQgASgISACIAQFCCgoIX2VuYWJsZWQibAoWQWRkRGVzdGluYXRpb25SZXNwb25zZRIrCgtkZXN0aW5hdGlvbhgBIAEoCzIWLmhvb2tseS52MS5EZXN0aW5hdGlvbhIlCghlbmRwb2ludBgCIAEoCzITLmhvb2tseS52MS5FbmRwb2ludCJ+ChhVcGRhdGVEZXN0aW5hdGlvblJlcXVlc3QSCgoCaWQYASABKAkSEQoEbmFtZRgCIAEoCUgAiAEBEhAKA3VybBgDIAEoCUgBiAEBEhQKB2VuYWJsZWQYBCABKAhIAogBAUIHCgVfbmFtZUIGCgRfdXJsQgoKCF9lbmFibGVkIm8KGVVwZGF0ZURlc3RpbmF0aW9uUmVzcG9uc2USKwoLZGVzdGluYXRpb24YASABKAsyFi5ob29rbHkudjEuRGVzdGluYXRpb24SJQoIZW5kcG9pbnQYAiABKAsyEy5ob29rbHkudjEuRW5kcG9pbnQiJgoYUmVtb3ZlRGVzdGluYXRpb25SZXF1ZXN0EgoKAmlkGAEgASgJIkIKGVJlbW92ZURlc3RpbmF0aW9uUmVzcG9uc2USJQoIZW5kcG9pbnQYASABKAsyEy5ob29rbHkudjEuRW5kcG9pbnQiHwoRR2V0V2ViaG9va1JlcXVlc3QSCgoCaWQYASABKAkiOQoSR2V0V2ViaG9va1Jlc3BvbnNlEiMKB3dlYmhvb2sYASABKAsyEi5ob29rbHkudjEuV2ViaG9vayKrAQoTTGlzdFdlYmhvb2tzUmVxdWVzdBIYCgtlbmRwb2ludF9pZBgBIAEoCUgAiAEBEi0KBnN0YXR1cxgCIAEoDjIYLmhvb2tseS52MS5XZWJob29rU3RhdHVzSAGIAQESMAoKcGFnaW5hdGlvbhgDIAEoCzIcLmhvb2tseS52MS5QYWdpbmF0aW9uUmVxdWVzdEIOCgxfZW5kcG9pbnRfaWRCCQoHX3N0YXR1cyJvChRMaXN0V2ViaG9va3NSZXNwb25zZRIkCgh3ZWJob29rcxgBIAMoCzISLmhvb2tseS52MS5XZWJob29rEjEKCnBhZ2luYXRpb24YAiABKAsyHS5ob29rbHkudjEuUGFnaW5hdGlvblJlc3BvbnNlIlIKFFJlcGxheVdlYmhvb2tSZXF1ZXN0EgoKAmlkGAEgASgJEhsKDmRlc3RpbmF0aW9uX2lkGAIgASgJSACIAQFCEQoPX2Rlc3RpbmF0aW9uX2lkIjwKFVJlcGxheVdlYmhvb2tSZXNwb25zZRIjCgd3ZWJob29rGAEgASgLMhIuaG9va2x5LnYxLldlYmhvb2siEgoQR2V0U3RhdHVzUmVxdWVzdCI8ChFHZXRTdGF0dXNSZXNwb25zZRInCgZzdGF0dXMYASABKAsyFy5ob29rbHkudjEuU3lzdGVtU3RhdHVzIhQKEkdldFNldHRpbmdzUmVxdWVzdCLvAQoTR2V0U2V0dGluZ3NSZXNwb25zZRIQCghiYXNlX3VybBgBIAEoCRIbChNnaXRodWJfYXV0aF9lbmFibGVkGAIgASgIEiYKHnRlbGVncmFtX25vdGlmaWNhdGlvbnNfZW5hYmxlZBgDIAEoCBIPCgd1c2VyX2lkGAQgASgJEhAKCHVzZXJuYW1lGAUgASgJEhIKCmF2YXRhcl91cmwYBiABKAkSNAoQdGhlbWVfcHJlZmVyZW5jZRgHIAEoDjIaLmhvb2tseS52MS5UaGVtZVByZWZlcmVuY2USFAoMaXNfc3VwZXJ1c2VyGAggASgIIhgKFkdldFVzZXJTZXR0aW5nc1JlcXVlc3QiRAoXR2V0VXNlclNldHRpbmdzUmVzcG9uc2USKQoIc2V0dGluZ3MYASABKAsyFy5ob29rbHkudjEuVXNlclNldHRpbmdzIosCChlVcGRhdGVVc2VyU2V0dGluZ3NSZXF1ZXN0Eh8KEnRlbGVncmFtX2JvdF90b2tlbhgBIAEoCUgAiAEBEh0KEHRlbGVncmFtX2NoYXRfaWQYAiABKAlIAYgBARIdChB0ZWxlZ3JhbV9lbmFibGVkGAMgASgISAKIAQESOQoQdGhlbWVfcHJlZmVyZW5jZRgEIAEoDjIaLmhvb2tseS52MS5UaGVtZVByZWZlcmVuY2VIA4gBAUIVChNfdGVsZWdyYW1fYm90X3Rva2VuQhMKEV90ZWxlZ3JhbV9jaGF0X2lkQhMKEV90ZWxlZ3JhbV9lbmFibGVkQhMKEV90aGVtZV9wcmVmZXJlbmNlIkcKGlVwZGF0ZVVzZXJTZXR0aW5nc1Jlc3BvbnNlEikKCHNldHRpbmdzGAEgASgLMhcuaG9va2x5LnYxLlVzZXJTZXR0aW5ncyIaChhHZXRTeXN0ZW1TZXR0aW5nc1JlcXVlc3QiSAoZR2V0U3lzdGVtU2V0dGluZ3NSZXNwb25zZRIrCghzZXR0aW5ncxgBIAEoCzIZLmhvb2tseS52MS5TeXN0ZW1TZXR0aW5nczLuCgoLRWRnZVNlcnZpY2USVQoOQ3JlYXRlRW5kcG9pbnQSIC5ob29rbHkudjEuQ3JlYXRlRW5kcG9pbnRSZXF1ZXN0GiEuaG9va2x5LnYxLkNyZWF0ZUVuZHBvaW50UmVzcG9uc2USTAoLR2V0RW5kcG9pbnQSHS5ob29rbHkudjEuR2V0RW5kcG9pbnRSZXF1ZXN0Gh4uaG9va2x5LnYxLkdldEVuZHBvaW50UmVzcG9uc2USUgoNTGlzdEVuZHBvaW50cxIfLmhvb2tseS52MS5MaXN0RW5kcG9pbnRzUmVxdWVzdBogLmhvb2tseS52MS5MaXN0RW5kcG9pbnRzUmVzcG9uc2USVQoOVXBkYXRlRW5kcG9pbnQSIC5ob29rbHkudjEuVXBkYXRlRW5kcG9pbnRSZXF1ZXN0GiEuaG9va2x5LnYxLlVwZGF0ZUVuZHBvaW50UmVzcG9uc2USVQoORGVsZXRlRW5kcG9pbnQSIC5ob29rbHkudjEuRGVsZXRlRW5kcG9pbnRSZXF1ZXN0GiEuaG9va2x5LnYxLkRlbGV0ZUVuZHBvaW50UmVzcG9uc2USVQoOQWRkRGVzdGluYXRpb24SIC5ob29rbHkudjEuQWRkRGVzdGluYXRpb25SZXF1ZXN0GiEuaG9va2x5LnYxLkFkZERlc3RpbmF0aW9uUmVzcG9uc2USXgoRVXBkYXRlRGVzdGluYXRpb24SIy5ob29rbHkudjEuVXBkYXRlRGVzdGluYXRpb25SZXF1ZXN0GiQuaG9va2x5LnYxLlVwZGF0ZURlc3RpbmF0aW9uUmVzcG9uc2USXgoRUmVtb3ZlRGVzdGluYXRpb24SIy5ob29rbHkudjEuUmVtb3ZlRGVzdGluYXRpb25SZXF1ZXN0GiQuaG9va2x5LnYxLlJlbW92ZURlc3RpbmF0aW9uUmVzcG9uc2USSQoKR2V0V2ViaG9vaxIcLmhvb2tseS52MS5HZXRXZWJob29rUmVxdWVzdBodLmhvb2tseS52MS5HZXRXZWJob29rUmVzcG9uc2USTwoMTGlzdFdlYmhvb2tzEh4uaG9va2x5LnYxLkxpc3RXZWJob29rc1JlcXVlc3QaHy5ob29rbHkudjEuTGlzdFdlYmhvb2tzUmVzcG9uc2USUgoNUmVwbGF5V2ViaG9vaxIfLmhvb2tseS52MS5SZXBsYXlXZWJob29rUmVxdWVzdBogLmhvb2tseS52MS5SZXBsYXlXZWJob29rUmVzcG9uc2USRgoJR2V0U3RhdHVzEhsuaG9va2x5LnYxLkdldFN0YXR1c1JlcXVlc3QaHC5ob29rbHkudjEuR2V0U3RhdHVzUmVzcG9uc2USTAoLR2V0U2V0dGluZ3MSHS5ob29rbHkudjEuR2V0U2V0dGluZ3NSZXF1ZXN0Gh4uaG9va2x5LnYxLkdldFNldHRpbmdzUmVzcG9uc2USWAoPR2V0VXNlclNldHRpbmdzEiEuaG9va2x5LnYxLkdldFVzZXJTZXR0aW5nc1JlcXVlc3QaIi5ob29rbHkudjEuR2V0VXNlclNldHRpbmdzUmVzcG9uc2USYQoSVXBkYXRlVXNlclNldHRpbmdzEiQuaG9va2x5LnYxLlVwZGF0ZVVzZXJTZXR0aW5nc1JlcXVlc3QaJS5ob29rbHkudjEuVXBkYXRlVXNlclNldHRpbmdzUmVzcG9uc2USXgoRR2V0U3lzdGVtU2V0dGluZ3MSIy5ob29rbHkudjEuR2V0U3lzdGVtU2V0dGluZ3NSZXF1ZXN0GiQuaG9va2x5LnYxLkdldFN5c3RlbVNldHRpbmdzUmVzcG9uc2VCkAEKDWNvbS5ob29rbHkudjFCCUVkZ2VQcm90b1ABWi9ob29rcy5keDMxNC5jb20vaW50ZXJuYWwvYXBpL2hvb2tseS92MTtob29rbHl2MaICA0hYWKoCCUhvb2tseS5WMcoCCUhvb2tseVxWMeICFUhvb2tseVxWMVxHUEJNZXRhZGF0YeoCCkhvb2tseTo6VjFiBnByb3RvMw", [file_hookly_v1_common]);
 
 /**
  * @generated from message hookly.v1.CreateEndpointRequest
@@ -34,6 +34,9 @@ export type CreateEndpointRequest = Message<"hookly.v1.CreateEndpointRequest"> &
   signatureSecret: string;
 
   /**
+   * Shorthand for a single destination named "default". Ignored when
+   * destinations is set.
+   *
    * @generated from field: string destination_url = 4;
    */
   destinationUrl: string;
@@ -44,6 +47,11 @@ export type CreateEndpointRequest = Message<"hookly.v1.CreateEndpointRequest"> &
    * @generated from field: hookly.v1.VerificationConfig verification_config = 5;
    */
   verificationConfig?: VerificationConfig;
+
+  /**
+   * @generated from field: repeated hookly.v1.DestinationInput destinations = 6;
+   */
+  destinations: DestinationInput[];
 };
 
 /**
@@ -52,6 +60,35 @@ export type CreateEndpointRequest = Message<"hookly.v1.CreateEndpointRequest"> &
  */
 export const CreateEndpointRequestSchema: GenMessage<CreateEndpointRequest> = /*@__PURE__*/
   messageDesc(file_hookly_v1_edge, 0);
+
+/**
+ * @generated from message hookly.v1.DestinationInput
+ */
+export type DestinationInput = Message<"hookly.v1.DestinationInput"> & {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string url = 2;
+   */
+  url: string;
+
+  /**
+   * Defaults to true
+   *
+   * @generated from field: optional bool enabled = 3;
+   */
+  enabled?: boolean;
+};
+
+/**
+ * Describes the message hookly.v1.DestinationInput.
+ * Use `create(DestinationInputSchema)` to create a new message.
+ */
+export const DestinationInputSchema: GenMessage<DestinationInput> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 1);
 
 /**
  * @generated from message hookly.v1.CreateEndpointResponse
@@ -75,7 +112,7 @@ export type CreateEndpointResponse = Message<"hookly.v1.CreateEndpointResponse">
  * Use `create(CreateEndpointResponseSchema)` to create a new message.
  */
 export const CreateEndpointResponseSchema: GenMessage<CreateEndpointResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 1);
+  messageDesc(file_hookly_v1_edge, 2);
 
 /**
  * @generated from message hookly.v1.GetEndpointRequest
@@ -92,7 +129,7 @@ export type GetEndpointRequest = Message<"hookly.v1.GetEndpointRequest"> & {
  * Use `create(GetEndpointRequestSchema)` to create a new message.
  */
 export const GetEndpointRequestSchema: GenMessage<GetEndpointRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 2);
+  messageDesc(file_hookly_v1_edge, 3);
 
 /**
  * @generated from message hookly.v1.GetEndpointResponse
@@ -114,7 +151,7 @@ export type GetEndpointResponse = Message<"hookly.v1.GetEndpointResponse"> & {
  * Use `create(GetEndpointResponseSchema)` to create a new message.
  */
 export const GetEndpointResponseSchema: GenMessage<GetEndpointResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 3);
+  messageDesc(file_hookly_v1_edge, 4);
 
 /**
  * @generated from message hookly.v1.ListEndpointsRequest
@@ -131,7 +168,7 @@ export type ListEndpointsRequest = Message<"hookly.v1.ListEndpointsRequest"> & {
  * Use `create(ListEndpointsRequestSchema)` to create a new message.
  */
 export const ListEndpointsRequestSchema: GenMessage<ListEndpointsRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 4);
+  messageDesc(file_hookly_v1_edge, 5);
 
 /**
  * @generated from message hookly.v1.ListEndpointsResponse
@@ -153,7 +190,7 @@ export type ListEndpointsResponse = Message<"hookly.v1.ListEndpointsResponse"> &
  * Use `create(ListEndpointsResponseSchema)` to create a new message.
  */
 export const ListEndpointsResponseSchema: GenMessage<ListEndpointsResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 5);
+  messageDesc(file_hookly_v1_edge, 6);
 
 /**
  * @generated from message hookly.v1.UpdateEndpointRequest
@@ -175,6 +212,8 @@ export type UpdateEndpointRequest = Message<"hookly.v1.UpdateEndpointRequest"> &
   signatureSecret?: string;
 
   /**
+   * Updates the primary destination's URL
+   *
    * @generated from field: optional string destination_url = 4;
    */
   destinationUrl?: string;
@@ -197,7 +236,7 @@ export type UpdateEndpointRequest = Message<"hookly.v1.UpdateEndpointRequest"> &
  * Use `create(UpdateEndpointRequestSchema)` to create a new message.
  */
 export const UpdateEndpointRequestSchema: GenMessage<UpdateEndpointRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 6);
+  messageDesc(file_hookly_v1_edge, 7);
 
 /**
  * @generated from message hookly.v1.UpdateEndpointResponse
@@ -214,7 +253,7 @@ export type UpdateEndpointResponse = Message<"hookly.v1.UpdateEndpointResponse">
  * Use `create(UpdateEndpointResponseSchema)` to create a new message.
  */
 export const UpdateEndpointResponseSchema: GenMessage<UpdateEndpointResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 7);
+  messageDesc(file_hookly_v1_edge, 8);
 
 /**
  * @generated from message hookly.v1.DeleteEndpointRequest
@@ -231,7 +270,7 @@ export type DeleteEndpointRequest = Message<"hookly.v1.DeleteEndpointRequest"> &
  * Use `create(DeleteEndpointRequestSchema)` to create a new message.
  */
 export const DeleteEndpointRequestSchema: GenMessage<DeleteEndpointRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 8);
+  messageDesc(file_hookly_v1_edge, 9);
 
 /**
  * @generated from message hookly.v1.DeleteEndpointResponse
@@ -244,7 +283,151 @@ export type DeleteEndpointResponse = Message<"hookly.v1.DeleteEndpointResponse">
  * Use `create(DeleteEndpointResponseSchema)` to create a new message.
  */
 export const DeleteEndpointResponseSchema: GenMessage<DeleteEndpointResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 9);
+  messageDesc(file_hookly_v1_edge, 10);
+
+/**
+ * @generated from message hookly.v1.AddDestinationRequest
+ */
+export type AddDestinationRequest = Message<"hookly.v1.AddDestinationRequest"> & {
+  /**
+   * @generated from field: string endpoint_id = 1;
+   */
+  endpointId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string url = 3;
+   */
+  url: string;
+
+  /**
+   * Defaults to true
+   *
+   * @generated from field: optional bool enabled = 4;
+   */
+  enabled?: boolean;
+};
+
+/**
+ * Describes the message hookly.v1.AddDestinationRequest.
+ * Use `create(AddDestinationRequestSchema)` to create a new message.
+ */
+export const AddDestinationRequestSchema: GenMessage<AddDestinationRequest> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 11);
+
+/**
+ * @generated from message hookly.v1.AddDestinationResponse
+ */
+export type AddDestinationResponse = Message<"hookly.v1.AddDestinationResponse"> & {
+  /**
+   * @generated from field: hookly.v1.Destination destination = 1;
+   */
+  destination?: Destination;
+
+  /**
+   * @generated from field: hookly.v1.Endpoint endpoint = 2;
+   */
+  endpoint?: Endpoint;
+};
+
+/**
+ * Describes the message hookly.v1.AddDestinationResponse.
+ * Use `create(AddDestinationResponseSchema)` to create a new message.
+ */
+export const AddDestinationResponseSchema: GenMessage<AddDestinationResponse> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 12);
+
+/**
+ * @generated from message hookly.v1.UpdateDestinationRequest
+ */
+export type UpdateDestinationRequest = Message<"hookly.v1.UpdateDestinationRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: optional string name = 2;
+   */
+  name?: string;
+
+  /**
+   * @generated from field: optional string url = 3;
+   */
+  url?: string;
+
+  /**
+   * @generated from field: optional bool enabled = 4;
+   */
+  enabled?: boolean;
+};
+
+/**
+ * Describes the message hookly.v1.UpdateDestinationRequest.
+ * Use `create(UpdateDestinationRequestSchema)` to create a new message.
+ */
+export const UpdateDestinationRequestSchema: GenMessage<UpdateDestinationRequest> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 13);
+
+/**
+ * @generated from message hookly.v1.UpdateDestinationResponse
+ */
+export type UpdateDestinationResponse = Message<"hookly.v1.UpdateDestinationResponse"> & {
+  /**
+   * @generated from field: hookly.v1.Destination destination = 1;
+   */
+  destination?: Destination;
+
+  /**
+   * @generated from field: hookly.v1.Endpoint endpoint = 2;
+   */
+  endpoint?: Endpoint;
+};
+
+/**
+ * Describes the message hookly.v1.UpdateDestinationResponse.
+ * Use `create(UpdateDestinationResponseSchema)` to create a new message.
+ */
+export const UpdateDestinationResponseSchema: GenMessage<UpdateDestinationResponse> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 14);
+
+/**
+ * @generated from message hookly.v1.RemoveDestinationRequest
+ */
+export type RemoveDestinationRequest = Message<"hookly.v1.RemoveDestinationRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+};
+
+/**
+ * Describes the message hookly.v1.RemoveDestinationRequest.
+ * Use `create(RemoveDestinationRequestSchema)` to create a new message.
+ */
+export const RemoveDestinationRequestSchema: GenMessage<RemoveDestinationRequest> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 15);
+
+/**
+ * @generated from message hookly.v1.RemoveDestinationResponse
+ */
+export type RemoveDestinationResponse = Message<"hookly.v1.RemoveDestinationResponse"> & {
+  /**
+   * @generated from field: hookly.v1.Endpoint endpoint = 1;
+   */
+  endpoint?: Endpoint;
+};
+
+/**
+ * Describes the message hookly.v1.RemoveDestinationResponse.
+ * Use `create(RemoveDestinationResponseSchema)` to create a new message.
+ */
+export const RemoveDestinationResponseSchema: GenMessage<RemoveDestinationResponse> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_edge, 16);
 
 /**
  * @generated from message hookly.v1.GetWebhookRequest
@@ -261,7 +444,7 @@ export type GetWebhookRequest = Message<"hookly.v1.GetWebhookRequest"> & {
  * Use `create(GetWebhookRequestSchema)` to create a new message.
  */
 export const GetWebhookRequestSchema: GenMessage<GetWebhookRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 10);
+  messageDesc(file_hookly_v1_edge, 17);
 
 /**
  * @generated from message hookly.v1.GetWebhookResponse
@@ -278,7 +461,7 @@ export type GetWebhookResponse = Message<"hookly.v1.GetWebhookResponse"> & {
  * Use `create(GetWebhookResponseSchema)` to create a new message.
  */
 export const GetWebhookResponseSchema: GenMessage<GetWebhookResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 11);
+  messageDesc(file_hookly_v1_edge, 18);
 
 /**
  * @generated from message hookly.v1.ListWebhooksRequest
@@ -305,7 +488,7 @@ export type ListWebhooksRequest = Message<"hookly.v1.ListWebhooksRequest"> & {
  * Use `create(ListWebhooksRequestSchema)` to create a new message.
  */
 export const ListWebhooksRequestSchema: GenMessage<ListWebhooksRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 12);
+  messageDesc(file_hookly_v1_edge, 19);
 
 /**
  * @generated from message hookly.v1.ListWebhooksResponse
@@ -327,7 +510,7 @@ export type ListWebhooksResponse = Message<"hookly.v1.ListWebhooksResponse"> & {
  * Use `create(ListWebhooksResponseSchema)` to create a new message.
  */
 export const ListWebhooksResponseSchema: GenMessage<ListWebhooksResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 13);
+  messageDesc(file_hookly_v1_edge, 20);
 
 /**
  * @generated from message hookly.v1.ReplayWebhookRequest
@@ -337,6 +520,14 @@ export type ReplayWebhookRequest = Message<"hookly.v1.ReplayWebhookRequest"> & {
    * @generated from field: string id = 1;
    */
   id: string;
+
+  /**
+   * Replay to a single destination. Unset replays to every destination the
+   * webhook was originally fanned out to.
+   *
+   * @generated from field: optional string destination_id = 2;
+   */
+  destinationId?: string;
 };
 
 /**
@@ -344,7 +535,7 @@ export type ReplayWebhookRequest = Message<"hookly.v1.ReplayWebhookRequest"> & {
  * Use `create(ReplayWebhookRequestSchema)` to create a new message.
  */
 export const ReplayWebhookRequestSchema: GenMessage<ReplayWebhookRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 14);
+  messageDesc(file_hookly_v1_edge, 21);
 
 /**
  * @generated from message hookly.v1.ReplayWebhookResponse
@@ -361,7 +552,7 @@ export type ReplayWebhookResponse = Message<"hookly.v1.ReplayWebhookResponse"> &
  * Use `create(ReplayWebhookResponseSchema)` to create a new message.
  */
 export const ReplayWebhookResponseSchema: GenMessage<ReplayWebhookResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 15);
+  messageDesc(file_hookly_v1_edge, 22);
 
 /**
  * @generated from message hookly.v1.GetStatusRequest
@@ -374,7 +565,7 @@ export type GetStatusRequest = Message<"hookly.v1.GetStatusRequest"> & {
  * Use `create(GetStatusRequestSchema)` to create a new message.
  */
 export const GetStatusRequestSchema: GenMessage<GetStatusRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 16);
+  messageDesc(file_hookly_v1_edge, 23);
 
 /**
  * @generated from message hookly.v1.GetStatusResponse
@@ -391,7 +582,7 @@ export type GetStatusResponse = Message<"hookly.v1.GetStatusResponse"> & {
  * Use `create(GetStatusResponseSchema)` to create a new message.
  */
 export const GetStatusResponseSchema: GenMessage<GetStatusResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 17);
+  messageDesc(file_hookly_v1_edge, 24);
 
 /**
  * @generated from message hookly.v1.GetSettingsRequest
@@ -404,7 +595,7 @@ export type GetSettingsRequest = Message<"hookly.v1.GetSettingsRequest"> & {
  * Use `create(GetSettingsRequestSchema)` to create a new message.
  */
 export const GetSettingsRequestSchema: GenMessage<GetSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 18);
+  messageDesc(file_hookly_v1_edge, 25);
 
 /**
  * @generated from message hookly.v1.GetSettingsResponse
@@ -460,7 +651,7 @@ export type GetSettingsResponse = Message<"hookly.v1.GetSettingsResponse"> & {
  * Use `create(GetSettingsResponseSchema)` to create a new message.
  */
 export const GetSettingsResponseSchema: GenMessage<GetSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 19);
+  messageDesc(file_hookly_v1_edge, 26);
 
 /**
  * @generated from message hookly.v1.GetUserSettingsRequest
@@ -473,7 +664,7 @@ export type GetUserSettingsRequest = Message<"hookly.v1.GetUserSettingsRequest">
  * Use `create(GetUserSettingsRequestSchema)` to create a new message.
  */
 export const GetUserSettingsRequestSchema: GenMessage<GetUserSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 20);
+  messageDesc(file_hookly_v1_edge, 27);
 
 /**
  * @generated from message hookly.v1.GetUserSettingsResponse
@@ -490,7 +681,7 @@ export type GetUserSettingsResponse = Message<"hookly.v1.GetUserSettingsResponse
  * Use `create(GetUserSettingsResponseSchema)` to create a new message.
  */
 export const GetUserSettingsResponseSchema: GenMessage<GetUserSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 21);
+  messageDesc(file_hookly_v1_edge, 28);
 
 /**
  * @generated from message hookly.v1.UpdateUserSettingsRequest
@@ -528,7 +719,7 @@ export type UpdateUserSettingsRequest = Message<"hookly.v1.UpdateUserSettingsReq
  * Use `create(UpdateUserSettingsRequestSchema)` to create a new message.
  */
 export const UpdateUserSettingsRequestSchema: GenMessage<UpdateUserSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 22);
+  messageDesc(file_hookly_v1_edge, 29);
 
 /**
  * @generated from message hookly.v1.UpdateUserSettingsResponse
@@ -545,7 +736,7 @@ export type UpdateUserSettingsResponse = Message<"hookly.v1.UpdateUserSettingsRe
  * Use `create(UpdateUserSettingsResponseSchema)` to create a new message.
  */
 export const UpdateUserSettingsResponseSchema: GenMessage<UpdateUserSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 23);
+  messageDesc(file_hookly_v1_edge, 30);
 
 /**
  * @generated from message hookly.v1.GetSystemSettingsRequest
@@ -558,7 +749,7 @@ export type GetSystemSettingsRequest = Message<"hookly.v1.GetSystemSettingsReque
  * Use `create(GetSystemSettingsRequestSchema)` to create a new message.
  */
 export const GetSystemSettingsRequestSchema: GenMessage<GetSystemSettingsRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 24);
+  messageDesc(file_hookly_v1_edge, 31);
 
 /**
  * @generated from message hookly.v1.GetSystemSettingsResponse
@@ -575,7 +766,7 @@ export type GetSystemSettingsResponse = Message<"hookly.v1.GetSystemSettingsResp
  * Use `create(GetSystemSettingsResponseSchema)` to create a new message.
  */
 export const GetSystemSettingsResponseSchema: GenMessage<GetSystemSettingsResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_edge, 25);
+  messageDesc(file_hookly_v1_edge, 32);
 
 /**
  * EdgeService provides the API for managing endpoints and webhooks.
@@ -625,6 +816,32 @@ export const EdgeService: GenService<{
     methodKind: "unary";
     input: typeof DeleteEndpointRequestSchema;
     output: typeof DeleteEndpointResponseSchema;
+  },
+  /**
+   * Destination management (an endpoint fans out to 1..N destinations)
+   *
+   * @generated from rpc hookly.v1.EdgeService.AddDestination
+   */
+  addDestination: {
+    methodKind: "unary";
+    input: typeof AddDestinationRequestSchema;
+    output: typeof AddDestinationResponseSchema;
+  },
+  /**
+   * @generated from rpc hookly.v1.EdgeService.UpdateDestination
+   */
+  updateDestination: {
+    methodKind: "unary";
+    input: typeof UpdateDestinationRequestSchema;
+    output: typeof UpdateDestinationResponseSchema;
+  },
+  /**
+   * @generated from rpc hookly.v1.EdgeService.RemoveDestination
+   */
+  removeDestination: {
+    methodKind: "unary";
+    input: typeof RemoveDestinationRequestSchema;
+    output: typeof RemoveDestinationResponseSchema;
   },
   /**
    * Webhook management

@@ -31,7 +31,7 @@
 			<h3 class="text-xs font-semibold text-[var(--color-muted-foreground)] uppercase tracking-wider mb-3">
 				On this page
 			</h3>
-			{#each sections as section (section.title)}
+			{#each sections as section (section.id)}
 				<button
 					onclick={() => scrollToSection(section.id)}
 					class="w-full text-left px-3 py-2 text-sm rounded-md transition-colors {activeSection === section.id
@@ -508,12 +508,26 @@ hub_id: "my-laptop"
 
 <span class="text-[var(--color-muted-foreground)]"># Endpoints to relay</span>
 endpoints:
+  <span class="text-[var(--color-muted-foreground)]"># Override the primary destination only</span>
   - id: "ep_abc123xyz"
     destination: "http://localhost:3000/webhooks/stripe"
+
+  <span class="text-[var(--color-muted-foreground)]"># Override destinations by name</span>
+  - id: "ep_ghi789rst"
+    destinations:
+      default: "http://localhost:3000/webhooks/github"
+      audit: "http://localhost:4000/ingest"
+
   - id: "ep_def456uvw"
-    <span class="text-[var(--color-muted-foreground)]"># Uses edge-configured destination</span></pre>
+    <span class="text-[var(--color-muted-foreground)]"># Uses edge-configured destinations</span></pre>
 				</div>
 			</div>
+
+			<p class="text-sm text-[var(--color-muted-foreground)]">
+				Local URLs are optional overrides; without them the hub forwards to the URLs configured on the endpoint.
+				<code class="font-mono">destinations</code> maps a destination name to a local URL, while
+				<code class="font-mono">destination</code> overrides only the primary (first) destination.
+			</p>
 
 			<!-- File locations -->
 			<div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] divide-y divide-[var(--color-border)]">

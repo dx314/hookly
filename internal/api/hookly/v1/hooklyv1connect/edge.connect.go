@@ -47,6 +47,15 @@ const (
 	// EdgeServiceDeleteEndpointProcedure is the fully-qualified name of the EdgeService's
 	// DeleteEndpoint RPC.
 	EdgeServiceDeleteEndpointProcedure = "/hookly.v1.EdgeService/DeleteEndpoint"
+	// EdgeServiceAddDestinationProcedure is the fully-qualified name of the EdgeService's
+	// AddDestination RPC.
+	EdgeServiceAddDestinationProcedure = "/hookly.v1.EdgeService/AddDestination"
+	// EdgeServiceUpdateDestinationProcedure is the fully-qualified name of the EdgeService's
+	// UpdateDestination RPC.
+	EdgeServiceUpdateDestinationProcedure = "/hookly.v1.EdgeService/UpdateDestination"
+	// EdgeServiceRemoveDestinationProcedure is the fully-qualified name of the EdgeService's
+	// RemoveDestination RPC.
+	EdgeServiceRemoveDestinationProcedure = "/hookly.v1.EdgeService/RemoveDestination"
 	// EdgeServiceGetWebhookProcedure is the fully-qualified name of the EdgeService's GetWebhook RPC.
 	EdgeServiceGetWebhookProcedure = "/hookly.v1.EdgeService/GetWebhook"
 	// EdgeServiceListWebhooksProcedure is the fully-qualified name of the EdgeService's ListWebhooks
@@ -78,6 +87,10 @@ type EdgeServiceClient interface {
 	ListEndpoints(context.Context, *connect.Request[v1.ListEndpointsRequest]) (*connect.Response[v1.ListEndpointsResponse], error)
 	UpdateEndpoint(context.Context, *connect.Request[v1.UpdateEndpointRequest]) (*connect.Response[v1.UpdateEndpointResponse], error)
 	DeleteEndpoint(context.Context, *connect.Request[v1.DeleteEndpointRequest]) (*connect.Response[v1.DeleteEndpointResponse], error)
+	// Destination management (an endpoint fans out to 1..N destinations)
+	AddDestination(context.Context, *connect.Request[v1.AddDestinationRequest]) (*connect.Response[v1.AddDestinationResponse], error)
+	UpdateDestination(context.Context, *connect.Request[v1.UpdateDestinationRequest]) (*connect.Response[v1.UpdateDestinationResponse], error)
+	RemoveDestination(context.Context, *connect.Request[v1.RemoveDestinationRequest]) (*connect.Response[v1.RemoveDestinationResponse], error)
 	// Webhook management
 	GetWebhook(context.Context, *connect.Request[v1.GetWebhookRequest]) (*connect.Response[v1.GetWebhookResponse], error)
 	ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error)
@@ -131,6 +144,24 @@ func NewEdgeServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+EdgeServiceDeleteEndpointProcedure,
 			connect.WithSchema(edgeServiceMethods.ByName("DeleteEndpoint")),
+			connect.WithClientOptions(opts...),
+		),
+		addDestination: connect.NewClient[v1.AddDestinationRequest, v1.AddDestinationResponse](
+			httpClient,
+			baseURL+EdgeServiceAddDestinationProcedure,
+			connect.WithSchema(edgeServiceMethods.ByName("AddDestination")),
+			connect.WithClientOptions(opts...),
+		),
+		updateDestination: connect.NewClient[v1.UpdateDestinationRequest, v1.UpdateDestinationResponse](
+			httpClient,
+			baseURL+EdgeServiceUpdateDestinationProcedure,
+			connect.WithSchema(edgeServiceMethods.ByName("UpdateDestination")),
+			connect.WithClientOptions(opts...),
+		),
+		removeDestination: connect.NewClient[v1.RemoveDestinationRequest, v1.RemoveDestinationResponse](
+			httpClient,
+			baseURL+EdgeServiceRemoveDestinationProcedure,
+			connect.WithSchema(edgeServiceMethods.ByName("RemoveDestination")),
 			connect.WithClientOptions(opts...),
 		),
 		getWebhook: connect.NewClient[v1.GetWebhookRequest, v1.GetWebhookResponse](
@@ -191,6 +222,9 @@ type edgeServiceClient struct {
 	listEndpoints      *connect.Client[v1.ListEndpointsRequest, v1.ListEndpointsResponse]
 	updateEndpoint     *connect.Client[v1.UpdateEndpointRequest, v1.UpdateEndpointResponse]
 	deleteEndpoint     *connect.Client[v1.DeleteEndpointRequest, v1.DeleteEndpointResponse]
+	addDestination     *connect.Client[v1.AddDestinationRequest, v1.AddDestinationResponse]
+	updateDestination  *connect.Client[v1.UpdateDestinationRequest, v1.UpdateDestinationResponse]
+	removeDestination  *connect.Client[v1.RemoveDestinationRequest, v1.RemoveDestinationResponse]
 	getWebhook         *connect.Client[v1.GetWebhookRequest, v1.GetWebhookResponse]
 	listWebhooks       *connect.Client[v1.ListWebhooksRequest, v1.ListWebhooksResponse]
 	replayWebhook      *connect.Client[v1.ReplayWebhookRequest, v1.ReplayWebhookResponse]
@@ -224,6 +258,21 @@ func (c *edgeServiceClient) UpdateEndpoint(ctx context.Context, req *connect.Req
 // DeleteEndpoint calls hookly.v1.EdgeService.DeleteEndpoint.
 func (c *edgeServiceClient) DeleteEndpoint(ctx context.Context, req *connect.Request[v1.DeleteEndpointRequest]) (*connect.Response[v1.DeleteEndpointResponse], error) {
 	return c.deleteEndpoint.CallUnary(ctx, req)
+}
+
+// AddDestination calls hookly.v1.EdgeService.AddDestination.
+func (c *edgeServiceClient) AddDestination(ctx context.Context, req *connect.Request[v1.AddDestinationRequest]) (*connect.Response[v1.AddDestinationResponse], error) {
+	return c.addDestination.CallUnary(ctx, req)
+}
+
+// UpdateDestination calls hookly.v1.EdgeService.UpdateDestination.
+func (c *edgeServiceClient) UpdateDestination(ctx context.Context, req *connect.Request[v1.UpdateDestinationRequest]) (*connect.Response[v1.UpdateDestinationResponse], error) {
+	return c.updateDestination.CallUnary(ctx, req)
+}
+
+// RemoveDestination calls hookly.v1.EdgeService.RemoveDestination.
+func (c *edgeServiceClient) RemoveDestination(ctx context.Context, req *connect.Request[v1.RemoveDestinationRequest]) (*connect.Response[v1.RemoveDestinationResponse], error) {
+	return c.removeDestination.CallUnary(ctx, req)
 }
 
 // GetWebhook calls hookly.v1.EdgeService.GetWebhook.
@@ -274,6 +323,10 @@ type EdgeServiceHandler interface {
 	ListEndpoints(context.Context, *connect.Request[v1.ListEndpointsRequest]) (*connect.Response[v1.ListEndpointsResponse], error)
 	UpdateEndpoint(context.Context, *connect.Request[v1.UpdateEndpointRequest]) (*connect.Response[v1.UpdateEndpointResponse], error)
 	DeleteEndpoint(context.Context, *connect.Request[v1.DeleteEndpointRequest]) (*connect.Response[v1.DeleteEndpointResponse], error)
+	// Destination management (an endpoint fans out to 1..N destinations)
+	AddDestination(context.Context, *connect.Request[v1.AddDestinationRequest]) (*connect.Response[v1.AddDestinationResponse], error)
+	UpdateDestination(context.Context, *connect.Request[v1.UpdateDestinationRequest]) (*connect.Response[v1.UpdateDestinationResponse], error)
+	RemoveDestination(context.Context, *connect.Request[v1.RemoveDestinationRequest]) (*connect.Response[v1.RemoveDestinationResponse], error)
 	// Webhook management
 	GetWebhook(context.Context, *connect.Request[v1.GetWebhookRequest]) (*connect.Response[v1.GetWebhookResponse], error)
 	ListWebhooks(context.Context, *connect.Request[v1.ListWebhooksRequest]) (*connect.Response[v1.ListWebhooksResponse], error)
@@ -323,6 +376,24 @@ func NewEdgeServiceHandler(svc EdgeServiceHandler, opts ...connect.HandlerOption
 		EdgeServiceDeleteEndpointProcedure,
 		svc.DeleteEndpoint,
 		connect.WithSchema(edgeServiceMethods.ByName("DeleteEndpoint")),
+		connect.WithHandlerOptions(opts...),
+	)
+	edgeServiceAddDestinationHandler := connect.NewUnaryHandler(
+		EdgeServiceAddDestinationProcedure,
+		svc.AddDestination,
+		connect.WithSchema(edgeServiceMethods.ByName("AddDestination")),
+		connect.WithHandlerOptions(opts...),
+	)
+	edgeServiceUpdateDestinationHandler := connect.NewUnaryHandler(
+		EdgeServiceUpdateDestinationProcedure,
+		svc.UpdateDestination,
+		connect.WithSchema(edgeServiceMethods.ByName("UpdateDestination")),
+		connect.WithHandlerOptions(opts...),
+	)
+	edgeServiceRemoveDestinationHandler := connect.NewUnaryHandler(
+		EdgeServiceRemoveDestinationProcedure,
+		svc.RemoveDestination,
+		connect.WithSchema(edgeServiceMethods.ByName("RemoveDestination")),
 		connect.WithHandlerOptions(opts...),
 	)
 	edgeServiceGetWebhookHandler := connect.NewUnaryHandler(
@@ -385,6 +456,12 @@ func NewEdgeServiceHandler(svc EdgeServiceHandler, opts ...connect.HandlerOption
 			edgeServiceUpdateEndpointHandler.ServeHTTP(w, r)
 		case EdgeServiceDeleteEndpointProcedure:
 			edgeServiceDeleteEndpointHandler.ServeHTTP(w, r)
+		case EdgeServiceAddDestinationProcedure:
+			edgeServiceAddDestinationHandler.ServeHTTP(w, r)
+		case EdgeServiceUpdateDestinationProcedure:
+			edgeServiceUpdateDestinationHandler.ServeHTTP(w, r)
+		case EdgeServiceRemoveDestinationProcedure:
+			edgeServiceRemoveDestinationHandler.ServeHTTP(w, r)
 		case EdgeServiceGetWebhookProcedure:
 			edgeServiceGetWebhookHandler.ServeHTTP(w, r)
 		case EdgeServiceListWebhooksProcedure:
@@ -428,6 +505,18 @@ func (UnimplementedEdgeServiceHandler) UpdateEndpoint(context.Context, *connect.
 
 func (UnimplementedEdgeServiceHandler) DeleteEndpoint(context.Context, *connect.Request[v1.DeleteEndpointRequest]) (*connect.Response[v1.DeleteEndpointResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hookly.v1.EdgeService.DeleteEndpoint is not implemented"))
+}
+
+func (UnimplementedEdgeServiceHandler) AddDestination(context.Context, *connect.Request[v1.AddDestinationRequest]) (*connect.Response[v1.AddDestinationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hookly.v1.EdgeService.AddDestination is not implemented"))
+}
+
+func (UnimplementedEdgeServiceHandler) UpdateDestination(context.Context, *connect.Request[v1.UpdateDestinationRequest]) (*connect.Response[v1.UpdateDestinationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hookly.v1.EdgeService.UpdateDestination is not implemented"))
+}
+
+func (UnimplementedEdgeServiceHandler) RemoveDestination(context.Context, *connect.Request[v1.RemoveDestinationRequest]) (*connect.Response[v1.RemoveDestinationResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hookly.v1.EdgeService.RemoveDestination is not implemented"))
 }
 
 func (UnimplementedEdgeServiceHandler) GetWebhook(context.Context, *connect.Request[v1.GetWebhookRequest]) (*connect.Response[v1.GetWebhookResponse], error) {

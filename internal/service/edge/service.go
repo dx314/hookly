@@ -23,16 +23,16 @@ import (
 
 // Service implements the EdgeService.
 type Service struct {
-	queries       *db.Queries
+	store         *db.Store
 	secretManager *db.SecretManager
 	connMgr       *relay.ConnectionManager
 	cfg           *config.Config
 }
 
 // New creates a new EdgeService.
-func New(queries *db.Queries, secretManager *db.SecretManager, connMgr *relay.ConnectionManager, cfg *config.Config) *Service {
+func New(store *db.Store, secretManager *db.SecretManager, connMgr *relay.ConnectionManager, cfg *config.Config) *Service {
 	return &Service{
-		queries:       queries,
+		store:         store,
 		secretManager: secretManager,
 		connMgr:       connMgr,
 		cfg:           cfg,
@@ -67,8 +67,21 @@ func (s *Service) CreateEndpoint(ctx context.Context, req *connect.Request[hookl
 	if msg.Name == "" {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("name is required"))
 	}
-	if msg.DestinationUrl == "" {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("destination_url is required"))
+
+	// destination_url is shorthand for a single destination (older clients)
+	var specs []db.DestinationSpec
+	for _, d := range msg.Destinations {
+		specs = append(specs, db.DestinationSpec{
+			Name:    d.Name,
+			URL:     d.Url,
+			Enabled: d.Enabled == nil || *d.Enabled,
+		})
+	}
+	if len(specs) == 0 {
+		if msg.DestinationUrl == "" {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("at least one destination (or destination_url) is required"))
+		}
+		specs = []db.DestinationSpec{{Name: db.DefaultDestinationName, URL: msg.DestinationUrl, Enabled: true}}
 	}
 
 	// Generate ID
@@ -119,24 +132,31 @@ func (s *Service) CreateEndpoint(ctx context.Context, req *connect.Request[hookl
 	}
 
 	// Create in database
-	endpoint, err := s.queries.CreateEndpoint(ctx, db.CreateEndpointParams{
-		ID:                            id,
-		UserID:                        userID,
-		Name:                          msg.Name,
-		ProviderType:                  providerType,
-		SignatureSecretEncrypted:      encryptedSecret,
-		VerificationConfigEncrypted:   encryptedVerificationConfig,
-		DestinationUrl:                msg.DestinationUrl,
-	})
+	endpoint, err := s.store.CreateEndpointWithDestinations(ctx, db.CreateEndpointParams{
+		ID:                          id,
+		UserID:                      userID,
+		Name:                        msg.Name,
+		ProviderType:                providerType,
+		SignatureSecretEncrypted:    encryptedSecret,
+		VerificationConfigEncrypted: encryptedVerificationConfig,
+	}, specs)
 	if err != nil {
+		if destErr := destinationError(err); destErr != nil {
+			return nil, destErr
+		}
 		slog.Error("failed to create endpoint", "error", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to create endpoint"))
 	}
 
-	slog.Info("endpoint created", "id", id, "name", msg.Name, "user_id", userID)
+	slog.Info("endpoint created", "id", id, "name", msg.Name, "user_id", userID, "destinations", len(specs))
+
+	protoEndpoint, err := s.endpointToProto(ctx, &endpoint, false)
+	if err != nil {
+		return nil, err
+	}
 
 	return connect.NewResponse(&hooklyv1.CreateEndpointResponse{
-		Endpoint:   s.dbEndpointToProto(&endpoint),
+		Endpoint:   protoEndpoint,
 		WebhookUrl: s.webhookURL(id),
 	}), nil
 }
@@ -152,7 +172,7 @@ func (s *Service) GetEndpoint(ctx context.Context, req *connect.Request[hooklyv1
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
 	}
 
-	endpoint, err := s.queries.GetEndpoint(ctx, db.GetEndpointParams{
+	endpoint, err := s.store.GetEndpoint(ctx, db.GetEndpointParams{
 		ID:     req.Msg.Id,
 		UserID: userID,
 	})
@@ -164,8 +184,13 @@ func (s *Service) GetEndpoint(ctx context.Context, req *connect.Request[hooklyv1
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get endpoint"))
 	}
 
+	protoEndpoint, err := s.endpointToProto(ctx, &endpoint, true)
+	if err != nil {
+		return nil, err
+	}
+
 	return connect.NewResponse(&hooklyv1.GetEndpointResponse{
-		Endpoint:   s.dbEndpointToProto(&endpoint),
+		Endpoint:   protoEndpoint,
 		WebhookUrl: s.webhookURL(endpoint.ID),
 	}), nil
 }
@@ -193,7 +218,7 @@ func (s *Service) ListEndpoints(ctx context.Context, req *connect.Request[hookly
 		}
 	}
 
-	endpoints, err := s.queries.ListEndpoints(ctx, db.ListEndpointsParams{
+	endpoints, err := s.store.ListEndpoints(ctx, db.ListEndpointsParams{
 		UserID: userID,
 		Limit:  pageSize + 1, // Fetch one extra to check if there's a next page
 		Offset: offset,
@@ -204,7 +229,7 @@ func (s *Service) ListEndpoints(ctx context.Context, req *connect.Request[hookly
 	}
 
 	// Get total count
-	totalCount, err := s.queries.CountEndpoints(ctx, userID)
+	totalCount, err := s.store.CountEndpoints(ctx, userID)
 	if err != nil {
 		slog.Error("failed to count endpoints", "error", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to count endpoints"))
@@ -219,7 +244,10 @@ func (s *Service) ListEndpoints(ctx context.Context, req *connect.Request[hookly
 
 	protoEndpoints := make([]*hooklyv1.Endpoint, len(endpoints))
 	for i, ep := range endpoints {
-		protoEndpoints[i] = s.dbEndpointToProto(&ep)
+		protoEndpoints[i], err = s.endpointToProto(ctx, &ep, false)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return connect.NewResponse(&hooklyv1.ListEndpointsResponse{
@@ -298,7 +326,8 @@ func (s *Service) UpdateEndpoint(ctx context.Context, req *connect.Request[hookl
 		params.VerificationConfigEncrypted = encryptedConfig
 	}
 
-	endpoint, err := s.queries.UpdateEndpoint(ctx, params)
+	// A destination_url change is applied to the primary destination
+	endpoint, err := s.store.UpdateEndpointAndPrimary(ctx, params)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, connect.NewError(connect.CodeNotFound, errors.New("endpoint not found"))
@@ -309,8 +338,13 @@ func (s *Service) UpdateEndpoint(ctx context.Context, req *connect.Request[hookl
 
 	slog.Info("endpoint updated", "id", msg.Id)
 
+	protoEndpoint, err := s.endpointToProto(ctx, &endpoint, false)
+	if err != nil {
+		return nil, err
+	}
+
 	return connect.NewResponse(&hooklyv1.UpdateEndpointResponse{
-		Endpoint: s.dbEndpointToProto(&endpoint),
+		Endpoint: protoEndpoint,
 	}), nil
 }
 
@@ -326,7 +360,7 @@ func (s *Service) DeleteEndpoint(ctx context.Context, req *connect.Request[hookl
 	}
 
 	// Check if endpoint exists and belongs to user
-	_, err = s.queries.GetEndpoint(ctx, db.GetEndpointParams{
+	_, err = s.store.GetEndpoint(ctx, db.GetEndpointParams{
 		ID:     req.Msg.Id,
 		UserID: userID,
 	})
@@ -339,7 +373,7 @@ func (s *Service) DeleteEndpoint(ctx context.Context, req *connect.Request[hookl
 	}
 
 	// Delete endpoint (webhooks cascade delete via FK)
-	if err := s.queries.DeleteEndpoint(ctx, db.DeleteEndpointParams{
+	if err := s.store.DeleteEndpoint(ctx, db.DeleteEndpointParams{
 		ID:     req.Msg.Id,
 		UserID: userID,
 	}); err != nil {
@@ -350,6 +384,122 @@ func (s *Service) DeleteEndpoint(ctx context.Context, req *connect.Request[hookl
 	slog.Info("endpoint deleted", "id", req.Msg.Id)
 
 	return connect.NewResponse(&hooklyv1.DeleteEndpointResponse{}), nil
+}
+
+// AddDestination adds a destination to an endpoint. It only receives webhooks
+// that arrive after it was added.
+func (s *Service) AddDestination(ctx context.Context, req *connect.Request[hooklyv1.AddDestinationRequest]) (*connect.Response[hooklyv1.AddDestinationResponse], error) {
+	userID, err := getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := req.Msg
+
+	if msg.EndpointId == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("endpoint_id is required"))
+	}
+
+	dest, err := s.store.AddDestination(ctx, userID, msg.EndpointId, db.DestinationSpec{
+		Name:    msg.Name,
+		URL:     msg.Url,
+		Enabled: msg.Enabled == nil || *msg.Enabled,
+	})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("endpoint not found"))
+		}
+		if destErr := destinationError(err); destErr != nil {
+			return nil, destErr
+		}
+		slog.Error("failed to add destination", "error", err, "endpoint_id", msg.EndpointId)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to add destination"))
+	}
+
+	slog.Info("destination added", "id", dest.ID, "endpoint_id", dest.EndpointID, "name", dest.Name)
+
+	endpoint, err := s.endpointByID(ctx, userID, dest.EndpointID)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&hooklyv1.AddDestinationResponse{
+		Destination: dbDestinationToProto(&dest),
+		Endpoint:    endpoint,
+	}), nil
+}
+
+// UpdateDestination updates a destination's name, URL or enabled flag.
+func (s *Service) UpdateDestination(ctx context.Context, req *connect.Request[hooklyv1.UpdateDestinationRequest]) (*connect.Response[hooklyv1.UpdateDestinationResponse], error) {
+	userID, err := getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	msg := req.Msg
+
+	if msg.Id == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
+	}
+
+	dest, err := s.store.UpdateDestination(ctx, userID, msg.Id, msg.Name, msg.Url, msg.Enabled)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("destination not found"))
+		}
+		if destErr := destinationError(err); destErr != nil {
+			return nil, destErr
+		}
+		slog.Error("failed to update destination", "error", err, "id", msg.Id)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to update destination"))
+	}
+
+	slog.Info("destination updated", "id", dest.ID, "endpoint_id", dest.EndpointID)
+
+	endpoint, err := s.endpointByID(ctx, userID, dest.EndpointID)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&hooklyv1.UpdateDestinationResponse{
+		Destination: dbDestinationToProto(&dest),
+		Endpoint:    endpoint,
+	}), nil
+}
+
+// RemoveDestination removes a destination and abandons its deliveries.
+func (s *Service) RemoveDestination(ctx context.Context, req *connect.Request[hooklyv1.RemoveDestinationRequest]) (*connect.Response[hooklyv1.RemoveDestinationResponse], error) {
+	userID, err := getUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Msg.Id == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
+	}
+
+	endpointID, err := s.store.RemoveDestination(ctx, userID, req.Msg.Id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("destination not found"))
+		}
+		if destErr := destinationError(err); destErr != nil {
+			return nil, destErr
+		}
+		slog.Error("failed to remove destination", "error", err, "id", req.Msg.Id)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to remove destination"))
+	}
+
+	slog.Info("destination removed", "id", req.Msg.Id, "endpoint_id", endpointID)
+
+	endpoint, err := s.endpointByID(ctx, userID, endpointID)
+	if err != nil {
+		return nil, err
+	}
+
+	return connect.NewResponse(&hooklyv1.RemoveDestinationResponse{
+		Endpoint: endpoint,
+	}), nil
 }
 
 // GetWebhook retrieves a webhook by ID.
@@ -363,7 +513,7 @@ func (s *Service) GetWebhook(ctx context.Context, req *connect.Request[hooklyv1.
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
 	}
 
-	webhook, err := s.queries.GetWebhook(ctx, db.GetWebhookParams{
+	webhook, err := s.store.GetWebhook(ctx, db.GetWebhookParams{
 		ID:     req.Msg.Id,
 		UserID: userID,
 	})
@@ -375,8 +525,13 @@ func (s *Service) GetWebhook(ctx context.Context, req *connect.Request[hooklyv1.
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get webhook"))
 	}
 
+	protoWebhook, err := s.webhookToProtoWithDeliveries(ctx, &webhook)
+	if err != nil {
+		return nil, err
+	}
+
 	return connect.NewResponse(&hooklyv1.GetWebhookResponse{
-		Webhook: dbWebhookToProto(&webhook),
+		Webhook: protoWebhook,
 	}), nil
 }
 
@@ -416,7 +571,7 @@ func (s *Service) ListWebhooks(ctx context.Context, req *connect.Request[hooklyv
 		status = mapWebhookStatusToString(*msg.Status)
 	}
 
-	webhooks, err := s.queries.ListWebhooks(ctx, db.ListWebhooksParams{
+	webhooks, err := s.store.ListWebhooks(ctx, db.ListWebhooksParams{
 		UserID:     userID,
 		EndpointID: endpointID,
 		Status:     status,
@@ -429,7 +584,7 @@ func (s *Service) ListWebhooks(ctx context.Context, req *connect.Request[hooklyv
 	}
 
 	// Get total count with filters
-	totalCount, err := s.queries.CountWebhooks(ctx, db.CountWebhooksParams{
+	totalCount, err := s.store.CountWebhooks(ctx, db.CountWebhooksParams{
 		UserID:     userID,
 		EndpointID: endpointID,
 		Status:     status,
@@ -471,22 +626,28 @@ func (s *Service) ReplayWebhook(ctx context.Context, req *connect.Request[hookly
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("id is required"))
 	}
 
-	webhook, err := s.queries.ResetWebhookForReplay(ctx, db.ResetWebhookForReplayParams{
-		ID:     req.Msg.Id,
-		UserID: userID,
-	})
+	// Replay to one destination, or to all of them when none is given
+	webhook, err := s.store.ReplayWebhook(ctx, userID, req.Msg.Id, req.Msg.GetDestinationId())
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, connect.NewError(connect.CodeNotFound, errors.New("webhook not found"))
+			return nil, connect.NewError(connect.CodeNotFound, errors.New("webhook or destination not found"))
+		}
+		if errors.Is(err, db.ErrDestinationMismatch) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, err)
 		}
 		slog.Error("failed to replay webhook", "error", err, "id", req.Msg.Id)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to replay webhook"))
 	}
 
-	slog.Info("webhook replayed", "id", req.Msg.Id)
+	slog.Info("webhook replayed", "id", req.Msg.Id, "destination_id", req.Msg.GetDestinationId())
+
+	protoWebhook, err := s.webhookToProtoWithDeliveries(ctx, &webhook)
+	if err != nil {
+		return nil, err
+	}
 
 	return connect.NewResponse(&hooklyv1.ReplayWebhookResponse{
-		Webhook: dbWebhookToProto(&webhook),
+		Webhook: protoWebhook,
 	}), nil
 }
 
@@ -497,7 +658,7 @@ func (s *Service) GetStatus(ctx context.Context, _ *connect.Request[hooklyv1.Get
 		return nil, err
 	}
 
-	stats, err := s.queries.GetQueueStats(ctx, userID)
+	stats, err := s.store.GetQueueStats(ctx, userID)
 	if err != nil {
 		slog.Error("failed to get queue stats", "error", err)
 		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get status"))
@@ -522,7 +683,7 @@ func (s *Service) GetStatus(ctx context.Context, _ *connect.Request[hooklyv1.Get
 
 	if len(connectedEndpointIDs) > 0 {
 		// Fetch endpoint names for connected endpoints belonging to this user
-		endpoints, err := s.queries.GetEndpointsByIDs(ctx, db.GetEndpointsByIDsParams{
+		endpoints, err := s.store.GetEndpointsByIDs(ctx, db.GetEndpointsByIDsParams{
 			UserID: userID,
 			Ids:    connectedEndpointIDs,
 		})
@@ -561,7 +722,7 @@ func (s *Service) GetSettings(ctx context.Context, _ *connect.Request[hooklyv1.G
 
 	// Try to get user's theme preference from settings
 	themePreference := hooklyv1.ThemePreference_THEME_PREFERENCE_SYSTEM
-	userSettings, err := s.queries.GetUserSettings(ctx, session.UserID)
+	userSettings, err := s.store.GetUserSettings(ctx, session.UserID)
 	if err == nil {
 		themePreference = mapStringToThemePreference(userSettings.ThemePreference)
 	}
@@ -585,7 +746,7 @@ func (s *Service) GetUserSettings(ctx context.Context, _ *connect.Request[hookly
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("authentication required"))
 	}
 
-	settings, err := s.queries.GetUserSettings(ctx, session.UserID)
+	settings, err := s.store.GetUserSettings(ctx, session.UserID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// Return default settings if none exist
@@ -620,14 +781,14 @@ func (s *Service) UpdateUserSettings(ctx context.Context, req *connect.Request[h
 	var err error
 
 	// Ensure user settings row exists (for users who logged in before migration)
-	_, err = s.queries.GetUserSettings(ctx, session.UserID)
+	_, err = s.store.GetUserSettings(ctx, session.UserID)
 	if errors.Is(err, sql.ErrNoRows) {
 		// Create the settings row
 		avatarURL := sql.NullString{}
 		if session.AvatarURL != "" {
 			avatarURL = sql.NullString{String: session.AvatarURL, Valid: true}
 		}
-		_, err = s.queries.UpsertUserSettings(ctx, db.UpsertUserSettingsParams{
+		_, err = s.store.UpsertUserSettings(ctx, db.UpsertUserSettingsParams{
 			UserID:    session.UserID,
 			Username:  session.Username,
 			AvatarUrl: avatarURL,
@@ -644,7 +805,7 @@ func (s *Service) UpdateUserSettings(ctx context.Context, req *connect.Request[h
 	// Handle Telegram settings update
 	if msg.TelegramBotToken != nil || msg.TelegramChatId != nil || msg.TelegramEnabled != nil {
 		// Get current settings to preserve existing values
-		current, err := s.queries.GetUserSettings(ctx, session.UserID)
+		current, err := s.store.GetUserSettings(ctx, session.UserID)
 		if err != nil {
 			slog.Error("failed to get user settings for update", "error", err, "user_id", session.UserID)
 			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get user settings"))
@@ -682,7 +843,7 @@ func (s *Service) UpdateUserSettings(ctx context.Context, req *connect.Request[h
 			}
 		}
 
-		settings, err = s.queries.UpdateUserTelegramSettings(ctx, params)
+		settings, err = s.store.UpdateUserTelegramSettings(ctx, params)
 		if err != nil {
 			slog.Error("failed to update telegram settings", "error", err, "user_id", session.UserID)
 			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to update telegram settings"))
@@ -694,7 +855,7 @@ func (s *Service) UpdateUserSettings(ctx context.Context, req *connect.Request[h
 	// Handle theme preference update
 	if msg.ThemePreference != nil && *msg.ThemePreference != hooklyv1.ThemePreference_THEME_PREFERENCE_UNSPECIFIED {
 		themeStr := mapThemePreferenceToString(*msg.ThemePreference)
-		settings, err = s.queries.UpdateUserTheme(ctx, db.UpdateUserThemeParams{
+		settings, err = s.store.UpdateUserTheme(ctx, db.UpdateUserThemeParams{
 			UserID:          session.UserID,
 			ThemePreference: themeStr,
 		})
@@ -708,7 +869,7 @@ func (s *Service) UpdateUserSettings(ctx context.Context, req *connect.Request[h
 
 	// If no updates were made, fetch current settings
 	if settings.UserID == "" {
-		settings, err = s.queries.GetUserSettings(ctx, session.UserID)
+		settings, err = s.store.GetUserSettings(ctx, session.UserID)
 		if err != nil {
 			slog.Error("failed to get user settings", "error", err, "user_id", session.UserID)
 			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get user settings"))
@@ -732,13 +893,13 @@ func (s *Service) GetSystemSettings(ctx context.Context, _ *connect.Request[hook
 	}
 
 	// Get stats
-	totalUsers, err := s.queries.CountUsers(ctx)
+	totalUsers, err := s.store.CountUsers(ctx)
 	if err != nil {
 		slog.Error("failed to count users", "error", err)
 		totalUsers = 0
 	}
 
-	totalEndpoints, err := s.queries.CountAllEndpoints(ctx)
+	totalEndpoints, err := s.store.CountAllEndpoints(ctx)
 	if err != nil {
 		slog.Error("failed to count endpoints", "error", err)
 		totalEndpoints = 0
@@ -789,6 +950,141 @@ func (s *Service) dbEndpointToProto(ep *db.Endpoint) *hooklyv1.Endpoint {
 	}
 
 	return protoEp
+}
+
+// destinationError maps destination validation errors to ConnectRPC errors.
+// Returns nil for errors that are not the caller's fault.
+func destinationError(err error) *connect.Error {
+	switch {
+	case errors.Is(err, db.ErrInvalidDestination):
+		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, db.ErrDuplicateDestinationName):
+		return connect.NewError(connect.CodeAlreadyExists, err)
+	case errors.Is(err, db.ErrLastDestination), errors.Is(err, db.ErrLastEnabledDestination):
+		return connect.NewError(connect.CodeFailedPrecondition, err)
+	default:
+		return nil
+	}
+}
+
+// endpointByID loads an endpoint with its destinations.
+func (s *Service) endpointByID(ctx context.Context, userID, id string) (*hooklyv1.Endpoint, error) {
+	endpoint, err := s.store.GetEndpoint(ctx, db.GetEndpointParams{ID: id, UserID: userID})
+	if err != nil {
+		slog.Error("failed to get endpoint", "error", err, "id", id)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get endpoint"))
+	}
+	return s.endpointToProto(ctx, &endpoint, false)
+}
+
+// endpointToProto converts an endpoint and loads its destinations, optionally
+// with per-destination delivery stats.
+func (s *Service) endpointToProto(ctx context.Context, ep *db.Endpoint, withStats bool) (*hooklyv1.Endpoint, error) {
+	dests, err := s.store.ListDestinationsByEndpoint(ctx, ep.ID)
+	if err != nil {
+		slog.Error("failed to list destinations", "error", err, "endpoint_id", ep.ID)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list destinations"))
+	}
+
+	stats := make(map[string]*hooklyv1.DestinationStats)
+	if withStats {
+		rows, err := s.store.GetDestinationDeliveryStats(ctx, ep.ID)
+		if err != nil {
+			slog.Error("failed to get destination stats", "error", err, "endpoint_id", ep.ID)
+			return nil, connect.NewError(connect.CodeInternal, errors.New("failed to get destination stats"))
+		}
+		for _, row := range rows {
+			st := &hooklyv1.DestinationStats{
+				PendingCount:    int32(row.PendingCount),
+				DeliveredCount:  int32(row.DeliveredCount),
+				FailedCount:     int32(row.FailedCount),
+				DeadLetterCount: int32(row.DeadLetterCount),
+			}
+			if row.LastDeliveredAt != "" {
+				t, _ := time.Parse("2006-01-02 15:04:05", row.LastDeliveredAt)
+				st.LastDeliveredAt = timestamppb.New(t)
+			}
+			if row.PendingCount+row.FailedCount+row.DeadLetterCount > 0 {
+				lastError, err := s.store.GetDestinationLastError(ctx, row.DestinationID)
+				if err != nil && !errors.Is(err, sql.ErrNoRows) {
+					slog.Error("failed to get destination last error", "error", err, "destination_id", row.DestinationID)
+				}
+				st.LastError = lastError
+			}
+			stats[row.DestinationID] = st
+		}
+	}
+
+	proto := s.dbEndpointToProto(ep)
+	proto.Destinations = make([]*hooklyv1.Destination, len(dests))
+	for i, d := range dests {
+		proto.Destinations[i] = dbDestinationToProto(&d)
+		if withStats {
+			proto.Destinations[i].Stats = stats[d.ID]
+			if proto.Destinations[i].Stats == nil {
+				proto.Destinations[i].Stats = &hooklyv1.DestinationStats{}
+			}
+		}
+	}
+	// destination_url is the primary destination for older clients
+	if len(dests) > 0 {
+		proto.DestinationUrl = dests[0].Url
+	}
+
+	return proto, nil
+}
+
+func dbDestinationToProto(d *db.Destination) *hooklyv1.Destination {
+	createdAt, _ := time.Parse("2006-01-02 15:04:05", d.CreatedAt)
+	updatedAt, _ := time.Parse("2006-01-02 15:04:05", d.UpdatedAt)
+
+	return &hooklyv1.Destination{
+		Id:         d.ID,
+		EndpointId: d.EndpointID,
+		Name:       d.Name,
+		Url:        d.Url,
+		Enabled:    d.Enabled != 0,
+		Position:   int32(d.Position),
+		CreatedAt:  timestamppb.New(createdAt),
+		UpdatedAt:  timestamppb.New(updatedAt),
+	}
+}
+
+// webhookToProtoWithDeliveries converts a webhook and loads its per-destination deliveries.
+func (s *Service) webhookToProtoWithDeliveries(ctx context.Context, wh *db.Webhook) (*hooklyv1.Webhook, error) {
+	rows, err := s.store.ListDeliveriesByWebhook(ctx, wh.ID)
+	if err != nil {
+		slog.Error("failed to list deliveries", "error", err, "webhook_id", wh.ID)
+		return nil, connect.NewError(connect.CodeInternal, errors.New("failed to list deliveries"))
+	}
+
+	proto := dbWebhookToProto(wh)
+	proto.Deliveries = make([]*hooklyv1.Delivery, len(rows))
+	for i, row := range rows {
+		delivery := &hooklyv1.Delivery{
+			Id:              row.ID,
+			WebhookId:       row.WebhookID,
+			DestinationId:   row.DestinationID,
+			DestinationName: row.DestinationName,
+			DestinationUrl:  row.DestinationUrl,
+			Status:          mapStringToWebhookStatus(row.Status),
+			Attempts:        int32(row.Attempts),
+		}
+		if row.LastAttemptAt.Valid {
+			t, _ := time.Parse("2006-01-02 15:04:05", row.LastAttemptAt.String)
+			delivery.LastAttemptAt = timestamppb.New(t)
+		}
+		if row.DeliveredAt.Valid {
+			t, _ := time.Parse("2006-01-02 15:04:05", row.DeliveredAt.String)
+			delivery.DeliveredAt = timestamppb.New(t)
+		}
+		if row.ErrorMessage.Valid {
+			delivery.ErrorMessage = row.ErrorMessage.String
+		}
+		proto.Deliveries[i] = delivery
+	}
+
+	return proto, nil
 }
 
 func dbWebhookToProto(wh *db.Webhook) *hooklyv1.Webhook {

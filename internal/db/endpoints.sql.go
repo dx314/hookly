@@ -232,6 +232,21 @@ func (q *Queries) ListEndpoints(ctx context.Context, arg ListEndpointsParams) ([
 	return items, nil
 }
 
+const setEndpointLegacyDestinationURL = `-- name: SetEndpointLegacyDestinationURL :exec
+UPDATE endpoints SET destination_url = ? WHERE id = ?
+`
+
+type SetEndpointLegacyDestinationURLParams struct {
+	DestinationUrl string `json:"destination_url"`
+	ID             string `json:"id"`
+}
+
+// System query: mirror the primary destination's URL into the legacy endpoints.destination_url column.
+func (q *Queries) SetEndpointLegacyDestinationURL(ctx context.Context, arg SetEndpointLegacyDestinationURLParams) error {
+	_, err := q.db.ExecContext(ctx, setEndpointLegacyDestinationURL, arg.DestinationUrl, arg.ID)
+	return err
+}
+
 const updateEndpoint = `-- name: UpdateEndpoint :one
 UPDATE endpoints
 SET name = COALESCE(?1, name),

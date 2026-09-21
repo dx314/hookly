@@ -21,7 +21,8 @@ The CLI opens an outbound connection to the edge. Webhooks flow through that str
 
 - **Signature verification**: Provider presets (Stripe, GitHub, Telegram) plus flexible HMAC-SHA256/SHA1, static tokens, and timestamped signatures for any service.
 - **Retry with backoff**: 1s → 1h cap, 7 days before dead-letter. 4xx = permanent fail, 5xx = retry.
-- **In-order delivery**: Per-endpoint ordering. Endpoints are independent.
+- **Fan-out**: One endpoint delivers to 1..N destinations (e.g. a Telegram bot, which only allows a single webhook URL, feeding several local services). Delivery, retry and dead-lettering are tracked per destination, so one listener being down never blocks or re-delivers to the others.
+- **In-order delivery**: Ordering per (endpoint, destination). Endpoints and destinations are independent.
 - **Web UI**: Dashboard, endpoint management, webhook inspection, replay failed deliveries, theme customization.
 - **MCP tools**: Full API for LLM assistants (list endpoints, replay webhooks, check queue depth).
 - **Telegram alerts**: Notifications when deliveries hit dead-letter.
@@ -117,7 +118,27 @@ endpoints:
     destination: "http://localhost:8080/webhook"
   - id: "ep_def456"
     # No destination - uses what's configured on the edge
+  - id: "ep_ghi789"
+    # Endpoint with several destinations: override by destination name.
+    # "destination" only ever overrides the primary (first) destination.
+    destinations:
+      otto: "http://localhost:8788/telegram"
+      schoolboy: "http://localhost:8789/telegram"
 ```
+
+### Multiple destinations
+
+An endpoint starts with one destination and can have more (UI: endpoint → Edit → Destinations; API: `AddDestination` / `UpdateDestination` / `RemoveDestination`; MCP: `hookly_add_destination` etc.).
+
+- The signature is verified once, at the edge. Every destination receives the original headers and body.
+- The provider always gets an immediate `200` once the webhook is stored; it never waits for delivery.
+- A destination added later only receives webhooks that arrive after it was added. Replay can target it explicitly.
+- Removing a destination abandons its pending deliveries (its delivery history is deleted with it). The last destination can't be removed; mute the endpoint instead.
+- Disabling a destination pauses it: new webhooks skip it and its pending deliveries are held.
+- A webhook's status is derived: `delivered` when every enabled destination is delivered, `failed` / `dead_letter` if any destination is, otherwise `pending`. Replay can target one destination or all.
+- The first destination is the *primary*. `destination_url` in the API/MCP still works and means the primary destination.
+
+**Upgrading**: deploy the edge first. Migration 007 runs on start (one destination per existing endpoint, one delivery per existing webhook; the legacy `endpoints.destination_url` column is kept and mirrors the primary destination). A `hookly` CLI that predates fan-out keeps working for the primary destination of every endpoint; additional destinations stay pending until the CLI is upgraded and advertises the `fanout` capability.
 
 ### Files
 
@@ -216,9 +237,12 @@ Available tools:
 | `hookly_create_endpoint` | Create endpoint with provider and secret |
 | `hookly_delete_endpoint` | Delete endpoint and its webhooks |
 | `hookly_mute_endpoint` | Mute/unmute webhook reception |
+| `hookly_add_destination` | Add a destination to an endpoint |
+| `hookly_update_destination` | Rename, re-point, enable or pause a destination |
+| `hookly_remove_destination` | Remove a destination (abandons its pending deliveries) |
 | `hookly_list_webhooks` | Filter by endpoint/status, pagination |
-| `hookly_get_webhook` | Full payload, headers, attempt count |
-| `hookly_replay_webhook` | Reset webhook for redelivery |
+| `hookly_get_webhook` | Full payload, headers, per-destination delivery status |
+| `hookly_replay_webhook` | Reset webhook for redelivery (all destinations, or one) |
 | `hookly_get_status` | Queue depth and connected endpoints |
 
 Uses CLI credentials from `hookly login`.

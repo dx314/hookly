@@ -47,5 +47,14 @@ export const edgeClient = createClient(EdgeService, transport);
 export const edgeClientNoRedirect = createClient(EdgeService, transportNoRedirect);
 
 // Re-export types
-export { type Endpoint, type Webhook, type SystemStatus, type UserSettings, type SystemSettings } from '$api/hookly/v1/common_pb';
+export {
+	type Endpoint,
+	type Webhook,
+	type SystemStatus,
+	type UserSettings,
+	type SystemSettings,
+	type Destination,
+	type DestinationStats,
+	type Delivery
+} from '$api/hookly/v1/common_pb';
 export { ProviderType, WebhookStatus, ThemePreference } from '$api/hookly/v1/common_pb';

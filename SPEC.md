@@ -10,7 +10,8 @@ Route webhooks from external providers (Stripe, GitHub, Telegram, etc.) to servi
 - Accept webhooks at public edge (`hooks.dx314.com`)
 - Generate unique URLs per endpoint
 - Verify signatures (mark unverified if invalid, don't reject)
-- Buffer when home offline, deliver later, in-order per-endpoint
+- Buffer when home offline, deliver later, in-order per (endpoint, destination)
+- Fan one endpoint out to several destinations (a Telegram bot has exactly one webhook URL)
 - Provide remote UI to view/replay failed webhooks
 
 ---
@@ -48,10 +49,11 @@ Route webhooks from external providers (Stripe, GitHub, Telegram, etc.) to servi
 1. Webhook provider POSTs to `hooks.dx314.com/h/{endpoint-id}`
 2. edge-gateway verifies signature (or marks unverified)
 3. edge-gateway stores webhook in SQLite queue
-4. edge-gateway pushes to home-hub via persistent connection
-5. home-hub forwards to destination URL on home network
-6. home-hub ACKs to edge-gateway
-7. edge-gateway marks webhook as delivered
+3a. edge-gateway creates one delivery per enabled destination and answers the provider `200` (never waits for delivery)
+4. edge-gateway pushes one envelope per delivery to home-hub via persistent connection
+5. home-hub forwards each envelope to its destination URL on home network (one worker per destination)
+6. home-hub ACKs each delivery to edge-gateway
+7. edge-gateway marks the delivery as delivered and re-derives the webhook's status
 
 ### Connection Model
 
@@ -119,9 +121,12 @@ Route webhooks from external providers (Stripe, GitHub, Telegram, etc.) to servi
 - `hookly_create_endpoint` — create new endpoint
 - `hookly_delete_endpoint` — delete endpoint
 - `hookly_mute_endpoint` — temporarily disable endpoint
+- `hookly_add_destination` — add a destination to an endpoint
+- `hookly_update_destination` — rename / re-point / enable / pause a destination
+- `hookly_remove_destination` — remove a destination (abandons its pending deliveries)
 - `hookly_list_webhooks` — list webhooks with filters
 - `hookly_get_webhook` — get webhook details + full payload
-- `hookly_replay_webhook` — replay a webhook
+- `hookly_replay_webhook` — replay a webhook (all destinations, or one)
 - `hookly_get_status` — queue depth, connection status
 
 ---
@@ -134,10 +139,22 @@ id: string (nanoid)
 name: string
 provider_type: enum (stripe, github, telegram, generic)
 signature_secret: string (encrypted at rest)
-destination_url: string
+destination_url: string (LEGACY column, mirrors the primary destination's url)
 created_at: timestamp
 updated_at: timestamp
 muted: boolean
+```
+
+### Destination (1..N per endpoint)
+```
+id: string (nanoid)
+endpoint_id: string (FK, cascade)
+name: string (unique per endpoint; key for hub-side overrides)
+url: string
+enabled: boolean (disabled = paused: skipped for new webhooks, pending held)
+position: integer (lowest = primary destination)
+created_at: timestamp
+updated_at: timestamp
 ```
 
 ### Webhook
@@ -148,12 +165,35 @@ received_at: timestamp
 headers: json
 payload: blob
 signature_valid: boolean
+status: enum (pending, delivered, failed, dead_letter)   -- derived, see below
+attempts: integer                                        -- derived (max)
+last_attempt_at: timestamp                               -- derived (latest)
+delivered_at: timestamp                                  -- derived (latest, when delivered)
+error_message: string                                    -- derived (from the deciding delivery)
+```
+
+### Delivery (one per webhook × destination)
+```
+seq: integer (autoincrement; arrival order per destination)
+id: string
+webhook_id: string (FK, cascade)
+destination_id: string (FK, cascade)
 status: enum (pending, delivered, failed, dead_letter)
 attempts: integer
 last_attempt_at: timestamp
 delivered_at: timestamp
 error_message: string
+notification_sent: boolean
+created_at: timestamp
 ```
+
+Delivery state machine: `pending → delivered` (2xx), `pending → failed` (4xx),
+`pending → pending, attempts+1` (5xx / network, retried after backoff),
+`pending → dead_letter` (webhook older than 7 days), `any → pending` (replay).
+Acks for deliveries that are not pending are ignored.
+
+Derived webhook status (over deliveries to enabled destinations): `dead_letter` if any
+delivery is, else `failed` if any is, else `pending` if any is, else `delivered`.
 
 ### Edge→Home Envelope (protobuf)
 ```
@@ -165,8 +205,17 @@ message WebhookEnvelope {
   map<string, string> headers = 5;
   bytes payload = 6;
   int32 attempt = 7;
+  string delivery_id = 8;        // fan-out: echoed in DeliveryAck
+  string destination_id = 9;
+  string destination_name = 10;  // key for hub-side overrides
+  bool destination_primary = 11;
 }
 ```
+
+`DeliveryAck` gained `delivery_id = 6` / `destination_id = 7`, `ConnectRequest` gained
+`repeated string capabilities = 5` (`"fanout"`; 4 is skipped, it was `endpoint_ids` before bearer-token auth). No field was renumbered or removed.
+Hubs without the `fanout` capability are only sent each endpoint's primary destination and
+their acks (webhook ID only) resolve to the webhook's first pending delivery.
 
 ---
 
@@ -182,7 +231,9 @@ message WebhookEnvelope {
 ## Behavior Rules
 
 ### Delivery
-- **In-order per-endpoint**: Same endpoint = arrival order. Different endpoints independent.
+- **In-order per (endpoint, destination)**: Same destination = arrival order. Different endpoints and different destinations of one endpoint are independent: a failing destination never blocks or re-delivers to another.
+- **Fan-out at arrival**: a webhook gets one delivery per destination enabled when it arrives. Destinations added later get no old traffic. Removing a destination abandons (deletes) its deliveries.
+- **At most one in flight per destination**: a sent delivery is not sent again until it is acked, the hub disconnects, or 90s pass.
 - **Success**: 2xx response = delivered
 - **Permanent failure**: 4xx response = failed, no retry
 - **Transient failure**: 5xx response = retry with exponential backoff
@@ -201,7 +252,7 @@ message WebhookEnvelope {
 
 ### Notifications
 - Telegram message on delivery failure (after retries exhausted)
-- Include endpoint name and error
+- Include endpoint name, destination name/URL and error (one notification per failed delivery)
 
 ---
 
@@ -310,3 +361,10 @@ services:
 | 30 | Dashboard: **Basic counts in UI** | Queue depth, webhooks stats, connection status. Simple stats page. No Prometheus. |
 | 31 | UI stack: **SvelteKit + Tailwind + shadcn-svelte** | Modern component library. |
 | 32 | UI serving: **Embedded in Go binary** | Build SvelteKit as static, embed in edge-gateway. Single container. |
+| 33 | Fan-out: **1..N destinations per endpoint, delivery state per destination** | A Telegram bot has one webhook URL but several home services need its updates. `deliveries` table (webhook × destination) carries status/attempts/backoff; supersedes #7 (ordering is now per endpoint+destination) and #8 (destination URL → list of named destinations). |
+| 34 | Webhook status: **Derived rollup stored on the webhook row** | Keeps list/dashboard/retention queries unchanged and lets an older binary still read the table. Worst status wins: dead_letter > failed > pending > delivered. |
+| 35 | Migration: **In place, additive, no table rebuild** | Goose migration 007: new tables + back-fill (one destination per endpoint, one delivery per webhook). Legacy `endpoints.destination_url` stays and mirrors the primary destination, so rollback to an older binary works. |
+| 36 | Wire compat: **New proto fields only + `fanout` hub capability** | Edge and hub deploy separately. Old hubs get only primary destinations and ack by webhook ID; extra destinations wait for an upgraded hub. Safe order: edge first, then hub. |
+| 37 | Late destinations: **No back-fill; removal abandons** | A destination added later only sees new webhooks (explicit replay can target it). Removing one deletes its deliveries; the last destination can't be removed. |
+| 38 | Disabled destination: **Paused** | Skipped for new webhooks, pending deliveries held, excluded from the derived status. At least one destination must stay enabled (mute the endpoint instead). |
+| 39 | Hub overrides: **Per destination name; legacy `destination:` = primary only** | A per-endpoint override must never capture a second destination's traffic. |

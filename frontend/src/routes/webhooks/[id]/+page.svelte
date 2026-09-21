@@ -5,7 +5,9 @@
 	let webhook = $state<Webhook | null>(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	let replaying = $state(false);
+	// 'all' while replaying every destination, otherwise the destination id being replayed
+	let replaying = $state<string | null>(null);
+	let replayError = $state<string | null>(null);
 	let showHeaders = $state(false);
 	let showPayload = $state(true);
 
@@ -56,16 +58,20 @@
 		return JSON.stringify(headers, null, 2);
 	}
 
-	async function replayWebhook() {
+	// Replays to a single destination, or to all of them when destinationId is omitted
+	async function replayWebhook(destinationId?: string) {
 		if (!webhook) return;
-		replaying = true;
+		replaying = destinationId ?? 'all';
+		replayError = null;
 		try {
-			const response = await edgeClient.replayWebhook({ id: webhook.id });
-			webhook = response.webhook ?? null;
+			const response = await edgeClient.replayWebhook({ id: webhook.id, destinationId });
+			if (response.webhook) {
+				webhook = response.webhook;
+			}
 		} catch (e) {
-			error = e instanceof Error ? e.message : 'Failed to replay webhook';
+			replayError = e instanceof Error ? e.message : 'Failed to replay webhook';
 		} finally {
-			replaying = false;
+			replaying = null;
 		}
 	}
 </script>
@@ -99,12 +105,22 @@
 		{#if webhook.status !== WebhookStatus.PENDING}
 			<div class="flex gap-2">
 				<button
-					onclick={replayWebhook}
-					disabled={replaying}
+					onclick={() => replayWebhook()}
+					disabled={replaying !== null}
 					class="inline-flex items-center justify-center rounded-md bg-[var(--color-primary)] px-4 py-2 text-sm font-medium text-[var(--color-primary-foreground)] hover:bg-[var(--color-primary)]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 				>
-					{replaying ? 'Replaying...' : 'Replay Webhook'}
+					{#if replaying === 'all'}
+						Replaying...
+					{:else}
+						{webhook.deliveries.length > 1 ? 'Replay all' : 'Replay Webhook'}
+					{/if}
 				</button>
+			</div>
+		{/if}
+
+		{#if replayError}
+			<div class="rounded-lg border border-[var(--color-destructive)] bg-[var(--color-destructive)]/10 p-4">
+				<p class="text-[var(--color-destructive)]">{replayError}</p>
 			</div>
 		{/if}
 
@@ -150,6 +166,69 @@
 				{/if}
 			</dl>
 		</div>
+
+		<!-- Deliveries -->
+		{#if webhook.deliveries.length > 0}
+			<div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] overflow-hidden">
+				<div class="px-6 py-4 border-b border-[var(--color-border)]">
+					<h2 class="text-lg font-semibold text-[var(--color-foreground)]">Deliveries</h2>
+					<p class="text-sm text-[var(--color-muted-foreground)]">
+						One delivery per destination; the status above is a rollup of these
+					</p>
+				</div>
+				<div class="overflow-x-auto">
+					<table class="w-full">
+						<thead class="bg-[var(--color-muted)]">
+							<tr>
+								<th class="text-left px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Destination</th>
+								<th class="text-left px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Status</th>
+								<th class="text-right px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Attempts</th>
+								<th class="text-left px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Last Attempt</th>
+								<th class="text-left px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Delivered</th>
+								<th class="text-right px-4 py-2 text-xs font-medium text-[var(--color-muted-foreground)]">Actions</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-[var(--color-border)]">
+							{#each webhook.deliveries as delivery (delivery.id)}
+								{@const deliveryStatus = getStatusBadge(delivery.status)}
+								<tr class="hover:bg-[var(--color-muted)]/50 align-top">
+									<td class="px-4 py-2">
+										<div class="text-sm font-medium text-[var(--color-foreground)]">{delivery.destinationName}</div>
+										<div class="font-mono text-xs text-[var(--color-muted-foreground)] mt-1 break-all">{delivery.destinationUrl}</div>
+										{#if delivery.errorMessage}
+											<div class="text-xs text-[var(--color-destructive)] mt-1 break-words">{delivery.errorMessage}</div>
+										{/if}
+									</td>
+									<td class="px-4 py-2">
+										<span class="{deliveryStatus.class} inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap">
+											{deliveryStatus.label}
+										</span>
+									</td>
+									<td class="px-4 py-2 text-sm text-right tabular-nums text-[var(--color-muted-foreground)]">{delivery.attempts}</td>
+									<td class="px-4 py-2 text-sm text-[var(--color-muted-foreground)] whitespace-nowrap">
+										{delivery.lastAttemptAt ? formatDate(delivery.lastAttemptAt) : '—'}
+									</td>
+									<td class="px-4 py-2 text-sm text-[var(--color-muted-foreground)] whitespace-nowrap">
+										{delivery.deliveredAt ? formatDate(delivery.deliveredAt) : '—'}
+									</td>
+									<td class="px-4 py-2 text-right">
+										{#if delivery.status !== WebhookStatus.PENDING}
+											<button
+												onclick={() => replayWebhook(delivery.destinationId)}
+												disabled={replaying !== null}
+												class="text-xs px-2 py-1 rounded border border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:border-[var(--color-foreground)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+											>
+												{replaying === delivery.destinationId ? 'Replaying...' : 'Replay'}
+											</button>
+										{/if}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		{/if}
 
 		<!-- Headers -->
 		<div class="rounded-lg border border-[var(--color-border)] bg-[var(--color-background)] overflow-hidden">

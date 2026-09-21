@@ -18,8 +18,8 @@ const (
 
 // Scheduler runs background maintenance jobs for webhooks.
 type Scheduler struct {
-	queries *db.Queries
-	onDeadLetter func(count int64) // Callback when webhooks are dead-lettered
+	store        *db.Store
+	onDeadLetter func(count int64) // Callback when deliveries are dead-lettered
 
 	mu       sync.Mutex
 	running  bool
@@ -27,9 +27,9 @@ type Scheduler struct {
 }
 
 // NewScheduler creates a new webhook scheduler.
-func NewScheduler(queries *db.Queries) *Scheduler {
+func NewScheduler(store *db.Store) *Scheduler {
 	return &Scheduler{
-		queries: queries,
+		store: store,
 	}
 }
 
@@ -93,16 +93,17 @@ func (s *Scheduler) runJobs(ctx context.Context) {
 	s.runCleanup(ctx)
 }
 
-// processDeadLetters marks old pending webhooks as dead letters.
+// processDeadLetters marks pending deliveries of old webhooks as dead letters.
+// Each destination expires on its own; delivered destinations are untouched.
 func (s *Scheduler) processDeadLetters(ctx context.Context) {
-	count, err := s.queries.MarkDeadLetter(ctx)
+	count, err := s.store.MarkDeadLetters(ctx)
 	if err != nil {
 		slog.Error("failed to mark dead letters", "error", err)
 		return
 	}
 
 	if count > 0 {
-		slog.Info("marked webhooks as dead letter", "count", count)
+		slog.Info("marked deliveries as dead letter", "count", count)
 
 		s.mu.Lock()
 		callback := s.onDeadLetter
@@ -117,7 +118,7 @@ func (s *Scheduler) processDeadLetters(ctx context.Context) {
 // runCleanup deletes old webhooks per retention policy.
 func (s *Scheduler) runCleanup(ctx context.Context) {
 	// Delete old delivered webhooks (7 days)
-	delivered, err := s.queries.DeleteDeliveredWebhooks(ctx)
+	delivered, err := s.store.DeleteDeliveredWebhooks(ctx)
 	if err != nil {
 		slog.Error("failed to delete delivered webhooks", "error", err)
 	} else if delivered > 0 {
@@ -125,7 +126,7 @@ func (s *Scheduler) runCleanup(ctx context.Context) {
 	}
 
 	// Delete old failed webhooks (7 days from last attempt)
-	failed, err := s.queries.DeleteFailedWebhooks(ctx)
+	failed, err := s.store.DeleteFailedWebhooks(ctx)
 	if err != nil {
 		slog.Error("failed to delete failed webhooks", "error", err)
 	} else if failed > 0 {
@@ -133,7 +134,7 @@ func (s *Scheduler) runCleanup(ctx context.Context) {
 	}
 
 	// Delete old dead letter webhooks (14 days)
-	deadLetter, err := s.queries.DeleteDeadLetterWebhooks(ctx)
+	deadLetter, err := s.store.DeleteDeadLetterWebhooks(ctx)
 	if err != nil {
 		slog.Error("failed to delete dead letter webhooks", "error", err)
 	} else if deadLetter > 0 {

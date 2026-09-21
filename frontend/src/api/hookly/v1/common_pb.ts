@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file hookly/v1/common.proto.
  */
 export const file_hookly_v1_common: GenFile = /*@__PURE__*/
-  fileDesc("ChZob29rbHkvdjEvY29tbW9uLnByb3RvEglob29rbHkudjEirgEKElZlcmlmaWNhdGlvbkNvbmZpZxItCgZtZXRob2QYASABKA4yHS5ob29rbHkudjEuVmVyaWZpY2F0aW9uTWV0aG9kEhgKEHNpZ25hdHVyZV9oZWFkZXIYAiABKAkSGAoQc2lnbmF0dXJlX3ByZWZpeBgDIAEoCRIYChB0aW1lc3RhbXBfaGVhZGVyGAQgASgJEhsKE3RpbWVzdGFtcF90b2xlcmFuY2UYBSABKAMimAIKCEVuZHBvaW50EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSLgoNcHJvdmlkZXJfdHlwZRgDIAEoDjIXLmhvb2tseS52MS5Qcm92aWRlclR5cGUSFwoPZGVzdGluYXRpb25fdXJsGAQgASgJEg0KBW11dGVkGAUgASgIEi4KCmNyZWF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjoKE3ZlcmlmaWNhdGlvbl9jb25maWcYCCABKAsyHS5ob29rbHkudjEuVmVyaWZpY2F0aW9uQ29uZmlnIqEDCgdXZWJob29rEgoKAmlkGAEgASgJEhMKC2VuZHBvaW50X2lkGAIgASgJEi8KC3JlY2VpdmVkX2F0GAMgASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgdoZWFkZXJzGAQgAygLMh8uaG9va2x5LnYxLldlYmhvb2suSGVhZGVyc0VudHJ5Eg8KB3BheWxvYWQYBSABKAwSFwoPc2lnbmF0dXJlX3ZhbGlkGAYgASgIEigKBnN0YXR1cxgHIAEoDjIYLmhvb2tseS52MS5XZWJob29rU3RhdHVzEhAKCGF0dGVtcHRzGAggASgFEjMKD2xhc3RfYXR0ZW1wdF9hdBgJIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoMZGVsaXZlcmVkX2F0GAogASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIVCg1lcnJvcl9tZXNzYWdlGAsgASgJGi4KDEhlYWRlcnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIjoKEVBhZ2luYXRpb25SZXF1ZXN0EhEKCXBhZ2Vfc2l6ZRgBIAEoBRISCgpwYWdlX3Rva2VuGAIgASgJIkIKElBhZ2luYXRpb25SZXNwb25zZRIXCg9uZXh0X3BhZ2VfdG9rZW4YASABKAkSEwoLdG90YWxfY291bnQYAiABKAUiLQoRQ29ubmVjdGVkRW5kcG9pbnQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCSLyAQoMU3lzdGVtU3RhdHVzEhUKDXBlbmRpbmdfY291bnQYASABKAUSFAoMZmFpbGVkX2NvdW50GAIgASgFEhkKEWRlYWRfbGV0dGVyX2NvdW50GAMgASgFEh4KEmhvbWVfaHViX2Nvbm5lY3RlZBgEIAEoCEICGAESPwoXbGFzdF9ob21lX2h1Yl9oZWFydGJlYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgIYARI5ChNjb25uZWN0ZWRfZW5kcG9pbnRzGAYgAygLMhwuaG9va2x5LnYxLkNvbm5lY3RlZEVuZHBvaW50IrwDCgxVc2VyU2V0dGluZ3MSDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRITCgtnaXRodWJfbmFtZRgDIAEoCRIUCgxnaXRodWJfZW1haWwYBCABKAkSGgoSZ2l0aHViX3Byb2ZpbGVfdXJsGAUgASgJEhIKCmF2YXRhcl91cmwYBiABKAkSGwoTdGVsZWdyYW1fY29uZmlndXJlZBgHIAEoCBIYChB0ZWxlZ3JhbV9jaGF0X2lkGAggASgJEhgKEHRlbGVncmFtX2VuYWJsZWQYCSABKAgSNAoQdGhlbWVfcHJlZmVyZW5jZRgKIAEoDjIaLmhvb2tseS52MS5UaGVtZVByZWZlcmVuY2USFAoMaXNfc3VwZXJ1c2VyGAsgASgIEi4KCmNyZWF0ZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjEKDWxhc3RfbG9naW5fYXQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIqMBCg5TeXN0ZW1TZXR0aW5ncxIQCghiYXNlX3VybBgBIAEoCRISCgpnaXRodWJfb3JnGAIgASgJEhwKFGdpdGh1Yl9hbGxvd2VkX3VzZXJzGAMgAygJEh8KF3N5c3RlbV90ZWxlZ3JhbV9lbmFibGVkGAQgASgIEhMKC3RvdGFsX3VzZXJzGAUgASgFEhcKD3RvdGFsX2VuZHBvaW50cxgGIAEoBSqyAQoMUHJvdmlkZXJUeXBlEh0KGVBST1ZJREVSX1RZUEVfVU5TUEVDSUZJRUQQABIYChRQUk9WSURFUl9UWVBFX1NUUklQRRABEhgKFFBST1ZJREVSX1RZUEVfR0lUSFVCEAISGgoWUFJPVklERVJfVFlQRV9URUxFR1JBTRADEhkKFVBST1ZJREVSX1RZUEVfR0VORVJJQxAEEhgKFFBST1ZJREVSX1RZUEVfQ1VTVE9NEAUqywEKElZlcmlmaWNhdGlvbk1ldGhvZBIjCh9WRVJJRklDQVRJT05fTUVUSE9EX1VOU1BFQ0lGSUVEEAASHgoaVkVSSUZJQ0FUSU9OX01FVEhPRF9TVEFUSUMQARIjCh9WRVJJRklDQVRJT05fTUVUSE9EX0hNQUNfU0hBMjU2EAISIQodVkVSSUZJQ0FUSU9OX01FVEhPRF9ITUFDX1NIQTEQAxIoCiRWRVJJRklDQVRJT05fTUVUSE9EX1RJTUVTVEFNUEVEX0hNQUMQBCqkAQoNV2ViaG9va1N0YXR1cxIeChpXRUJIT09LX1NUQVRVU19VTlNQRUNJRklFRBAAEhoKFldFQkhPT0tfU1RBVFVTX1BFTkRJTkcQARIcChhXRUJIT09LX1NUQVRVU19ERUxJVkVSRUQQAhIZChVXRUJIT09LX1NUQVRVU19GQUlMRUQQAxIeChpXRUJIT09LX1NUQVRVU19ERUFEX0xFVFRFUhAEKtYBCg9UaGVtZVByZWZlcmVuY2USIAocVEhFTUVfUFJFRkVSRU5DRV9VTlNQRUNJRklFRBAAEhsKF1RIRU1FX1BSRUZFUkVOQ0VfU1lTVEVNEAESGgoWVEhFTUVfUFJFRkVSRU5DRV9MSUdIVBACEhkKFVRIRU1FX1BSRUZFUkVOQ0VfREFSSxADEiYKIlRIRU1FX1BSRUZFUkVOQ0VfUExBQ0lEX0JMVUVfTElHSFQQBBIlCiFUSEVNRV9QUkVGRVJFTkNFX1BMQUNJRF9CTFVFX0RBUksQBUKSAQoNY29tLmhvb2tseS52MUILQ29tbW9uUHJvdG9QAVovaG9va3MuZHgzMTQuY29tL2ludGVybmFsL2FwaS9ob29rbHkvdjE7aG9va2x5djGiAgNIWFiqAglIb29rbHkuVjHKAglIb29rbHlcVjHiAhVIb29rbHlcVjFcR1BCTWV0YWRhdGHqAgpIb29rbHk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
+  fileDesc("ChZob29rbHkvdjEvY29tbW9uLnByb3RvEglob29rbHkudjEirgEKElZlcmlmaWNhdGlvbkNvbmZpZxItCgZtZXRob2QYASABKA4yHS5ob29rbHkudjEuVmVyaWZpY2F0aW9uTWV0aG9kEhgKEHNpZ25hdHVyZV9oZWFkZXIYAiABKAkSGAoQc2lnbmF0dXJlX3ByZWZpeBgDIAEoCRIYChB0aW1lc3RhbXBfaGVhZGVyGAQgASgJEhsKE3RpbWVzdGFtcF90b2xlcmFuY2UYBSABKAMi+AEKC0Rlc3RpbmF0aW9uEgoKAmlkGAEgASgJEhMKC2VuZHBvaW50X2lkGAIgASgJEgwKBG5hbWUYAyABKAkSCwoDdXJsGAQgASgJEg8KB2VuYWJsZWQYBSABKAgSEAoIcG9zaXRpb24YBiABKAUSLgoKY3JlYXRlZF9hdBgHIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASLgoKdXBkYXRlZF9hdBgIIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASKgoFc3RhdHMYCSABKAsyGy5ob29rbHkudjEuRGVzdGluYXRpb25TdGF0cyK+AQoQRGVzdGluYXRpb25TdGF0cxIVCg1wZW5kaW5nX2NvdW50GAEgASgFEhcKD2RlbGl2ZXJlZF9jb3VudBgCIAEoBRIUCgxmYWlsZWRfY291bnQYAyABKAUSGQoRZGVhZF9sZXR0ZXJfY291bnQYBCABKAUSNQoRbGFzdF9kZWxpdmVyZWRfYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhIKCmxhc3RfZXJyb3IYBiABKAkirwIKCERlbGl2ZXJ5EgoKAmlkGAEgASgJEhIKCndlYmhvb2tfaWQYAiABKAkSFgoOZGVzdGluYXRpb25faWQYAyABKAkSGAoQZGVzdGluYXRpb25fbmFtZRgEIAEoCRIXCg9kZXN0aW5hdGlvbl91cmwYBSABKAkSKAoGc3RhdHVzGAYgASgOMhguaG9va2x5LnYxLldlYmhvb2tTdGF0dXMSEAoIYXR0ZW1wdHMYByABKAUSMwoPbGFzdF9hdHRlbXB0X2F0GAggASgLMhouZ29vZ2xlLnByb3RvYnVmLlRpbWVzdGFtcBIwCgxkZWxpdmVyZWRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEhUKDWVycm9yX21lc3NhZ2UYCiABKAkixgIKCEVuZHBvaW50EgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSLgoNcHJvdmlkZXJfdHlwZRgDIAEoDjIXLmhvb2tseS52MS5Qcm92aWRlclR5cGUSFwoPZGVzdGluYXRpb25fdXJsGAQgASgJEg0KBW11dGVkGAUgASgIEi4KCmNyZWF0ZWRfYXQYBiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYByABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjoKE3ZlcmlmaWNhdGlvbl9jb25maWcYCCABKAsyHS5ob29rbHkudjEuVmVyaWZpY2F0aW9uQ29uZmlnEiwKDGRlc3RpbmF0aW9ucxgJIAMoCzIWLmhvb2tseS52MS5EZXN0aW5hdGlvbiLKAwoHV2ViaG9vaxIKCgJpZBgBIAEoCRITCgtlbmRwb2ludF9pZBgCIAEoCRIvCgtyZWNlaXZlZF9hdBgDIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASMAoHaGVhZGVycxgEIAMoCzIfLmhvb2tseS52MS5XZWJob29rLkhlYWRlcnNFbnRyeRIPCgdwYXlsb2FkGAUgASgMEhcKD3NpZ25hdHVyZV92YWxpZBgGIAEoCBIoCgZzdGF0dXMYByABKA4yGC5ob29rbHkudjEuV2ViaG9va1N0YXR1cxIQCghhdHRlbXB0cxgIIAEoBRIzCg9sYXN0X2F0dGVtcHRfYXQYCSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjAKDGRlbGl2ZXJlZF9hdBgKIAEoCzIaLmdvb2dsZS5wcm90b2J1Zi5UaW1lc3RhbXASFQoNZXJyb3JfbWVzc2FnZRgLIAEoCRInCgpkZWxpdmVyaWVzGAwgAygLMhMuaG9va2x5LnYxLkRlbGl2ZXJ5Gi4KDEhlYWRlcnNFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAk6AjgBIjoKEVBhZ2luYXRpb25SZXF1ZXN0EhEKCXBhZ2Vfc2l6ZRgBIAEoBRISCgpwYWdlX3Rva2VuGAIgASgJIkIKElBhZ2luYXRpb25SZXNwb25zZRIXCg9uZXh0X3BhZ2VfdG9rZW4YASABKAkSEwoLdG90YWxfY291bnQYAiABKAUiLQoRQ29ubmVjdGVkRW5kcG9pbnQSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCSLyAQoMU3lzdGVtU3RhdHVzEhUKDXBlbmRpbmdfY291bnQYASABKAUSFAoMZmFpbGVkX2NvdW50GAIgASgFEhkKEWRlYWRfbGV0dGVyX2NvdW50GAMgASgFEh4KEmhvbWVfaHViX2Nvbm5lY3RlZBgEIAEoCEICGAESPwoXbGFzdF9ob21lX2h1Yl9oZWFydGJlYXQYBSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wQgIYARI5ChNjb25uZWN0ZWRfZW5kcG9pbnRzGAYgAygLMhwuaG9va2x5LnYxLkNvbm5lY3RlZEVuZHBvaW50IrwDCgxVc2VyU2V0dGluZ3MSDwoHdXNlcl9pZBgBIAEoCRIQCgh1c2VybmFtZRgCIAEoCRITCgtnaXRodWJfbmFtZRgDIAEoCRIUCgxnaXRodWJfZW1haWwYBCABKAkSGgoSZ2l0aHViX3Byb2ZpbGVfdXJsGAUgASgJEhIKCmF2YXRhcl91cmwYBiABKAkSGwoTdGVsZWdyYW1fY29uZmlndXJlZBgHIAEoCBIYChB0ZWxlZ3JhbV9jaGF0X2lkGAggASgJEhgKEHRlbGVncmFtX2VuYWJsZWQYCSABKAgSNAoQdGhlbWVfcHJlZmVyZW5jZRgKIAEoDjIaLmhvb2tseS52MS5UaGVtZVByZWZlcmVuY2USFAoMaXNfc3VwZXJ1c2VyGAsgASgIEi4KCmNyZWF0ZWRfYXQYDCABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEi4KCnVwZGF0ZWRfYXQYDSABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wEjEKDWxhc3RfbG9naW5fYXQYDiABKAsyGi5nb29nbGUucHJvdG9idWYuVGltZXN0YW1wIqMBCg5TeXN0ZW1TZXR0aW5ncxIQCghiYXNlX3VybBgBIAEoCRISCgpnaXRodWJfb3JnGAIgASgJEhwKFGdpdGh1Yl9hbGxvd2VkX3VzZXJzGAMgAygJEh8KF3N5c3RlbV90ZWxlZ3JhbV9lbmFibGVkGAQgASgIEhMKC3RvdGFsX3VzZXJzGAUgASgFEhcKD3RvdGFsX2VuZHBvaW50cxgGIAEoBSqyAQoMUHJvdmlkZXJUeXBlEh0KGVBST1ZJREVSX1RZUEVfVU5TUEVDSUZJRUQQABIYChRQUk9WSURFUl9UWVBFX1NUUklQRRABEhgKFFBST1ZJREVSX1RZUEVfR0lUSFVCEAISGgoWUFJPVklERVJfVFlQRV9URUxFR1JBTRADEhkKFVBST1ZJREVSX1RZUEVfR0VORVJJQxAEEhgKFFBST1ZJREVSX1RZUEVfQ1VTVE9NEAUqywEKElZlcmlmaWNhdGlvbk1ldGhvZBIjCh9WRVJJRklDQVRJT05fTUVUSE9EX1VOU1BFQ0lGSUVEEAASHgoaVkVSSUZJQ0FUSU9OX01FVEhPRF9TVEFUSUMQARIjCh9WRVJJRklDQVRJT05fTUVUSE9EX0hNQUNfU0hBMjU2EAISIQodVkVSSUZJQ0FUSU9OX01FVEhPRF9ITUFDX1NIQTEQAxIoCiRWRVJJRklDQVRJT05fTUVUSE9EX1RJTUVTVEFNUEVEX0hNQUMQBCqkAQoNV2ViaG9va1N0YXR1cxIeChpXRUJIT09LX1NUQVRVU19VTlNQRUNJRklFRBAAEhoKFldFQkhPT0tfU1RBVFVTX1BFTkRJTkcQARIcChhXRUJIT09LX1NUQVRVU19ERUxJVkVSRUQQAhIZChVXRUJIT09LX1NUQVRVU19GQUlMRUQQAxIeChpXRUJIT09LX1NUQVRVU19ERUFEX0xFVFRFUhAEKtYBCg9UaGVtZVByZWZlcmVuY2USIAocVEhFTUVfUFJFRkVSRU5DRV9VTlNQRUNJRklFRBAAEhsKF1RIRU1FX1BSRUZFUkVOQ0VfU1lTVEVNEAESGgoWVEhFTUVfUFJFRkVSRU5DRV9MSUdIVBACEhkKFVRIRU1FX1BSRUZFUkVOQ0VfREFSSxADEiYKIlRIRU1FX1BSRUZFUkVOQ0VfUExBQ0lEX0JMVUVfTElHSFQQBBIlCiFUSEVNRV9QUkVGRVJFTkNFX1BMQUNJRF9CTFVFX0RBUksQBUKSAQoNY29tLmhvb2tseS52MUILQ29tbW9uUHJvdG9QAVovaG9va3MuZHgzMTQuY29tL2ludGVybmFsL2FwaS9ob29rbHkvdjE7aG9va2x5djGiAgNIWFiqAglIb29rbHkuVjHKAglIb29rbHlcVjHiAhVIb29rbHlcVjFcR1BCTWV0YWRhdGHqAgpIb29rbHk6OlYxYgZwcm90bzM", [file_google_protobuf_timestamp]);
 
 /**
  * Custom verification configuration for PROVIDER_TYPE_CUSTOM
@@ -62,6 +62,179 @@ export const VerificationConfigSchema: GenMessage<VerificationConfig> = /*@__PUR
   messageDesc(file_hookly_v1_common, 0);
 
 /**
+ * Destination is one forwarding target of an endpoint. An endpoint has 1..N.
+ *
+ * @generated from message hookly.v1.Destination
+ */
+export type Destination = Message<"hookly.v1.Destination"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string endpoint_id = 2;
+   */
+  endpointId: string;
+
+  /**
+   * Unique per endpoint
+   *
+   * @generated from field: string name = 3;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string url = 4;
+   */
+  url: string;
+
+  /**
+   * @generated from field: bool enabled = 5;
+   */
+  enabled: boolean;
+
+  /**
+   * Lowest position is the primary destination
+   *
+   * @generated from field: int32 position = 6;
+   */
+  position: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 7;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 8;
+   */
+  updatedAt?: Timestamp;
+
+  /**
+   * Only populated by GetEndpoint
+   *
+   * @generated from field: hookly.v1.DestinationStats stats = 9;
+   */
+  stats?: DestinationStats;
+};
+
+/**
+ * Describes the message hookly.v1.Destination.
+ * Use `create(DestinationSchema)` to create a new message.
+ */
+export const DestinationSchema: GenMessage<Destination> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_common, 1);
+
+/**
+ * Delivery counts for a single destination
+ *
+ * @generated from message hookly.v1.DestinationStats
+ */
+export type DestinationStats = Message<"hookly.v1.DestinationStats"> & {
+  /**
+   * @generated from field: int32 pending_count = 1;
+   */
+  pendingCount: number;
+
+  /**
+   * @generated from field: int32 delivered_count = 2;
+   */
+  deliveredCount: number;
+
+  /**
+   * @generated from field: int32 failed_count = 3;
+   */
+  failedCount: number;
+
+  /**
+   * @generated from field: int32 dead_letter_count = 4;
+   */
+  deadLetterCount: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_delivered_at = 5;
+   */
+  lastDeliveredAt?: Timestamp;
+
+  /**
+   * @generated from field: string last_error = 6;
+   */
+  lastError: string;
+};
+
+/**
+ * Describes the message hookly.v1.DestinationStats.
+ * Use `create(DestinationStatsSchema)` to create a new message.
+ */
+export const DestinationStatsSchema: GenMessage<DestinationStats> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_common, 2);
+
+/**
+ * Delivery is the state of one webhook for one destination.
+ *
+ * @generated from message hookly.v1.Delivery
+ */
+export type Delivery = Message<"hookly.v1.Delivery"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string webhook_id = 2;
+   */
+  webhookId: string;
+
+  /**
+   * @generated from field: string destination_id = 3;
+   */
+  destinationId: string;
+
+  /**
+   * @generated from field: string destination_name = 4;
+   */
+  destinationName: string;
+
+  /**
+   * @generated from field: string destination_url = 5;
+   */
+  destinationUrl: string;
+
+  /**
+   * @generated from field: hookly.v1.WebhookStatus status = 6;
+   */
+  status: WebhookStatus;
+
+  /**
+   * @generated from field: int32 attempts = 7;
+   */
+  attempts: number;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp last_attempt_at = 8;
+   */
+  lastAttemptAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp delivered_at = 9;
+   */
+  deliveredAt?: Timestamp;
+
+  /**
+   * @generated from field: string error_message = 10;
+   */
+  errorMessage: string;
+};
+
+/**
+ * Describes the message hookly.v1.Delivery.
+ * Use `create(DeliverySchema)` to create a new message.
+ */
+export const DeliverySchema: GenMessage<Delivery> = /*@__PURE__*/
+  messageDesc(file_hookly_v1_common, 3);
+
+/**
  * Endpoint configuration
  *
  * @generated from message hookly.v1.Endpoint
@@ -83,6 +256,8 @@ export type Endpoint = Message<"hookly.v1.Endpoint"> & {
   providerType: ProviderType;
 
   /**
+   * URL of the primary (first) destination
+   *
    * @generated from field: string destination_url = 4;
    */
   destinationUrl: string;
@@ -109,6 +284,13 @@ export type Endpoint = Message<"hookly.v1.Endpoint"> & {
    * @generated from field: hookly.v1.VerificationConfig verification_config = 8;
    */
   verificationConfig?: VerificationConfig;
+
+  /**
+   * Ordered by position
+   *
+   * @generated from field: repeated hookly.v1.Destination destinations = 9;
+   */
+  destinations: Destination[];
 };
 
 /**
@@ -116,10 +298,11 @@ export type Endpoint = Message<"hookly.v1.Endpoint"> & {
  * Use `create(EndpointSchema)` to create a new message.
  */
 export const EndpointSchema: GenMessage<Endpoint> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 1);
+  messageDesc(file_hookly_v1_common, 4);
 
 /**
- * Webhook record
+ * Webhook record. status/attempts/last_attempt_at/delivered_at/error_message are
+ * derived from the webhook's deliveries.
  *
  * @generated from message hookly.v1.Webhook
  */
@@ -178,6 +361,13 @@ export type Webhook = Message<"hookly.v1.Webhook"> & {
    * @generated from field: string error_message = 11;
    */
   errorMessage: string;
+
+  /**
+   * Only populated by GetWebhook and ReplayWebhook
+   *
+   * @generated from field: repeated hookly.v1.Delivery deliveries = 12;
+   */
+  deliveries: Delivery[];
 };
 
 /**
@@ -185,7 +375,7 @@ export type Webhook = Message<"hookly.v1.Webhook"> & {
  * Use `create(WebhookSchema)` to create a new message.
  */
 export const WebhookSchema: GenMessage<Webhook> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 2);
+  messageDesc(file_hookly_v1_common, 5);
 
 /**
  * Pagination request parameters
@@ -209,7 +399,7 @@ export type PaginationRequest = Message<"hookly.v1.PaginationRequest"> & {
  * Use `create(PaginationRequestSchema)` to create a new message.
  */
 export const PaginationRequestSchema: GenMessage<PaginationRequest> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 3);
+  messageDesc(file_hookly_v1_common, 6);
 
 /**
  * Pagination response metadata
@@ -233,7 +423,7 @@ export type PaginationResponse = Message<"hookly.v1.PaginationResponse"> & {
  * Use `create(PaginationResponseSchema)` to create a new message.
  */
 export const PaginationResponseSchema: GenMessage<PaginationResponse> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 4);
+  messageDesc(file_hookly_v1_common, 7);
 
 /**
  * Connected endpoint info for status display
@@ -257,7 +447,7 @@ export type ConnectedEndpoint = Message<"hookly.v1.ConnectedEndpoint"> & {
  * Use `create(ConnectedEndpointSchema)` to create a new message.
  */
 export const ConnectedEndpointSchema: GenMessage<ConnectedEndpoint> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 5);
+  messageDesc(file_hookly_v1_common, 8);
 
 /**
  * System status information
@@ -307,7 +497,7 @@ export type SystemStatus = Message<"hookly.v1.SystemStatus"> & {
  * Use `create(SystemStatusSchema)` to create a new message.
  */
 export const SystemStatusSchema: GenMessage<SystemStatus> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 6);
+  messageDesc(file_hookly_v1_common, 9);
 
 /**
  * User settings including profile and preferences
@@ -403,7 +593,7 @@ export type UserSettings = Message<"hookly.v1.UserSettings"> & {
  * Use `create(UserSettingsSchema)` to create a new message.
  */
 export const UserSettingsSchema: GenMessage<UserSettings> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 7);
+  messageDesc(file_hookly_v1_common, 10);
 
 /**
  * System settings (superuser only)
@@ -447,7 +637,7 @@ export type SystemSettings = Message<"hookly.v1.SystemSettings"> & {
  * Use `create(SystemSettingsSchema)` to create a new message.
  */
 export const SystemSettingsSchema: GenMessage<SystemSettings> = /*@__PURE__*/
-  messageDesc(file_hookly_v1_common, 8);
+  messageDesc(file_hookly_v1_common, 11);
 
 /**
  * Provider type for webhook signature verification

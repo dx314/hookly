@@ -54,7 +54,8 @@ func run() error {
 	}
 	defer conn.Close()
 
-	queries := db.New(conn)
+	store := db.NewStore(conn)
+	queries := store.Queries
 	secretManager := db.NewSecretManager(cfg.EncryptionKey)
 
 	// Create relay connection manager
@@ -82,7 +83,7 @@ func run() error {
 	})
 
 	// Webhook ingestion (no auth required)
-	webhookHandler := webhook.NewHandler(queries, secretManager)
+	webhookHandler := webhook.NewHandler(store, secretManager)
 	r.Post("/h/{endpointID}", webhookHandler.ServeHTTP)
 
 	// Authentication
@@ -120,7 +121,7 @@ func run() error {
 
 	// Relay service (ConnectRPC, uses bearer token auth)
 	if tokenManager != nil {
-		relayHandler := relay.NewHandler(tokenManager, connMgr, queries, notifier)
+		relayHandler := relay.NewHandler(tokenManager, connMgr, store, notifier)
 		path, handler := hooklyv1connect.NewRelayServiceHandler(relayHandler, connect.WithInterceptors())
 		r.Mount(path, handler)
 		slog.Info("relay service enabled")
@@ -129,7 +130,7 @@ func run() error {
 	}
 
 	// EdgeService (API for UI/MCP)
-	edgeSvc := edge.New(queries, secretManager, connMgr, cfg)
+	edgeSvc := edge.New(store, secretManager, connMgr, cfg)
 	if sessionManager != nil {
 		// With auth interceptor (supports both cookies and Bearer tokens)
 		authInterceptor := server.NewAuthInterceptor(sessionManager, tokenManager)
@@ -168,7 +169,7 @@ func run() error {
 	slog.Info("ui handler enabled")
 
 	// Start webhook dispatcher
-	dispatcher := relay.NewDispatcher(queries, connMgr)
+	dispatcher := relay.NewDispatcher(store, connMgr)
 	go func() {
 		if err := dispatcher.Run(ctx); err != nil && err != context.Canceled {
 			slog.Error("dispatcher error", "error", err)
@@ -176,7 +177,7 @@ func run() error {
 	}()
 
 	// Start webhook scheduler (dead-letter processing, cleanup)
-	scheduler := webhook.NewScheduler(queries)
+	scheduler := webhook.NewScheduler(store)
 	scheduler.SetDeadLetterCallback(func(count int64) {
 		slog.Warn("webhooks moved to dead letter", "count", count)
 		// Send dead letter notifications
@@ -225,12 +226,12 @@ func run() error {
 	return nil
 }
 
-// sendDeadLetterNotifications sends notifications for recently dead-lettered webhooks.
+// sendDeadLetterNotifications sends notifications for recently dead-lettered deliveries.
 func sendDeadLetterNotifications(ctx context.Context, queries *db.Queries, notifier notify.Notifier) {
 	// Get unnotified dead letters (limit to prevent spam)
-	rows, err := queries.GetUnnotifiedDeadLetters(ctx, 50)
+	rows, err := queries.GetUnnotifiedDeadLetterDeliveries(ctx, 50)
 	if err != nil {
-		slog.Error("failed to get dead letter webhooks", "error", err)
+		slog.Error("failed to get dead letter deliveries", "error", err)
 		return
 	}
 
@@ -239,12 +240,13 @@ func sendDeadLetterNotifications(ctx context.Context, queries *db.Queries, notif
 		receivedAt, _ := time.Parse("2006-01-02 15:04:05", row.ReceivedAt)
 
 		info := notify.WebhookInfo{
-			ID:             row.ID,
-			EndpointID:     row.EndpointID,
-			EndpointName:   row.EndpointName,
-			DestinationURL: row.EndpointDestinationUrl,
-			Attempts:       int(row.Attempts),
-			ReceivedAt:     receivedAt,
+			ID:              row.WebhookID,
+			EndpointID:      row.EndpointID,
+			EndpointName:    row.EndpointName,
+			DestinationName: row.DestinationName,
+			DestinationURL:  row.DestinationUrl,
+			Attempts:        int(row.Attempts),
+			ReceivedAt:      receivedAt,
 		}
 
 		if err := notifier.NotifyDeadLetter(ctx, info); err != nil {
@@ -253,8 +255,8 @@ func sendDeadLetterNotifications(ctx context.Context, queries *db.Queries, notif
 		}
 
 		// Mark as notified
-		if err := queries.MarkNotificationSent(ctx, row.ID); err != nil {
-			slog.Error("failed to mark notification sent", "webhook_id", row.ID, "error", err)
+		if err := queries.MarkDeliveryNotificationSent(ctx, row.DeliveryID); err != nil {
+			slog.Error("failed to mark notification sent", "delivery_id", row.DeliveryID, "error", err)
 		}
 	}
 }

@@ -39,12 +39,14 @@ func (t *TelegramNotifier) NotifyDeliveryFailure(ctx context.Context, info Webho
 		`🚨 <b>Webhook Delivery Failed</b>
 
 Endpoint: %s
+Destination: %s
 Webhook ID: <code>%s</code>
 Attempts: %d
 Error: %s
 
 <a href="%s/webhooks/%s">View Details</a>`,
 		html.EscapeString(info.EndpointName),
+		html.EscapeString(formatDestination(info)),
 		html.EscapeString(info.ID),
 		info.Attempts,
 		html.EscapeString(info.Error),
@@ -63,6 +65,7 @@ Error: %s
 	slog.Info("sent delivery failure notification",
 		"webhook_id", info.ID,
 		"endpoint", info.EndpointName,
+		"destination", info.DestinationName,
 	)
 	return nil
 }
@@ -73,6 +76,7 @@ func (t *TelegramNotifier) NotifyDeadLetter(ctx context.Context, info WebhookInf
 		`⚠️ <b>Webhook Dead Letter</b>
 
 Endpoint: %s
+Destination: %s
 Webhook ID: <code>%s</code>
 Received: %s
 
@@ -80,6 +84,7 @@ Webhook exceeded 7-day delivery window.
 
 <a href="%s/webhooks/%s">View Details</a>`,
 		html.EscapeString(info.EndpointName),
+		html.EscapeString(formatDestination(info)),
 		html.EscapeString(info.ID),
 		info.ReceivedAt.Format("2006-01-02 15:04:05 UTC"),
 		t.baseURL,
@@ -97,8 +102,21 @@ Webhook exceeded 7-day delivery window.
 	slog.Info("sent dead letter notification",
 		"webhook_id", info.ID,
 		"endpoint", info.EndpointName,
+		"destination", info.DestinationName,
 	)
 	return nil
+}
+
+// formatDestination names the destination a notification is about.
+func formatDestination(info WebhookInfo) string {
+	switch {
+	case info.DestinationName == "":
+		return info.DestinationURL
+	case info.DestinationURL == "":
+		return info.DestinationName
+	default:
+		return fmt.Sprintf("%s (%s)", info.DestinationName, info.DestinationURL)
+	}
 }
 
 type telegramRequest struct {

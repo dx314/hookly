@@ -74,10 +74,10 @@ func run() error {
 	}
 	defer conn.Close()
 
-	queries := db.New(conn)
+	store := db.NewStore(conn)
 	secretManager := db.NewSecretManager(key)
 
 	// Create and run MCP server using credentials from CLI
-	server := mcp.NewServer(queries, secretManager, baseURL, creds.UserID)
+	server := mcp.NewServer(store, secretManager, baseURL, creds.UserID)
 	return server.ServeStdio()
 }

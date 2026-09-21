@@ -41,21 +41,60 @@ enum WebhookStatus {
   WEBHOOK_STATUS_DEAD_LETTER = 4;
 }
 
+// Destination is one forwarding target of an endpoint. An endpoint has 1..N.
+message Destination {
+  string id = 1;
+  string endpoint_id = 2;
+  string name = 3; // Unique per endpoint
+  string url = 4;
+  bool enabled = 5;
+  int32 position = 6; // Lowest position is the primary destination
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  DestinationStats stats = 9; // Only populated by GetEndpoint
+}
+
+// Delivery counts for a single destination
+message DestinationStats {
+  int32 pending_count = 1;
+  int32 delivered_count = 2;
+  int32 failed_count = 3;
+  int32 dead_letter_count = 4;
+  google.protobuf.Timestamp last_delivered_at = 5;
+  string last_error = 6;
+}
+
+// Delivery is the state of one webhook for one destination.
+message Delivery {
+  string id = 1;
+  string webhook_id = 2;
+  string destination_id = 3;
+  string destination_name = 4;
+  string destination_url = 5;
+  WebhookStatus status = 6;
+  int32 attempts = 7;
+  google.protobuf.Timestamp last_attempt_at = 8;
+  google.protobuf.Timestamp delivered_at = 9;
+  string error_message = 10;
+}
+
 // Endpoint configuration
 message Endpoint {
   string id = 1;
   string name = 2;
   ProviderType provider_type = 3;
-  string destination_url = 4;
+  string destination_url = 4; // URL of the primary (first) destination
   bool muted = 5;
   google.protobuf.Timestamp created_at = 6;
   google.protobuf.Timestamp updated_at = 7;
   // Note: signature_secret is not exposed in API responses
   // Custom verification config (only for PROVIDER_TYPE_CUSTOM)
   VerificationConfig verification_config = 8;
+  repeated Destination destinations = 9; // Ordered by position
 }
 
-// Webhook record
+// Webhook record. status/attempts/last_attempt_at/delivered_at/error_message are
+// derived from the webhook's deliveries.
 message Webhook {
   string id = 1;
   string endpoint_id = 2;
@@ -68,6 +107,7 @@ message Webhook {
   google.protobuf.Timestamp last_attempt_at = 9;
   google.protobuf.Timestamp delivered_at = 10;
   string error_message = 11;
+  repeated Delivery deliveries = 12; // Only populated by GetWebhook and ReplayWebhook
 }
 
 // Pagination request parameters

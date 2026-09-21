@@ -5,7 +5,11 @@
 	let name = $state('');
 	let providerType = $state<ProviderType>(ProviderType.GENERIC);
 	let signatureSecret = $state('');
-	let destinationUrl = $state('');
+	// key is a client-only stable identity for keyed rendering; it is never sent to the API
+	let nextKey = 1;
+	let destinations = $state<{ key: number; name: string; url: string }[]>([
+		{ key: 0, name: 'default', url: '' }
+	]);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 
@@ -16,17 +20,42 @@
 		{ value: ProviderType.GENERIC, label: 'Generic / Other' }
 	];
 
+	function addDestination() {
+		destinations.push({ key: nextKey++, name: '', url: '' });
+	}
+
+	function removeDestination(index: number) {
+		if (destinations.length <= 1) return;
+		destinations.splice(index, 1);
+	}
+
+	function validateDestinations(): string | null {
+		const names = destinations.map((dest) => dest.name.trim());
+		for (const [i, dest] of destinations.entries()) {
+			const destName = names[i];
+			if (!destName) return 'Every destination needs a name';
+			if (!dest.url.trim()) return 'Every destination needs a URL';
+			if (names.indexOf(destName) !== i) return `Duplicate destination name "${destName}"`;
+		}
+		return null;
+	}
+
 	async function handleSubmit(e: Event) {
 		e.preventDefault();
+		error = validateDestinations();
+		if (error) return;
+
 		loading = true;
-		error = null;
 
 		try {
 			const response = await edgeClient.createEndpoint({
 				name,
 				providerType,
 				signatureSecret,
-				destinationUrl
+				destinations: destinations.map((dest) => ({
+					name: dest.name.trim(),
+					url: dest.url.trim()
+				}))
 			});
 			goto(`/endpoints/${response.endpoint?.id}`);
 		} catch (e) {
@@ -99,17 +128,49 @@
 		</div>
 
 		<div class="space-y-2">
-			<label for="destinationUrl" class="text-sm font-medium text-[var(--color-foreground)]">Destination URL</label>
-			<input
-				id="destinationUrl"
-				type="url"
-				bind:value={destinationUrl}
-				required
-				placeholder="http://localhost:3000/webhooks/stripe"
-				class="w-full px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-foreground)] placeholder:text-[var(--color-muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] font-mono"
-			/>
+			<div class="flex items-center justify-between">
+				<span class="text-sm font-medium text-[var(--color-foreground)]">Destinations</span>
+				<button
+					type="button"
+					onclick={addDestination}
+					class="text-xs px-2 py-1 rounded border border-[var(--color-border)] text-[var(--color-muted-foreground)] hover:text-[var(--color-foreground)] hover:border-[var(--color-foreground)] transition-colors"
+				>
+					+ Add destination
+				</button>
+			</div>
+			<div class="space-y-2">
+				{#each destinations as dest, i (dest.key)}
+					<div class="flex items-start gap-2">
+						<input
+							type="text"
+							bind:value={dest.name}
+							required
+							placeholder="name"
+							aria-label="Destination {i + 1} name"
+							class="w-1/4 min-w-0 px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-foreground)] placeholder:text-[var(--color-muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)]"
+						/>
+						<input
+							type="url"
+							bind:value={dest.url}
+							required
+							placeholder="http://localhost:3000/webhooks/stripe"
+							aria-label="Destination {i + 1} URL"
+							class="flex-1 min-w-0 px-3 py-2 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] text-[var(--color-foreground)] placeholder:text-[var(--color-muted-foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--color-ring)] font-mono"
+						/>
+						<button
+							type="button"
+							onclick={() => removeDestination(i)}
+							disabled={destinations.length <= 1}
+							class="px-3 py-2 rounded-md border border-[var(--color-border)] text-sm text-[var(--color-muted-foreground)] hover:text-[var(--color-destructive)] hover:border-[var(--color-destructive)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							Remove
+						</button>
+					</div>
+				{/each}
+			</div>
 			<p class="text-xs text-[var(--color-muted-foreground)]">
-				The URL on your private network where webhooks will be forwarded
+				URLs on your private network where webhooks will be forwarded. Every webhook is delivered to
+				each destination independently; the first one is the primary. Names must be unique.
 			</p>
 		</div>
 
