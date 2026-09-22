@@ -19,6 +19,7 @@ import (
 
 	clicmd "hooks.dx314.com/internal/cli"
 	"hooks.dx314.com/internal/config"
+	"hooks.dx314.com/internal/provision"
 	"hooks.dx314.com/internal/relay"
 	svc "hooks.dx314.com/internal/service"
 )
@@ -53,6 +54,7 @@ var appHelpTemplate = `{{ cyan .Name | bold }} {{ dim .Version }}
 
   {{ bold "Setup" }}
     {{ green "init" }}      Create hookly.yaml interactively
+    {{ green "sync" }}      Create/update endpoints on the edge from hookly.yaml
     {{ green "version" }}   Print the hookly version and build
 
   {{ bold "Service Management" }}
@@ -257,6 +259,7 @@ func main() {
 				Description: "Interactively creates a hookly.yaml config file.\nIf logged in, lets you select from your existing endpoints\nor create a new one.",
 				Action:      runInit,
 			},
+			syncCommand(),
 			installCommand(),
 			uninstallCommand(),
 			serviceCommand(),
@@ -311,9 +314,13 @@ func runRelay(c *cli.Context) error {
 	// Create relay client
 	client := relay.NewClient(cfg)
 
-	// Run client in goroutine
+	// Sync hookly.yaml to the edge, then run the relay
 	errCh := make(chan error, 1)
 	go func() {
+		if !provision.SyncForRelay(ctx, cfg, "hookly.yaml") {
+			errCh <- errors.New("hookly.yaml could not be synced to the edge (see above)")
+			return
+		}
 		errCh <- client.Run(ctx)
 	}()
 

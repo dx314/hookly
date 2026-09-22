@@ -421,8 +421,11 @@ type UpdateEndpointRequest struct {
 	Muted           *bool                  `protobuf:"varint,5,opt,name=muted,proto3,oneof" json:"muted,omitempty"`
 	// Custom verification config (only for PROVIDER_TYPE_CUSTOM endpoints)
 	VerificationConfig *VerificationConfig `protobuf:"bytes,6,opt,name=verification_config,json=verificationConfig,proto3" json:"verification_config,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Changes how incoming webhooks are verified. Switching to
+	// PROVIDER_TYPE_CUSTOM needs verification_config in the same request.
+	ProviderType  *ProviderType `protobuf:"varint,7,opt,name=provider_type,json=providerType,proto3,enum=hookly.v1.ProviderType,oneof" json:"provider_type,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *UpdateEndpointRequest) Reset() {
@@ -495,6 +498,13 @@ func (x *UpdateEndpointRequest) GetVerificationConfig() *VerificationConfig {
 		return x.VerificationConfig
 	}
 	return nil
+}
+
+func (x *UpdateEndpointRequest) GetProviderType() ProviderType {
+	if x != nil && x.ProviderType != nil {
+		return *x.ProviderType
+	}
+	return ProviderType_PROVIDER_TYPE_UNSPECIFIED
 }
 
 type UpdateEndpointResponse struct {
@@ -1775,18 +1785,20 @@ const file_hookly_v1_edge_proto_rawDesc = "" +
 	"\tendpoints\x18\x01 \x03(\v2\x13.hookly.v1.EndpointR\tendpoints\x12=\n" +
 	"\n" +
 	"pagination\x18\x02 \x01(\v2\x1d.hookly.v1.PaginationResponseR\n" +
-	"pagination\"\xc5\x02\n" +
+	"pagination\"\x9a\x03\n" +
 	"\x15UpdateEndpointRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\x04name\x18\x02 \x01(\tH\x00R\x04name\x88\x01\x01\x12.\n" +
 	"\x10signature_secret\x18\x03 \x01(\tH\x01R\x0fsignatureSecret\x88\x01\x01\x12,\n" +
 	"\x0fdestination_url\x18\x04 \x01(\tH\x02R\x0edestinationUrl\x88\x01\x01\x12\x19\n" +
 	"\x05muted\x18\x05 \x01(\bH\x03R\x05muted\x88\x01\x01\x12N\n" +
-	"\x13verification_config\x18\x06 \x01(\v2\x1d.hookly.v1.VerificationConfigR\x12verificationConfigB\a\n" +
+	"\x13verification_config\x18\x06 \x01(\v2\x1d.hookly.v1.VerificationConfigR\x12verificationConfig\x12A\n" +
+	"\rprovider_type\x18\a \x01(\x0e2\x17.hookly.v1.ProviderTypeH\x04R\fproviderType\x88\x01\x01B\a\n" +
 	"\x05_nameB\x13\n" +
 	"\x11_signature_secretB\x12\n" +
 	"\x10_destination_urlB\b\n" +
-	"\x06_muted\"I\n" +
+	"\x06_mutedB\x10\n" +
+	"\x0e_provider_type\"I\n" +
 	"\x16UpdateEndpointResponse\x12/\n" +
 	"\bendpoint\x18\x01 \x01(\v2\x13.hookly.v1.EndpointR\bendpoint\"'\n" +
 	"\x15DeleteEndpointRequest\x12\x0e\n" +
@@ -1966,61 +1978,62 @@ var file_hookly_v1_edge_proto_depIdxs = []int32{
 	35, // 6: hookly.v1.ListEndpointsResponse.endpoints:type_name -> hookly.v1.Endpoint
 	37, // 7: hookly.v1.ListEndpointsResponse.pagination:type_name -> hookly.v1.PaginationResponse
 	34, // 8: hookly.v1.UpdateEndpointRequest.verification_config:type_name -> hookly.v1.VerificationConfig
-	35, // 9: hookly.v1.UpdateEndpointResponse.endpoint:type_name -> hookly.v1.Endpoint
-	38, // 10: hookly.v1.AddDestinationResponse.destination:type_name -> hookly.v1.Destination
-	35, // 11: hookly.v1.AddDestinationResponse.endpoint:type_name -> hookly.v1.Endpoint
-	38, // 12: hookly.v1.UpdateDestinationResponse.destination:type_name -> hookly.v1.Destination
-	35, // 13: hookly.v1.UpdateDestinationResponse.endpoint:type_name -> hookly.v1.Endpoint
-	35, // 14: hookly.v1.RemoveDestinationResponse.endpoint:type_name -> hookly.v1.Endpoint
-	39, // 15: hookly.v1.GetWebhookResponse.webhook:type_name -> hookly.v1.Webhook
-	40, // 16: hookly.v1.ListWebhooksRequest.status:type_name -> hookly.v1.WebhookStatus
-	36, // 17: hookly.v1.ListWebhooksRequest.pagination:type_name -> hookly.v1.PaginationRequest
-	39, // 18: hookly.v1.ListWebhooksResponse.webhooks:type_name -> hookly.v1.Webhook
-	37, // 19: hookly.v1.ListWebhooksResponse.pagination:type_name -> hookly.v1.PaginationResponse
-	39, // 20: hookly.v1.ReplayWebhookResponse.webhook:type_name -> hookly.v1.Webhook
-	41, // 21: hookly.v1.GetStatusResponse.status:type_name -> hookly.v1.SystemStatus
-	42, // 22: hookly.v1.GetSettingsResponse.theme_preference:type_name -> hookly.v1.ThemePreference
-	43, // 23: hookly.v1.GetUserSettingsResponse.settings:type_name -> hookly.v1.UserSettings
-	42, // 24: hookly.v1.UpdateUserSettingsRequest.theme_preference:type_name -> hookly.v1.ThemePreference
-	43, // 25: hookly.v1.UpdateUserSettingsResponse.settings:type_name -> hookly.v1.UserSettings
-	44, // 26: hookly.v1.GetSystemSettingsResponse.settings:type_name -> hookly.v1.SystemSettings
-	0,  // 27: hookly.v1.EdgeService.CreateEndpoint:input_type -> hookly.v1.CreateEndpointRequest
-	3,  // 28: hookly.v1.EdgeService.GetEndpoint:input_type -> hookly.v1.GetEndpointRequest
-	5,  // 29: hookly.v1.EdgeService.ListEndpoints:input_type -> hookly.v1.ListEndpointsRequest
-	7,  // 30: hookly.v1.EdgeService.UpdateEndpoint:input_type -> hookly.v1.UpdateEndpointRequest
-	9,  // 31: hookly.v1.EdgeService.DeleteEndpoint:input_type -> hookly.v1.DeleteEndpointRequest
-	11, // 32: hookly.v1.EdgeService.AddDestination:input_type -> hookly.v1.AddDestinationRequest
-	13, // 33: hookly.v1.EdgeService.UpdateDestination:input_type -> hookly.v1.UpdateDestinationRequest
-	15, // 34: hookly.v1.EdgeService.RemoveDestination:input_type -> hookly.v1.RemoveDestinationRequest
-	17, // 35: hookly.v1.EdgeService.GetWebhook:input_type -> hookly.v1.GetWebhookRequest
-	19, // 36: hookly.v1.EdgeService.ListWebhooks:input_type -> hookly.v1.ListWebhooksRequest
-	21, // 37: hookly.v1.EdgeService.ReplayWebhook:input_type -> hookly.v1.ReplayWebhookRequest
-	23, // 38: hookly.v1.EdgeService.GetStatus:input_type -> hookly.v1.GetStatusRequest
-	25, // 39: hookly.v1.EdgeService.GetSettings:input_type -> hookly.v1.GetSettingsRequest
-	27, // 40: hookly.v1.EdgeService.GetUserSettings:input_type -> hookly.v1.GetUserSettingsRequest
-	29, // 41: hookly.v1.EdgeService.UpdateUserSettings:input_type -> hookly.v1.UpdateUserSettingsRequest
-	31, // 42: hookly.v1.EdgeService.GetSystemSettings:input_type -> hookly.v1.GetSystemSettingsRequest
-	2,  // 43: hookly.v1.EdgeService.CreateEndpoint:output_type -> hookly.v1.CreateEndpointResponse
-	4,  // 44: hookly.v1.EdgeService.GetEndpoint:output_type -> hookly.v1.GetEndpointResponse
-	6,  // 45: hookly.v1.EdgeService.ListEndpoints:output_type -> hookly.v1.ListEndpointsResponse
-	8,  // 46: hookly.v1.EdgeService.UpdateEndpoint:output_type -> hookly.v1.UpdateEndpointResponse
-	10, // 47: hookly.v1.EdgeService.DeleteEndpoint:output_type -> hookly.v1.DeleteEndpointResponse
-	12, // 48: hookly.v1.EdgeService.AddDestination:output_type -> hookly.v1.AddDestinationResponse
-	14, // 49: hookly.v1.EdgeService.UpdateDestination:output_type -> hookly.v1.UpdateDestinationResponse
-	16, // 50: hookly.v1.EdgeService.RemoveDestination:output_type -> hookly.v1.RemoveDestinationResponse
-	18, // 51: hookly.v1.EdgeService.GetWebhook:output_type -> hookly.v1.GetWebhookResponse
-	20, // 52: hookly.v1.EdgeService.ListWebhooks:output_type -> hookly.v1.ListWebhooksResponse
-	22, // 53: hookly.v1.EdgeService.ReplayWebhook:output_type -> hookly.v1.ReplayWebhookResponse
-	24, // 54: hookly.v1.EdgeService.GetStatus:output_type -> hookly.v1.GetStatusResponse
-	26, // 55: hookly.v1.EdgeService.GetSettings:output_type -> hookly.v1.GetSettingsResponse
-	28, // 56: hookly.v1.EdgeService.GetUserSettings:output_type -> hookly.v1.GetUserSettingsResponse
-	30, // 57: hookly.v1.EdgeService.UpdateUserSettings:output_type -> hookly.v1.UpdateUserSettingsResponse
-	32, // 58: hookly.v1.EdgeService.GetSystemSettings:output_type -> hookly.v1.GetSystemSettingsResponse
-	43, // [43:59] is the sub-list for method output_type
-	27, // [27:43] is the sub-list for method input_type
-	27, // [27:27] is the sub-list for extension type_name
-	27, // [27:27] is the sub-list for extension extendee
-	0,  // [0:27] is the sub-list for field type_name
+	33, // 9: hookly.v1.UpdateEndpointRequest.provider_type:type_name -> hookly.v1.ProviderType
+	35, // 10: hookly.v1.UpdateEndpointResponse.endpoint:type_name -> hookly.v1.Endpoint
+	38, // 11: hookly.v1.AddDestinationResponse.destination:type_name -> hookly.v1.Destination
+	35, // 12: hookly.v1.AddDestinationResponse.endpoint:type_name -> hookly.v1.Endpoint
+	38, // 13: hookly.v1.UpdateDestinationResponse.destination:type_name -> hookly.v1.Destination
+	35, // 14: hookly.v1.UpdateDestinationResponse.endpoint:type_name -> hookly.v1.Endpoint
+	35, // 15: hookly.v1.RemoveDestinationResponse.endpoint:type_name -> hookly.v1.Endpoint
+	39, // 16: hookly.v1.GetWebhookResponse.webhook:type_name -> hookly.v1.Webhook
+	40, // 17: hookly.v1.ListWebhooksRequest.status:type_name -> hookly.v1.WebhookStatus
+	36, // 18: hookly.v1.ListWebhooksRequest.pagination:type_name -> hookly.v1.PaginationRequest
+	39, // 19: hookly.v1.ListWebhooksResponse.webhooks:type_name -> hookly.v1.Webhook
+	37, // 20: hookly.v1.ListWebhooksResponse.pagination:type_name -> hookly.v1.PaginationResponse
+	39, // 21: hookly.v1.ReplayWebhookResponse.webhook:type_name -> hookly.v1.Webhook
+	41, // 22: hookly.v1.GetStatusResponse.status:type_name -> hookly.v1.SystemStatus
+	42, // 23: hookly.v1.GetSettingsResponse.theme_preference:type_name -> hookly.v1.ThemePreference
+	43, // 24: hookly.v1.GetUserSettingsResponse.settings:type_name -> hookly.v1.UserSettings
+	42, // 25: hookly.v1.UpdateUserSettingsRequest.theme_preference:type_name -> hookly.v1.ThemePreference
+	43, // 26: hookly.v1.UpdateUserSettingsResponse.settings:type_name -> hookly.v1.UserSettings
+	44, // 27: hookly.v1.GetSystemSettingsResponse.settings:type_name -> hookly.v1.SystemSettings
+	0,  // 28: hookly.v1.EdgeService.CreateEndpoint:input_type -> hookly.v1.CreateEndpointRequest
+	3,  // 29: hookly.v1.EdgeService.GetEndpoint:input_type -> hookly.v1.GetEndpointRequest
+	5,  // 30: hookly.v1.EdgeService.ListEndpoints:input_type -> hookly.v1.ListEndpointsRequest
+	7,  // 31: hookly.v1.EdgeService.UpdateEndpoint:input_type -> hookly.v1.UpdateEndpointRequest
+	9,  // 32: hookly.v1.EdgeService.DeleteEndpoint:input_type -> hookly.v1.DeleteEndpointRequest
+	11, // 33: hookly.v1.EdgeService.AddDestination:input_type -> hookly.v1.AddDestinationRequest
+	13, // 34: hookly.v1.EdgeService.UpdateDestination:input_type -> hookly.v1.UpdateDestinationRequest
+	15, // 35: hookly.v1.EdgeService.RemoveDestination:input_type -> hookly.v1.RemoveDestinationRequest
+	17, // 36: hookly.v1.EdgeService.GetWebhook:input_type -> hookly.v1.GetWebhookRequest
+	19, // 37: hookly.v1.EdgeService.ListWebhooks:input_type -> hookly.v1.ListWebhooksRequest
+	21, // 38: hookly.v1.EdgeService.ReplayWebhook:input_type -> hookly.v1.ReplayWebhookRequest
+	23, // 39: hookly.v1.EdgeService.GetStatus:input_type -> hookly.v1.GetStatusRequest
+	25, // 40: hookly.v1.EdgeService.GetSettings:input_type -> hookly.v1.GetSettingsRequest
+	27, // 41: hookly.v1.EdgeService.GetUserSettings:input_type -> hookly.v1.GetUserSettingsRequest
+	29, // 42: hookly.v1.EdgeService.UpdateUserSettings:input_type -> hookly.v1.UpdateUserSettingsRequest
+	31, // 43: hookly.v1.EdgeService.GetSystemSettings:input_type -> hookly.v1.GetSystemSettingsRequest
+	2,  // 44: hookly.v1.EdgeService.CreateEndpoint:output_type -> hookly.v1.CreateEndpointResponse
+	4,  // 45: hookly.v1.EdgeService.GetEndpoint:output_type -> hookly.v1.GetEndpointResponse
+	6,  // 46: hookly.v1.EdgeService.ListEndpoints:output_type -> hookly.v1.ListEndpointsResponse
+	8,  // 47: hookly.v1.EdgeService.UpdateEndpoint:output_type -> hookly.v1.UpdateEndpointResponse
+	10, // 48: hookly.v1.EdgeService.DeleteEndpoint:output_type -> hookly.v1.DeleteEndpointResponse
+	12, // 49: hookly.v1.EdgeService.AddDestination:output_type -> hookly.v1.AddDestinationResponse
+	14, // 50: hookly.v1.EdgeService.UpdateDestination:output_type -> hookly.v1.UpdateDestinationResponse
+	16, // 51: hookly.v1.EdgeService.RemoveDestination:output_type -> hookly.v1.RemoveDestinationResponse
+	18, // 52: hookly.v1.EdgeService.GetWebhook:output_type -> hookly.v1.GetWebhookResponse
+	20, // 53: hookly.v1.EdgeService.ListWebhooks:output_type -> hookly.v1.ListWebhooksResponse
+	22, // 54: hookly.v1.EdgeService.ReplayWebhook:output_type -> hookly.v1.ReplayWebhookResponse
+	24, // 55: hookly.v1.EdgeService.GetStatus:output_type -> hookly.v1.GetStatusResponse
+	26, // 56: hookly.v1.EdgeService.GetSettings:output_type -> hookly.v1.GetSettingsResponse
+	28, // 57: hookly.v1.EdgeService.GetUserSettings:output_type -> hookly.v1.GetUserSettingsResponse
+	30, // 58: hookly.v1.EdgeService.UpdateUserSettings:output_type -> hookly.v1.UpdateUserSettingsResponse
+	32, // 59: hookly.v1.EdgeService.GetSystemSettings:output_type -> hookly.v1.GetSystemSettingsResponse
+	44, // [44:60] is the sub-list for method output_type
+	28, // [28:44] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_hookly_v1_edge_proto_init() }

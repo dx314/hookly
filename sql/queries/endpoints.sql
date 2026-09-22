@@ -15,6 +15,7 @@ SELECT COUNT(*) FROM endpoints WHERE user_id = ?;
 -- name: UpdateEndpoint :one
 UPDATE endpoints
 SET name = COALESCE(sqlc.narg('name'), name),
+    provider_type = COALESCE(sqlc.narg('provider_type'), provider_type),
     signature_secret_encrypted = COALESCE(sqlc.narg('signature_secret_encrypted'), signature_secret_encrypted),
     verification_config_encrypted = COALESCE(sqlc.narg('verification_config_encrypted'), verification_config_encrypted),
     destination_url = COALESCE(sqlc.narg('destination_url'), destination_url),

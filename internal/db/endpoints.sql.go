@@ -250,17 +250,19 @@ func (q *Queries) SetEndpointLegacyDestinationURL(ctx context.Context, arg SetEn
 const updateEndpoint = `-- name: UpdateEndpoint :one
 UPDATE endpoints
 SET name = COALESCE(?1, name),
-    signature_secret_encrypted = COALESCE(?2, signature_secret_encrypted),
-    verification_config_encrypted = COALESCE(?3, verification_config_encrypted),
-    destination_url = COALESCE(?4, destination_url),
-    muted = COALESCE(?5, muted),
+    provider_type = COALESCE(?2, provider_type),
+    signature_secret_encrypted = COALESCE(?3, signature_secret_encrypted),
+    verification_config_encrypted = COALESCE(?4, verification_config_encrypted),
+    destination_url = COALESCE(?5, destination_url),
+    muted = COALESCE(?6, muted),
     updated_at = datetime('now')
-WHERE id = ?6 AND user_id = ?7
+WHERE id = ?7 AND user_id = ?8
 RETURNING id, user_id, name, provider_type, signature_secret_encrypted, verification_config_encrypted, destination_url, muted, created_at, updated_at
 `
 
 type UpdateEndpointParams struct {
 	Name                        sql.NullString `json:"name"`
+	ProviderType                sql.NullString `json:"provider_type"`
 	SignatureSecretEncrypted    []byte         `json:"signature_secret_encrypted"`
 	VerificationConfigEncrypted []byte         `json:"verification_config_encrypted"`
 	DestinationUrl              sql.NullString `json:"destination_url"`
@@ -273,6 +275,7 @@ type UpdateEndpointParams struct {
 func (q *Queries) UpdateEndpoint(ctx context.Context, arg UpdateEndpointParams) (Endpoint, error) {
 	row := q.db.QueryRowContext(ctx, updateEndpoint,
 		arg.Name,
+		arg.ProviderType,
 		arg.SignatureSecretEncrypted,
 		arg.VerificationConfigEncrypted,
 		arg.DestinationUrl,

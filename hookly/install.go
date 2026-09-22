@@ -91,6 +91,14 @@ func runInstall(c *cli.Context) error {
 		return errors.New("not logged in\n\nRun 'hookly login' first - the service uses your login")
 	}
 
+	// Create what hookly.yaml declares now, so mistakes show here rather than
+	// in the service's log, and the ids are in the file before it starts.
+	fmt.Println("Syncing hookly.yaml to the edge...")
+	if err := syncConfig(c.Context, hooklyCfg, configPath, false); err != nil {
+		return err
+	}
+	fmt.Println()
+
 	cfg := svc.DefaultServiceConfig(true)
 	cfg.Name = name
 	cfg.ConfigPath = configPath

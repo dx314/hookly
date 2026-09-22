@@ -87,6 +87,9 @@ message UpdateEndpointRequest {
   optional bool muted = 5;
   // Custom verification config (only for PROVIDER_TYPE_CUSTOM endpoints)
   VerificationConfig verification_config = 6;
+  // Changes how incoming webhooks are verified. Switching to
+  // PROVIDER_TYPE_CUSTOM needs verification_config in the same request.
+  optional ProviderType provider_type = 7;
 }
 
 message UpdateEndpointResponse {

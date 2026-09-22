@@ -444,7 +444,7 @@ func TestIntegrationFanout(t *testing.T) {
 		HubID:   "test-hub",
 		Endpoints: []config.EndpointConfig{{
 			ID:           endpointID,
-			Destinations: map[string]string{"schoolboy": flakySrv.URL + "/telegram"},
+			Destinations: config.DestinationList{{Name: "schoolboy", URL: flakySrv.URL + "/telegram"}},
 		}},
 	})
 	hub.SetHTTPClient(edgeSrv.Client())

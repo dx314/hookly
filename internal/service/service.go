@@ -13,6 +13,7 @@ import (
 
 	clicmd "hooks.dx314.com/internal/cli"
 	"hooks.dx314.com/internal/config"
+	"hooks.dx314.com/internal/provision"
 	"hooks.dx314.com/internal/relay"
 )
 
@@ -72,6 +73,9 @@ func (p *Program) Start(s service.Service) error {
 	p.wg.Add(1)
 	go func() {
 		defer p.wg.Done()
+		if !provision.SyncForRelay(ctx, hooklyCfg, p.cfg.ConfigPath) {
+			return
+		}
 		if err := client.Run(ctx); err != nil && err != context.Canceled {
 			slog.Error("relay error", "error", err)
 		}

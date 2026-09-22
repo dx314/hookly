@@ -5,8 +5,8 @@ import "testing"
 func TestGetDestination(t *testing.T) {
 	cfg := &HooklyConfig{Endpoints: []EndpointConfig{
 		{ID: "legacy", Destination: "http://local/primary"},
-		{ID: "named", Destinations: map[string]string{"schoolboy": "http://local/schoolboy"}},
-		{ID: "both", Destination: "http://local/primary", Destinations: map[string]string{"schoolboy": "http://local/schoolboy"}},
+		{ID: "named", Destinations: DestinationList{{Name: "schoolboy", URL: "http://local/schoolboy"}}},
+		{ID: "both", Destination: "http://local/primary", Destinations: DestinationList{{Name: "schoolboy", URL: "http://local/schoolboy"}}},
 		{ID: "none"},
 	}}
 

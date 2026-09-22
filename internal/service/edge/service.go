@@ -281,6 +281,15 @@ func (s *Service) UpdateEndpoint(ctx context.Context, req *connect.Request[hookl
 	if msg.Name != nil {
 		params.Name = sql.NullString{String: *msg.Name, Valid: true}
 	}
+	if msg.ProviderType != nil {
+		if *msg.ProviderType == hooklyv1.ProviderType_PROVIDER_TYPE_UNSPECIFIED {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("provider_type must be set to a provider"))
+		}
+		if *msg.ProviderType == hooklyv1.ProviderType_PROVIDER_TYPE_CUSTOM && msg.VerificationConfig == nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("verification_config is required when switching to the custom provider type"))
+		}
+		params.ProviderType = sql.NullString{String: mapProviderTypeToString(*msg.ProviderType), Valid: true}
+	}
 	if msg.DestinationUrl != nil {
 		params.DestinationUrl = sql.NullString{String: *msg.DestinationUrl, Valid: true}
 	}

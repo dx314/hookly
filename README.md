@@ -94,6 +94,7 @@ That's it. Webhooks flow to your local service.
 | `hookly whoami` | Show current user |
 | `hookly status` | Show connection and config status |
 | `hookly init` | Create hookly.yaml interactively |
+| `hookly sync` | Create/update endpoints and destinations on the edge from hookly.yaml (`--dry-run`) |
 | `hookly install` | Install and start a user service for `./hookly.yaml`, named after its directory (no sudo; `hookly uninstall` removes it) |
 | `hookly version` | Print the version and exact build |
 | `hookly service list --user` | List installed hookly services |
@@ -122,6 +123,12 @@ endpoint and list them in one `hookly.yaml`.
 
 ### hookly.yaml
 
+`hookly.yaml` declares your endpoints and destinations; hookly makes the edge
+match it. On start (and with `hookly sync`, or `hookly install`) it creates
+endpoints and destinations that don't exist, updates what differs, and writes
+the `id` and public `url` the edge assigns back into the file, keeping your
+comments. Settings the file leaves out are left as they are on the edge.
+
 ```yaml
 # Required: edge server URL
 edge_url: "https://hooks.dx314.com"
@@ -129,20 +136,43 @@ edge_url: "https://hooks.dx314.com"
 # Optional: unique identifier (defaults to hostname; <hostname>-<name> for a named service)
 hub_id: "my-server"
 
-# Endpoints this client handles
 endpoints:
-  - id: "ep_abc123"
-    # Optional: override the destination URL (uses edge-configured if omitted)
-    destination: "http://localhost:8080/webhook"
-  - id: "ep_def456"
-    # No destination - uses what's configured on the edge
-  - id: "ep_ghi789"
-    # Endpoint with several destinations: override by destination name.
-    # "destination" only ever overrides the primary (first) destination.
+  - name: "telegram-bot"            # identifies the endpoint until it has an id
+    id: "Hzy7Ds64..."               # filled in by hookly
+    url: "https://hooks.dx314.com/h/Hzy7Ds64..."  # filled in: give this to the provider
+    provider: telegram              # stripe | github | telegram | generic | custom
+    secret_env: BOT_WEBHOOK_SECRET  # or secret: "..." (Telegram: the setWebhook secret_token)
+    destinations:                   # the first is the primary when created
+      - name: schoolboy
+        url: "http://127.0.0.1:8789/telegram"
+      - name: homeboy
+        url: "http://127.0.0.1:8790/telegram"
+        enabled: true               # default
+    # prune: true                   # also remove edge destinations not listed here
+    # muted: false
+
+  - name: "acme"
+    provider: custom
+    secret: "..."
+    verification:
+      method: hmac_sha256           # static | hmac_sha256 | hmac_sha1 | timestamped_hmac
+      signature_header: X-Acme-Signature
+      signature_prefix: "sha256="
     destinations:
-      otto: "http://localhost:8788/telegram"
-      schoolboy: "http://localhost:8789/telegram"
+      - name: default
+        url: "http://localhost:3000/webhooks/acme"
 ```
+
+- **Identity**: an endpoint with an `id` is that endpoint; a wrong `id` is an
+  error, never a new endpoint. Without an `id`, hookly adopts the endpoint with
+  that `name` (several with the same name is an error) or creates it.
+- **Secrets** can't be read back from the edge, so a `secret`/`secret_env` is
+  sent on every sync. Without one, the edge's secret is kept.
+- **Destinations** are matched by name. Ones on the edge but not in the file are
+  left alone (logged) unless `prune: true`.
+- The older forms still work: `destinations:` as a `name: url` map, and
+  `destination:` for the primary destination's URL.
+- `hookly sync --dry-run` shows what would change.
 
 ### Reverse proxy (`proxies:`)
 
