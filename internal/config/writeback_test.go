@@ -98,7 +98,7 @@ func TestSetEndpointFields(t *testing.T) {
 		t.Error("symlink was replaced by a file")
 	}
 	data, _ := os.ReadFile(real)
-	want := "edge_url: \"https://e\"\nendpoints:\n  - id: \"new\"\n    url: \"https://e/h/new\"\n    provider: telegram # no name\n    destinations: {a: \"http://a\"}\n  - name: second\n    id: replaced\n"
+	want := "edge_url: \"https://e\"\nendpoints:\n  - id: \"new\"\n    url: \"https://e/h/new\"\n    provider: telegram # no name\n    destinations: {a: \"http://a\"}\n  - name: second\n    id: \"replaced\"\n"
 	if string(data) != want {
 		t.Errorf("got:\n%s\nwant:\n%s", data, want)
 	}
@@ -108,5 +108,48 @@ func TestSetEndpointFields(t *testing.T) {
 	cfg, err := LoadHooklyYAML(link)
 	if err != nil || cfg.Endpoints[0].ID != "new" || cfg.Endpoints[1].ID != "replaced" {
 		t.Errorf("reload: %v %+v", err, cfg)
+	}
+}
+
+// Only the edited lines change: blank lines, comments and quoting stay exactly.
+func TestSetEndpointFieldsKeepsLayout(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "hookly.yaml")
+	src := `# relay for this machine
+edge_url: "https://hooks.dx314.com"
+hub_id: "infocube"
+
+endpoints:
+  - id: "abc"
+    # Local URL per destination
+    destinations:
+      "schoolboy": "http://127.0.0.1:8789/telegram"
+      "homeboy":   "http://127.0.0.1:8790/telegram"
+
+  - name: 'bot'   # trailing comment
+    provider: telegram
+
+proxies:
+  - name: "homeboy"
+    paths: ["/app/"]
+`
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := SetEndpointFields(path, []EndpointField{
+		{Endpoint: 0, Key: "url", Value: "https://hooks.dx314.com/h/abc"},
+		{Endpoint: 1, Key: "id", Value: "new"},
+		{Endpoint: 1, Key: "url", Value: "https://hooks.dx314.com/h/new"},
+		{Endpoint: 0, Key: "url", Value: "https://hooks.dx314.com/h/abc2"}, // replace
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.NewReplacer(
+		"  - id: \"abc\"\n", "  - id: \"abc\"\n    url: \"https://hooks.dx314.com/h/abc2\"\n",
+		"  - name: 'bot'   # trailing comment\n", "  - name: 'bot'   # trailing comment\n    id: \"new\"\n    url: \"https://hooks.dx314.com/h/new\"\n",
+	).Replace(src)
+	data, _ := os.ReadFile(path)
+	if string(data) != want {
+		t.Errorf("got:\n%s\nwant:\n%s", data, want)
 	}
 }

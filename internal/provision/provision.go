@@ -77,6 +77,7 @@ type syncer struct {
 	opts   Options
 	report *Report
 	all    []*hooklyv1.Endpoint // The user's endpoints, listed once when needed
+	label  string               // Name of the endpoint being synced, for messages
 }
 
 func (s *syncer) change(format string, args ...any) {
@@ -117,6 +118,10 @@ func (s *syncer) endpoint(ctx context.Context, i int, ep *config.EndpointConfig)
 		return s.create(ctx, i, ep, secret)
 	}
 
+	s.label = ep.Name
+	if s.label == "" {
+		s.label = remote.Name
+	}
 	s.fill(i, ep, "id", remote.Id)
 	if webhookURL != "" {
 		s.fill(i, ep, "url", webhookURL)
@@ -234,25 +239,25 @@ func (s *syncer) updateEndpoint(ctx context.Context, ep *config.EndpointConfig, 
 	wantProvider := providerType(ep.Provider)
 	if ep.Provider != "" && wantProvider != remote.ProviderType {
 		req.ProviderType = &wantProvider
-		s.change("change endpoint %s provider from %s to %s", ep.Name, providerName(remote.ProviderType), ep.Provider)
+		s.change("change endpoint %s provider from %s to %s", s.label, providerName(remote.ProviderType), ep.Provider)
 		changed = true
 	}
 	if want := verificationConfig(ep.Verification); want != nil &&
 		(req.ProviderType != nil || !proto.Equal(want, remote.VerificationConfig)) {
 		req.VerificationConfig = want
 		if req.ProviderType == nil {
-			s.change("update endpoint %s verification", ep.Name)
+			s.change("update endpoint %s verification", s.label)
 		}
 		changed = true
 	}
 	if ep.Muted != nil && *ep.Muted != remote.Muted {
 		req.Muted = ep.Muted
-		s.change("set endpoint %s muted=%t", ep.Name, *ep.Muted)
+		s.change("set endpoint %s muted=%t", s.label, *ep.Muted)
 		changed = true
 	}
 	if len(ep.Destinations) == 0 && ep.Destination != "" && ep.Destination != remote.DestinationUrl {
 		req.DestinationUrl = proto.String(ep.Destination)
-		s.change("point endpoint %s's primary destination at %s", ep.Name, ep.Destination)
+		s.change("point endpoint %s's primary destination at %s", s.label, ep.Destination)
 		changed = true
 	}
 	// The edge only reveals a fingerprint of the secret. An edge too old to
@@ -264,7 +269,7 @@ func (s *syncer) updateEndpoint(ctx context.Context, ep *config.EndpointConfig, 
 			req.SignatureSecret = proto.String(secret)
 		default:
 			req.SignatureSecret = proto.String(secret)
-			s.change("update endpoint %s secret", ep.Name)
+			s.change("update endpoint %s secret", s.label)
 			changed = true
 		}
 	}
@@ -279,7 +284,7 @@ func (s *syncer) updateEndpoint(ctx context.Context, ep *config.EndpointConfig, 
 	if req.ProviderType != nil && resp.Msg.Endpoint.GetProviderType() != *req.ProviderType {
 		s.report.Notes = append(s.report.Notes, fmt.Sprintf(
 			"endpoint %s: the edge kept provider %s - it predates changing providers; upgrade the edge",
-			ep.Name, providerName(resp.Msg.Endpoint.GetProviderType())))
+			s.label, providerName(resp.Msg.Endpoint.GetProviderType())))
 	}
 	return nil
 }
@@ -298,7 +303,7 @@ func (s *syncer) destinations(ctx context.Context, ep *config.EndpointConfig, re
 		have, ok := byName[d.Name]
 		delete(byName, d.Name)
 		if !ok {
-			s.change("add destination %s to %s (%s)", d.Name, ep.Name, d.URL)
+			s.change("add destination %s to %s (%s)", d.Name, s.label, d.URL)
 			if s.opts.DryRun {
 				continue
 			}
@@ -313,11 +318,11 @@ func (s *syncer) destinations(ctx context.Context, ep *config.EndpointConfig, re
 		req := &hooklyv1.UpdateDestinationRequest{Id: have.Id}
 		if have.Url != d.URL {
 			req.Url = proto.String(d.URL)
-			s.change("point destination %s of %s at %s", d.Name, ep.Name, d.URL)
+			s.change("point destination %s of %s at %s", d.Name, s.label, d.URL)
 		}
 		if have.Enabled != enabled {
 			req.Enabled = proto.Bool(enabled)
-			s.change("set destination %s of %s enabled=%t", d.Name, ep.Name, enabled)
+			s.change("set destination %s of %s enabled=%t", d.Name, s.label, enabled)
 		}
 		if s.opts.DryRun || (req.Url == nil && req.Enabled == nil) {
 			continue
@@ -335,10 +340,10 @@ func (s *syncer) destinations(ctx context.Context, ep *config.EndpointConfig, re
 		if !ep.Prune {
 			s.report.Notes = append(s.report.Notes, fmt.Sprintf(
 				"endpoint %s has destination %s on the edge that hookly.yaml doesn't list (left alone; set prune: true to remove it)",
-				ep.Name, d.Name))
+				s.label, d.Name))
 			continue
 		}
-		s.change("remove destination %s from %s", d.Name, ep.Name)
+		s.change("remove destination %s from %s", d.Name, s.label)
 		if s.opts.DryRun {
 			continue
 		}
