@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"connectrpc.com/connect"
@@ -24,7 +25,7 @@ import (
 
 // provisionEdge runs the edge's API in-process and returns a client
 // authenticated as a CLI user, plus the store behind it.
-func provisionEdge(t *testing.T) (hooklyv1connect.EdgeServiceClient, *db.Store, *db.SecretManager) {
+func provisionEdge(t *testing.T) (hooklyv1connect.EdgeServiceClient, *db.Store, *db.SecretManager, *atomic.Int32) {
 	t.Helper()
 	ctx := context.Background()
 	conn, err := db.Open(ctx, filepath.Join(t.TempDir(), "edge.db"))
@@ -63,8 +64,17 @@ func provisionEdge(t *testing.T) (hooklyv1connect.EdgeServiceClient, *db.Store, 
 			return next(ctx, req)
 		}
 	})
-	client := hooklyv1connect.NewEdgeServiceClient(srv.Client(), srv.URL, connect.WithGRPC(), connect.WithInterceptors(bearer))
-	return client, store, secrets
+	updates := &atomic.Int32{}
+	countUpdates := connect.UnaryInterceptorFunc(func(next connect.UnaryFunc) connect.UnaryFunc {
+		return func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
+			if strings.HasSuffix(req.Spec().Procedure, "/UpdateEndpoint") {
+				updates.Add(1)
+			}
+			return next(ctx, req)
+		}
+	})
+	client := hooklyv1connect.NewEdgeServiceClient(srv.Client(), srv.URL, connect.WithGRPC(), connect.WithInterceptors(bearer, countUpdates))
+	return client, store, secrets, updates
 }
 
 func writeFile(t *testing.T, path, content string) {
@@ -89,7 +99,7 @@ func syncYAML(t *testing.T, client hooklyv1connect.EdgeServiceClient, path strin
 
 func TestProvisionFromYAML(t *testing.T) {
 	ctx := context.Background()
-	client, store, secrets := provisionEdge(t)
+	client, store, secrets, updates := provisionEdge(t)
 	t.Setenv("BOT_SECRET", "s3cret")
 
 	path := filepath.Join(t.TempDir(), "hookly.yaml")
@@ -157,13 +167,27 @@ proxies:
 		t.Errorf("mode = %v, want 0640", info.Mode().Perm())
 	}
 
-	// In sync: nothing to do, file untouched
+	// In sync: nothing to do, not even the secret (its fingerprint matches), file untouched
 	before, _ := os.ReadFile(path)
+	updates.Store(0)
 	if _, report := syncYAML(t, client, path, provision.Options{}); len(report.Changes) != 0 || len(report.Fields) != 0 {
 		t.Errorf("second sync changed %v / %v", report.Changes, report.Fields)
 	}
+	if n := updates.Load(); n != 0 {
+		t.Errorf("second sync made %d UpdateEndpoint calls, want 0", n)
+	}
 	if after, _ := os.ReadFile(path); string(after) != string(before) {
 		t.Error("second sync rewrote hookly.yaml")
+	}
+
+	// A changed secret is detected by fingerprint and sent
+	t.Setenv("BOT_SECRET", "rotated")
+	if _, report := syncYAML(t, client, path, provision.Options{}); len(report.Changes) != 1 || report.Changes[0] != "update endpoint bot secret" {
+		t.Errorf("secret rotation changes = %v", report.Changes)
+	}
+	ep, _ = store.GetEndpoint(ctx, db.GetEndpointParams{ID: id, UserID: "user-1"})
+	if secret, _ := secrets.DecryptSecret(ep.SignatureSecretEncrypted); secret != "rotated" {
+		t.Errorf("secret = %q, want rotated", secret)
 	}
 
 	// Edits flow to the edge: URL change, disable, new destination, provider

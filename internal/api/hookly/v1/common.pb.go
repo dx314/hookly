@@ -654,8 +654,12 @@ type Endpoint struct {
 	// Custom verification config (only for PROVIDER_TYPE_CUSTOM)
 	VerificationConfig *VerificationConfig `protobuf:"bytes,8,opt,name=verification_config,json=verificationConfig,proto3" json:"verification_config,omitempty"`
 	Destinations       []*Destination      `protobuf:"bytes,9,rep,name=destinations,proto3" json:"destinations,omitempty"` // Ordered by position
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Fingerprint of the signature secret (crypto.SecretFingerprint), so a
+	// client can tell whether its secret matches without the secret being
+	// revealed. Empty when the endpoint has no secret.
+	SignatureSecretFingerprint string `protobuf:"bytes,10,opt,name=signature_secret_fingerprint,json=signatureSecretFingerprint,proto3" json:"signature_secret_fingerprint,omitempty"`
+	unknownFields              protoimpl.UnknownFields
+	sizeCache                  protoimpl.SizeCache
 }
 
 func (x *Endpoint) Reset() {
@@ -749,6 +753,13 @@ func (x *Endpoint) GetDestinations() []*Destination {
 		return x.Destinations
 	}
 	return nil
+}
+
+func (x *Endpoint) GetSignatureSecretFingerprint() string {
+	if x != nil {
+		return x.SignatureSecretFingerprint
+	}
+	return ""
 }
 
 // Webhook record. status/attempts/last_attempt_at/delivered_at/error_message are
@@ -1419,7 +1430,7 @@ const file_hookly_v1_common_proto_rawDesc = "" +
 	"\x0flast_attempt_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\rlastAttemptAt\x12=\n" +
 	"\fdelivered_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\vdeliveredAt\x12#\n" +
 	"\rerror_message\x18\n" +
-	" \x01(\tR\ferrorMessage\"\xad\x03\n" +
+	" \x01(\tR\ferrorMessage\"\xef\x03\n" +
 	"\bEndpoint\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12<\n" +
@@ -1431,7 +1442,9 @@ const file_hookly_v1_common_proto_rawDesc = "" +
 	"\n" +
 	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12N\n" +
 	"\x13verification_config\x18\b \x01(\v2\x1d.hookly.v1.VerificationConfigR\x12verificationConfig\x12:\n" +
-	"\fdestinations\x18\t \x03(\v2\x16.hookly.v1.DestinationR\fdestinations\"\xdc\x04\n" +
+	"\fdestinations\x18\t \x03(\v2\x16.hookly.v1.DestinationR\fdestinations\x12@\n" +
+	"\x1csignature_secret_fingerprint\x18\n" +
+	" \x01(\tR\x1asignatureSecretFingerprint\"\xdc\x04\n" +
 	"\aWebhook\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vendpoint_id\x18\x02 \x01(\tR\n" +

@@ -91,6 +91,10 @@ message Endpoint {
   // Custom verification config (only for PROVIDER_TYPE_CUSTOM)
   VerificationConfig verification_config = 8;
   repeated Destination destinations = 9; // Ordered by position
+  // Fingerprint of the signature secret (crypto.SecretFingerprint), so a
+  // client can tell whether its secret matches without the secret being
+  // revealed. Empty when the endpoint has no secret.
+  string signature_secret_fingerprint = 10;
 }
 
 // Webhook record. status/attempts/last_attempt_at/delivered_at/error_message are

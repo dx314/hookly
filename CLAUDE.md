@@ -87,7 +87,7 @@ Default (no args): run relay client. Config: `hookly.yaml`, creds: `~/.config/ho
 
 Service subcommands: `list`, `install`, `uninstall`, `start`, `stop`, `restart`, `status`, `logs` (all take `--name`)
 
-**hookly.yaml is declarative**: `internal/provision` makes the edge match it on relay start, `hookly sync` and `hookly install` — creates/updates endpoints (name, provider, secret, custom verification, muted) and destinations (by name; `prune` removes extras), and writes the assigned `id`/`url` back into the file (`config.SetEndpointFields`: yaml node edit, comments kept, temp file + rename).
+**hookly.yaml is declarative**: `internal/provision` makes the edge match it on relay start, `hookly sync` and `hookly install` — creates/updates endpoints (name, provider, secret, custom verification, muted) and destinations (by name; `prune` removes extras), secrets compared via `crypto.SecretFingerprint` (edge returns `signature_secret_fingerprint`), and writes the assigned `id`/`url` back into the file (`config.SetEndpointFields`: yaml node edit, comments kept, temp file + rename).
 
 **Versioning**: `hookly version` comes from git tags only (no version constant). `.github/workflows/tag.yml` tags every push to GitHub `main`: `feat` commit → minor bump, else patch. Never tag or edit versions by hand.
 

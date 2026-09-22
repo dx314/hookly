@@ -18,6 +18,7 @@ import (
 	"hooks.dx314.com/internal/api/hookly/v1/hooklyv1connect"
 	clicmd "hooks.dx314.com/internal/cli"
 	"hooks.dx314.com/internal/config"
+	"hooks.dx314.com/internal/crypto"
 )
 
 // Options controls a Sync.
@@ -254,13 +255,21 @@ func (s *syncer) updateEndpoint(ctx context.Context, ep *config.EndpointConfig, 
 		s.change("point endpoint %s's primary destination at %s", ep.Name, ep.Destination)
 		changed = true
 	}
-	// The edge never reveals the secret, so it can't be compared: send it
-	// whenever the file has one. Not reported, as it's usually unchanged.
+	// The edge only reveals a fingerprint of the secret. An edge too old to
+	// send one gets the secret every time, unreported as it's usually the same.
 	if secret != "" {
-		req.SignatureSecret = proto.String(secret)
+		switch remote.SignatureSecretFingerprint {
+		case crypto.SecretFingerprint(remote.Id, secret):
+		case "":
+			req.SignatureSecret = proto.String(secret)
+		default:
+			req.SignatureSecret = proto.String(secret)
+			s.change("update endpoint %s secret", ep.Name)
+			changed = true
+		}
 	}
 
-	if s.opts.DryRun || (!changed && secret == "") {
+	if s.opts.DryRun || (!changed && req.SignatureSecret == nil) {
 		return nil
 	}
 	resp, err := s.edge.UpdateEndpoint(ctx, connect.NewRequest(req))

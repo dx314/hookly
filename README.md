@@ -166,8 +166,9 @@ endpoints:
 - **Identity**: an endpoint with an `id` is that endpoint; a wrong `id` is an
   error, never a new endpoint. Without an `id`, hookly adopts the endpoint with
   that `name` (several with the same name is an error) or creates it.
-- **Secrets** can't be read back from the edge, so a `secret`/`secret_env` is
-  sent on every sync. Without one, the edge's secret is kept.
+- **Secrets** are never read back: the edge returns a fingerprint (HMAC-SHA256
+  keyed by the endpoint ID) and hookly only sends a `secret`/`secret_env` that
+  differs. Without one in the file, the edge's secret is kept.
 - **Destinations** are matched by name. Ones on the edge but not in the file are
   left alone (logged) unless `prune: true`.
 - The older forms still work: `destinations:` as a `name: url` map, and

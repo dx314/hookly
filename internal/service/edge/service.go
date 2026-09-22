@@ -16,6 +16,7 @@ import (
 	hooklyv1 "hooks.dx314.com/internal/api/hookly/v1"
 	"hooks.dx314.com/internal/auth"
 	"hooks.dx314.com/internal/config"
+	"hooks.dx314.com/internal/crypto"
 	"hooks.dx314.com/internal/db"
 	"hooks.dx314.com/internal/id"
 	"hooks.dx314.com/internal/relay"
@@ -1038,6 +1039,13 @@ func (s *Service) endpointToProto(ctx context.Context, ep *db.Endpoint, withStat
 	// destination_url is the primary destination for older clients
 	if len(dests) > 0 {
 		proto.DestinationUrl = dests[0].Url
+	}
+	if len(ep.SignatureSecretEncrypted) > 0 {
+		if secret, err := s.secretManager.DecryptSecret(ep.SignatureSecretEncrypted); err != nil {
+			slog.Error("failed to decrypt secret for fingerprint", "error", err, "endpoint_id", ep.ID)
+		} else {
+			proto.SignatureSecretFingerprint = crypto.SecretFingerprint(ep.ID, secret)
+		}
 	}
 
 	return proto, nil
